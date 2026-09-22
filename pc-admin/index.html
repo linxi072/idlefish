@@ -9,6 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/element-plus@2.7.0/dist/index.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios@1.6.8/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body, #app { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
@@ -54,6 +55,11 @@
     .thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; margin-right: 10px; }
     .g-title { font-weight: 600; }
     .g-sub { color: #9A9A9A; font-size: 12px; }
+    .item-detail .id-gallery { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .item-detail .id-img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid #F2F3F5; }
+    .item-detail .id-desc { margin-top: 16px; }
+    .item-detail .id-desc-title { font-weight: 700; margin-bottom: 8px; color: #1A1A1A; }
+    .item-detail .id-desc-body { background: #F7F8FA; border-radius: 8px; padding: 14px; line-height: 1.7; color: #555; font-size: 14px; white-space: pre-wrap; }
   </style>
 </head>
 <body>

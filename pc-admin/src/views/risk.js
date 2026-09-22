@@ -4,15 +4,29 @@ import { adminApi } from '../api.js';
 export default {
   name: 'Risk',
   data() {
-    return { tab: 'risk', events: [], logs: [], loading: false };
+    return { tab: 'risk', keyword: '', events: [], logs: [], loading: false };
   },
   mounted() { this.load(); },
   methods: {
     async load() {
       this.loading = true;
       try {
-        if (this.tab === 'risk') this.events = (await adminApi.risk()).list || [];
-        else this.logs = await adminApi.auditLog();
+        const r = this.tab === 'risk'
+          ? await adminApi.risk({ keyword: this.keyword })
+          : await adminApi.auditLog({ keyword: this.keyword });
+        const arr = Array.isArray(r) ? r : (r.list || []);
+        if (this.tab === 'risk') {
+          this.events = arr;
+        } else {
+          // 兼容 mock（opId/operator/target）与真实后端（operatorId/targetType/targetId）
+          this.logs = arr.map(l => ({
+            opId: l.opId || l.operatorId,
+            operator: l.operator || l.operatorId,
+            target: l.target || (l.targetType && l.targetId ? l.targetType + ':' + l.targetId : ''),
+            action: l.action,
+            createdAt: l.createdAt
+          }));
+        }
       } finally { this.loading = false; }
     },
     onTab(v) { this.tab = v.name; this.load(); },
@@ -23,7 +37,11 @@ export default {
   template: `
   <div>
     <h2 class="page-title">风控与审计</h2>
-    <el-card shadow="never">
+      <el-card shadow="never">
+      <el-form inline style="margin-bottom:12px">
+        <el-form-item label="关键词"><el-input v-model="keyword" placeholder="规则名 / 动作 / 对象" clearable></el-input></el-form-item>
+        <el-form-item><el-button type="primary" @click="load">查询</el-button></el-form-item>
+      </el-form>
       <el-tabs @tab-change="onTab">
         <el-tab-pane label="风控事件" name="risk"></el-tab-pane>
         <el-tab-pane label="审计日志" name="audit"></el-tab-pane>

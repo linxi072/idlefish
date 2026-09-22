@@ -8,6 +8,8 @@ import com.idlefish.trade.trade.service.RefundService;
 import com.idlefish.trade.trade.vo.RefundVO;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+
 import java.util.List;
 
 /**
@@ -25,7 +27,7 @@ public class RefundController {
 
     /** 申请退款（买家）。 */
     @PostMapping("/apply")
-    public Result<String> apply(@CurrentUser LoginUser loginUser, @RequestBody RefundApplyDTO dto) {
+    public Result<String> apply(@CurrentUser LoginUser loginUser, @Valid @RequestBody RefundApplyDTO dto) {
         return Result.ok(refundService.apply(loginUser.getUserId(), dto));
     }
 

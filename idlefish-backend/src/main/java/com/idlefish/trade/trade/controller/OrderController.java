@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 
+import jakarta.validation.Valid;
+
 import java.util.List;
 
 /**
@@ -28,7 +30,7 @@ public class OrderController {
 
     /** 创建订单（买家）。 */
     @PostMapping("/create")
-    public Result<OrderCreateVO> create(@CurrentUser LoginUser loginUser, @RequestBody OrderCreateDTO dto) {
+    public Result<OrderCreateVO> create(@CurrentUser LoginUser loginUser, @Valid @RequestBody OrderCreateDTO dto) {
         return Result.ok(orderService.createOrder(loginUser.getUserId(), dto));
     }
 

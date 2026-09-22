@@ -13,19 +13,20 @@ const TAG = {
 export default {
   name: 'Orders',
   data() {
-    return { list: [], total: 0, loading: false, statusFilter: '', detailRow: null, shipVisible: false, shipForm: { company: '', logisticNo: '' } };
+    return { list: [], total: 0, loading: false, keyword: '', statusFilter: '', detailRow: null, shipVisible: false, shipForm: { company: '', logisticNo: '' } };
   },
   mounted() { this.load(); },
   computed: {
-    filtered() {
-      return this.list.filter(o => !this.statusFilter || o.status === this.statusFilter);
-    }
+    filtered() { return this.list; }
   },
   methods: {
     async load() {
       this.loading = true;
-      try { const r = await adminApi.orders(); this.list = r.list; this.total = r.total; }
-      finally { this.loading = false; }
+      try {
+        const r = await adminApi.orders({ keyword: this.keyword, status: this.statusFilter, page: 1, size: 20 });
+        this.list = r.list || [];
+        this.total = r.total;
+      } finally { this.loading = false; }
     },
     statusText(c) { return STATUS[c] || c; },
     statusTag(c) { return TAG[c] || 'info'; },
@@ -52,6 +53,7 @@ export default {
     <h2 class="page-title">订单管理</h2>
     <el-card shadow="never">
       <el-form inline>
+        <el-form-item label="关键词"><el-input v-model="keyword" placeholder="订单号/商品标题" clearable></el-input></el-form-item>
         <el-form-item label="订单状态">
           <el-select v-model="statusFilter" placeholder="全部" clearable style="width:150px">
             <el-option v-for="(t,k) in {'pending_pay':'待支付','paid':'已支付','pending_ship':'待发货','shipping':'待收货','completed':'已完成','closed':'已关闭','refunding':'退款中'}" :key="k" :label="t" :value="k"></el-option>

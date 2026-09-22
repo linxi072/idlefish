@@ -28,6 +28,7 @@ INSERT INTO t_category (id, parent_id, name, icon, level, sort, is_leaf) VALUES
 (1022, 102, '台式机',   'desktop',   3, 2, 1);
 
 -- ===== 演示管理员（角色 SUPER） =====
--- 演示明文密码；生产须加盐哈希存储。
+-- 密码以 PBKDF2 加盐哈希存储（R-20 安全治理，零外部依赖）；明文 admin123 仅供演示登录。
+-- 格式：PBKDF2HMACSHA256:ITER:SALT:BASE64HASH
 INSERT INTO t_admin_user (id, username, password, role, nickname, status) VALUES
-(1, 'admin', 'admin123', 'SUPER', '超级管理员', 1);
+(1, 'admin', 'PBKDF2HMACSHA256:10000:WCOPC+zTuZwdFFKwzNFvRg==:YvUqk84K3PVy/SfzHiZqOnpmvI1fklcxTnB9jk3jzG8=', 'SUPER', '超级管理员', 1);

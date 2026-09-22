@@ -65,27 +65,83 @@ export const adminApi = {
       todayRegister: 0, trend: [12, 18, 9, 22, 15, 27, 19, 24, 13, 21, 17, 25]
     };
   })(),
-  items: () => USE_MOCK ? Promise.resolve({ list: mock.items, total: mock.items.length })
-    : req('GET', '/api/admin/items', null, { page: 1, size: 20 }).then(pageTo),
+  // 列表类接口支持分页/关键字/状态筛选（R-16）：options = { status, keyword, page, size }
+  items: (options) => {
+    options = options || {};
+    if (USE_MOCK) {
+      let list = mock.items.slice();
+      if (options.status) list = list.filter(i => i.status === options.status);
+      if (options.keyword) list = list.filter(i => (i.title || '').includes(options.keyword));
+      return Promise.resolve({ list, total: list.length });
+    }
+    return req('GET', '/api/admin/items', null,
+      { status: options.status, keyword: options.keyword, page: options.page || 1, size: options.size || 20 }).then(pageTo);
+  },
   approve: (id) => USE_MOCK ? Promise.resolve({ ok: true }) : req('POST', `/api/admin/items/${id}/approve`),
   reject: (id, reason) => USE_MOCK ? Promise.resolve({ ok: true })
     : req('POST', `/api/admin/items/${id}/reject`, null, { reason }),
-  orders: () => USE_MOCK ? Promise.resolve({ list: mock.orders, total: mock.orders.length })
-    : req('GET', '/api/admin/orders', null, { page: 1, size: 20 }).then(pageTo),
+  // 商品详情（审核时查看大图/描述/卖家资质）：真实模式走公开详情接口，mock 模式取本地数据
+  itemDetail: (id) => USE_MOCK
+    ? Promise.resolve(mock.items.find(i => i.id === id) || {})
+    : req('GET', `/api/item/detail/${id}`),
+  orders: (options) => {
+    options = options || {};
+    if (USE_MOCK) {
+      let list = mock.orders.slice();
+      if (options.status) list = list.filter(o => o.status === options.status);
+      if (options.keyword) list = list.filter(o =>
+        (o.orderNo || '').includes(options.keyword) || (o.title || '').includes(options.keyword));
+      return Promise.resolve({ list, total: list.length });
+    }
+    return req('GET', '/api/admin/orders', null,
+      { status: options.status, keyword: options.keyword, page: options.page || 1, size: options.size || 20 }).then(pageTo);
+  },
   orderDetail: (orderNo) => USE_MOCK ? Promise.resolve(mock.orders[0]) : req('GET', `/api/admin/orders/${orderNo}`),
   shipOrder: (orderNo, logisticsNo) => USE_MOCK ? Promise.resolve({ ok: true })
     : req('POST', `/api/admin/orders/${orderNo}/ship`, null, { logisticsNo }),
   refundAgree: (orderNo) => USE_MOCK ? Promise.resolve({ ok: true })
     : req('POST', `/api/admin/orders/${orderNo}/refund`),
-  users: () => USE_MOCK ? Promise.resolve({ list: mock.users, total: mock.users.length })
-    : req('GET', '/api/admin/users', null, { page: 1, size: 20 }).then(pageTo),
+  users: (options) => {
+    options = options || {};
+    if (USE_MOCK) {
+      let list = mock.users.slice();
+      if (options.status !== undefined && options.status !== '') {
+        list = list.filter(u => String(u.status) === String(options.status));
+      }
+      if (options.keyword) list = list.filter(u =>
+        (u.nickname || '').includes(options.keyword) || (u.phone || '').includes(options.keyword));
+      return Promise.resolve({ list, total: list.length });
+    }
+    return req('GET', '/api/admin/users', null,
+      { status: options.status, keyword: options.keyword, page: options.page || 1, size: options.size || 20 }).then(pageTo);
+  },
   banUser: (id, ban) => USE_MOCK ? Promise.resolve({ ok: true })
     : req('POST', `/api/admin/users/${id}/ban`, null, { status: ban ? 1 : 0 }),
   categories: () => USE_MOCK ? Promise.resolve(mock.categories)
     : req('GET', '/api/admin/categories'),
   saveCategory: (d) => USE_MOCK ? Promise.resolve({ ok: true })
     : req('POST', '/api/admin/categories', null, d),
-  risk: () => USE_MOCK ? Promise.resolve(mock.riskEvents)
-    : req('GET', '/api/admin/risks', null, { page: 1, size: 20 }).then(pageTo),
-  auditLog: () => USE_MOCK ? Promise.resolve(mock.auditLogs) : Promise.resolve([])
+  risk: (options) => {
+    options = options || {};
+    if (USE_MOCK) {
+      let list = mock.riskEvents.slice();
+      if (options.keyword) list = list.filter(r =>
+        ((r.ruleName || r.rule || '')).includes(options.keyword)
+        || (r.ruleCode || '').includes(options.keyword));
+      return Promise.resolve({ list, total: list.length });
+    }
+    return req('GET', '/api/admin/risks', null,
+      { keyword: options.keyword, page: options.page || 1, size: options.size || 20 }).then(pageTo);
+  },
+  auditLog: (options) => {
+    options = options || {};
+    if (USE_MOCK) {
+      let list = mock.auditLogs.slice();
+      if (options.keyword) list = list.filter(l =>
+        (l.action || '').includes(options.keyword) || (l.detail || '').includes(options.keyword));
+      return Promise.resolve({ list, total: list.length });
+    }
+    return req('GET', '/api/admin/audit-logs', null,
+      { keyword: options.keyword, page: options.page || 1, size: options.size || 20 }).then(pageTo);
+  }
 };

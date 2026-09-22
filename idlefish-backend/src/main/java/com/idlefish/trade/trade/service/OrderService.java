@@ -140,10 +140,13 @@ public class OrderService {
         }
         Order upd = new Order();
         upd.setId(o.getId());
+        upd.setVersion(o.getVersion());
         upd.setStatus(OrderStatus.SHIPPING.getCode());
         upd.setLogisticsNo(logisticsNo != null && !logisticsNo.isBlank()
                 ? logisticsNo : logisticService.createLogistics(orderNo));
-        orderMapper.updateById(upd);
+        if (orderMapper.updateById(upd) == 0) {
+            throw new BizException(Code.STATE_NOT_ALLOWED, "订单状态已变更，请刷新后重试");
+        }
     }
 
     /** 买家确认收货：完成交易并触发结算。 */
@@ -154,8 +157,11 @@ public class OrderService {
         }
         Order upd = new Order();
         upd.setId(o.getId());
+        upd.setVersion(o.getVersion());
         upd.setStatus(OrderStatus.COMPLETED.getCode());
-        orderMapper.updateById(upd);
+        if (orderMapper.updateById(upd) == 0) {
+            throw new BizException(Code.STATE_NOT_ALLOWED, "订单状态已变更，请刷新后重试");
+        }
         itemService.markSold(o.getItemId());
         settlementService.onTradeSuccess(orderNo);
     }

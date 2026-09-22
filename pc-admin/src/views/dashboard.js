@@ -6,13 +6,37 @@ const fmt = (n) => (n || 0).toLocaleString('zh-CN');
 export default {
   name: 'Dashboard',
   data() {
-    return { loading: true, s: {} };
+    return { loading: true, s: {}, hasEcharts: false, chart: null };
   },
   mounted() { this.load(); },
   methods: {
     async load() {
       this.loading = true;
-      try { this.s = await adminApi.stats(); } finally { this.loading = false; }
+      try {
+        this.s = await adminApi.stats();
+        if (window.echarts) {
+          this.hasEcharts = true;
+          this.$nextTick(() => this.renderChart());
+        }
+      } finally { this.loading = false; }
+    },
+    renderChart() {
+      if (!this.$refs.trendChart || !window.echarts) return;
+      if (this.chart) this.chart.dispose();
+      this.chart = window.echarts.init(this.$refs.trendChart);
+      const t = this.s.trend || [];
+      this.chart.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: 36, right: 16, top: 24, bottom: 28 },
+        xAxis: { type: 'category', data: t.map((_, i) => 'D' + (i + 1)), axisLine: { lineStyle: { color: '#ccc' } } },
+        yAxis: { type: 'value', splitLine: { lineStyle: { color: '#f0f0f0' } } },
+        series: [{
+          type: 'line', smooth: true, data: t,
+          symbolSize: 7, lineStyle: { width: 3, color: '#FFB300' },
+          itemStyle: { color: '#FFB300' },
+          areaStyle: { color: 'rgba(255,179,0,0.15)' }
+        }]
+      });
     }
   },
   template: `
@@ -31,7 +55,8 @@ export default {
       <el-col :span="14">
         <el-card shadow="never">
           <template #header><span>近 12 日成交趋势</span></template>
-          <div class="bars">
+          <div ref="trendChart" style="height:240px" v-if="hasEcharts"></div>
+          <div class="bars" v-else>
             <div class="bar-item" v-for="(v,i) in s.trend" :key="i">
               <div class="bar" :style="{height: (v/50*120)+'px'}"></div>
               <div class="bar-val">{{ v }}</div>

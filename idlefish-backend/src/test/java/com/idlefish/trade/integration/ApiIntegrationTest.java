@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -147,5 +148,123 @@ class ApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.price").value(13800))
                 .andExpect(jsonPath("$.data.priceYuan").value(138.0));
+    }
+
+    // ===== T-1 / R-19：@Valid 生效，非法入参返回业务码 10002 =====
+
+    @Test
+    void orderCreateInvalidParamReturns10002() throws Exception {
+        // 空 body 缺少 itemId / addressId，@Valid 应拦截（返回 10002 而非穿透到 Service）
+        mvc.perform(post("/api/orders/create")
+                        .header("Authorization", "Bearer " + userToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10002));
+    }
+
+    @Test
+    void refundApplyInvalidParamReturns10002() throws Exception {
+        mvc.perform(post("/api/refunds/apply")
+                        .header("Authorization", "Bearer " + userToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10002));
+    }
+
+    // ===== T-2 / R-16：后台列表 keyword 搜索与审计日志端点 =====
+
+    private String adminToken() throws Exception {
+        String body = mvc.perform(post("/api/admin/auth/login")
+                        .param("username", "admin").param("password", "admin123"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return toJson(body).get("data").get("token").asText();
+    }
+
+    @Test
+    void adminItemSearchByKeywordAndStatus() throws Exception {
+        String token = userToken();
+        publishItem(token); // 标题含「测试二手手机」，状态 pending_review
+        String admin = adminToken();
+
+        // 关键字命中
+        mvc.perform(get("/api/admin/items").header("Authorization", "Bearer " + admin)
+                        .param("keyword", "测试二手手机"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.total").value(greaterThanOrEqualTo(1)));
+
+        // 关键字不命中 -> 0 条（验证 keyword 真实下推）
+        mvc.perform(get("/api/admin/items").header("Authorization", "Bearer " + admin)
+                        .param("keyword", "绝对不存在的关键词ZZZ"))
+                .andExpect(jsonPath("$.data.total").value(0));
+
+        // 状态过滤命中（新发布商品处于 pending_review）
+        mvc.perform(get("/api/admin/items").header("Authorization", "Bearer " + admin)
+                        .param("status", "pending_review"))
+                .andExpect(jsonPath("$.data.total").value(greaterThanOrEqualTo(1)));
+    }
+
+    @Test
+    void adminAuditLogListAfterApprove() throws Exception {
+        String token = userToken();
+        Long itemId = publishItem(token);
+        String admin = adminToken();
+        // 审核通过 -> 写审计日志
+        mvc.perform(post("/api/admin/items/" + itemId + "/approve")
+                        .header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.code").value(0));
+        // 审计日志列表接口（T-2 新增）应返回该条记录
+        mvc.perform(get("/api/admin/audit-logs").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.total").value(greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.data.records[0].action").value("item:audit"));
+    }
+
+    @Test
+    void adminUserSearchKeywordNarrows() throws Exception {
+        String admin = adminToken();
+        // 无关键字 -> 至少 1 条
+        mvc.perform(get("/api/admin/users").header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.data.total").value(greaterThanOrEqualTo(1)));
+        // 不匹配关键字 -> 0 条（验证 keyword 真实下推）
+        mvc.perform(get("/api/admin/users").header("Authorization", "Bearer " + admin)
+                        .param("keyword", "绝对不存在ZZZ"))
+                .andExpect(jsonPath("$.data.total").value(0));
+    }
+
+    // ===== R-08 / T-4：刷新令牌端点 + 管理员密码 PBKDF2 哈希 =====
+
+    @Test
+    void refreshTokenWorks() throws Exception {
+        String body = mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"refresh_openid_777\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String refresh = toJson(body).get("data").get("refreshToken").asText();
+
+        String r = mvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + refresh + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String newToken = toJson(r).get("data").get("token").asText();
+        org.junit.jupiter.api.Assertions.assertNotNull(newToken);
+    }
+
+    @Test
+    void adminLoginPasswordHashMatches() throws Exception {
+        // data.sql 中密码为 PBKDF2 加盐哈希（R-20 零外部依赖方案），明文 admin123 仍应登录成功（T-4）
+        mvc.perform(post("/api/admin/auth/login")
+                        .param("username", "admin").param("password", "admin123"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
     }
 }

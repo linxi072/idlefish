@@ -14,6 +14,7 @@ import com.idlefish.trade.common.util.JwtUtil;
 import com.idlefish.trade.item.entity.Item;
 import com.idlefish.trade.item.service.CategoryService;
 import com.idlefish.trade.item.vo.CategoryVO;
+import com.idlefish.trade.risk.entity.AuditLog;
 import com.idlefish.trade.risk.entity.RiskEvent;
 import com.idlefish.trade.trade.entity.Order;
 import com.idlefish.trade.trade.service.OrderService;
@@ -54,7 +55,7 @@ public class AdminController {
     public Result<AdminLoginVO> login(@RequestParam String username, @RequestParam String password) {
         AdminUser u = adminUserMapper.selectOne(
                 new LambdaQueryWrapper<AdminUser>().eq(AdminUser::getUsername, username));
-        if (u == null || !password.equals(u.getPassword())) {
+        if (u == null || !com.idlefish.trade.common.util.PasswordUtils.matches(password, u.getPassword())) {
             throw new BizException(Code.UNAUTHORIZED, "用户名或密码错误");
         }
         if (u.getStatus() != null && u.getStatus() == 0) {
@@ -64,13 +65,14 @@ public class AdminController {
         return Result.ok(new AdminLoginVO(token, u.getRole(), u.getNickname(), u.getId()));
     }
 
-    /** 审核列表（默认待审核）。 */
+    /** 审核列表（默认待审核），支持状态过滤与关键字（标题）搜索。 */
     @GetMapping("/items")
     public Result<IPage<Item>> items(@CurrentAdmin AdminUser admin,
                                      @RequestParam(required = false) String status,
+                                     @RequestParam(required = false) String keyword,
                                      @RequestParam(defaultValue = "1") int page,
                                      @RequestParam(defaultValue = "20") int size) {
-        return Result.ok(adminService.auditList(status, page, size));
+        return Result.ok(adminService.auditList(status, keyword, page, size));
     }
 
     /** 通过审核。 */
@@ -88,12 +90,14 @@ public class AdminController {
         return Result.ok();
     }
 
-    /** 订单列表。 */
+    /** 订单列表，支持状态过滤与关键字（订单号/商品标题）搜索。 */
     @GetMapping("/orders")
     public Result<IPage<Order>> orders(@CurrentAdmin AdminUser admin,
+                                       @RequestParam(required = false) String status,
+                                       @RequestParam(required = false) String keyword,
                                        @RequestParam(defaultValue = "1") int page,
                                        @RequestParam(defaultValue = "20") int size) {
-        return Result.ok(adminService.orderList(page, size));
+        return Result.ok(adminService.orderList(status, keyword, page, size));
     }
 
     /** 订单详情。 */
@@ -102,12 +106,14 @@ public class AdminController {
         return Result.ok(adminService.orderDetail(orderNo));
     }
 
-    /** 用户列表。 */
+    /** 用户列表，支持状态过滤与关键字（昵称/手机号）搜索。 */
     @GetMapping("/users")
     public Result<IPage<User>> users(@CurrentAdmin AdminUser admin,
+                                     @RequestParam(required = false) String status,
+                                     @RequestParam(required = false) String keyword,
                                      @RequestParam(defaultValue = "1") int page,
                                      @RequestParam(defaultValue = "20") int size) {
-        return Result.ok(adminService.userList(page, size));
+        return Result.ok(adminService.userList(status, keyword, page, size));
     }
 
     /** 封禁 / 解封用户（status=1 封禁，0 解封）。 */
@@ -137,12 +143,22 @@ public class AdminController {
         return Result.ok(categoryService.tree());
     }
 
-    /** 风控事件列表。 */
+    /** 风控事件列表，支持关键字（规则名/规则码/业务ID）搜索。 */
     @GetMapping("/risks")
     public Result<IPage<RiskEvent>> risks(@CurrentAdmin AdminUser admin,
+                                          @RequestParam(required = false) String keyword,
                                           @RequestParam(defaultValue = "1") int page,
                                           @RequestParam(defaultValue = "20") int size) {
-        return Result.ok(adminService.riskList(page, size));
+        return Result.ok(adminService.riskList(keyword, page, size));
+    }
+
+    /** 审计日志列表，支持关键字（动作/详情/目标类型）搜索。 */
+    @GetMapping("/audit-logs")
+    public Result<IPage<AuditLog>> auditLogs(@CurrentAdmin AdminUser admin,
+                                             @RequestParam(required = false) String keyword,
+                                             @RequestParam(defaultValue = "1") int page,
+                                             @RequestParam(defaultValue = "20") int size) {
+        return Result.ok(adminService.auditLogList(keyword, page, size));
     }
 
     /** 后台代发货（运营操作，R-13）。 */

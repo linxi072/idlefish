@@ -4,17 +4,20 @@ import { adminApi } from '../api.js';
 export default {
   name: 'Users',
   data() {
-    return { list: [], total: 0, loading: false, statusFilter: '' };
+    return { list: [], total: 0, loading: false, keyword: '', statusFilter: '' };
   },
   computed: {
-    filtered() { return this.list.filter(u => !this.statusFilter || String(u.status) === this.statusFilter); }
+    filtered() { return this.list; }
   },
   mounted() { this.load(); },
   methods: {
     async load() {
       this.loading = true;
-      try { const r = await adminApi.users(); this.list = r.list; this.total = r.total; }
-      finally { this.loading = false; }
+      try {
+        const r = await adminApi.users({ keyword: this.keyword, status: this.statusFilter, page: 1, size: 20 });
+        this.list = r.list || [];
+        this.total = r.total;
+      } finally { this.loading = false; }
     },
     masked(phone) { return phone || '-'; },
     async toggleBan(row) {
@@ -29,6 +32,7 @@ export default {
     <h2 class="page-title">用户管理</h2>
     <el-card shadow="never">
       <el-form inline>
+        <el-form-item label="关键词"><el-input v-model="keyword" placeholder="昵称/手机号" clearable></el-input></el-form-item>
         <el-form-item label="状态">
           <el-select v-model="statusFilter" placeholder="全部" clearable style="width:140px">
             <el-option label="正常" value="0"></el-option>
