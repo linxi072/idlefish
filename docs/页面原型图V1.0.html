@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>闲置集 · 二手交易小程序 高保真原型 V1.0</title>
+<style>
+:root{
+  --xy:#FFCE3D; --xy-deep:#FFB300; --xy-light:#FFF6DA;
+  --red:#FF3939; --red-dark:#E52E2E;
+  --bg:#F4F5F7; --card:#FFFFFF;
+  --t1:#1A1A1A; --t2:#666666; --t3:#9A9A9A; --t4:#C4C4C4;
+  --line:#EFEFEF;
+  --radius:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:#EDEFF3;color:var(--t1);font-size:14px;
+  display:flex;height:100vh;overflow:hidden;
+}
+::-webkit-scrollbar{width:0;height:0}
+
+/* ============ 左侧页面导航 ============ */
+.sidebar{
+  width:238px;background:#fff;border-right:1px solid #E3E6EC;
+  display:flex;flex-direction:column;flex-shrink:0;
+}
+.sb-head{padding:18px 18px 14px;border-bottom:1px solid var(--line)}
+.sb-logo{display:flex;align-items:center;gap:9px}
+.sb-logo .mark{
+  width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--xy),var(--xy-deep));
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+}
+.sb-logo b{font-size:15.5px;letter-spacing:.3px}
+.sb-logo span{font-size:11px;color:var(--t3);display:block;font-weight:400;margin-top:1px}
+.sb-body{flex:1;overflow-y:auto;padding:10px 0 20px}
+.sb-group{padding:10px 18px 5px;font-size:11px;color:var(--t3);letter-spacing:1.2px;font-weight:600}
+.sb-item{
+  display:flex;align-items:center;gap:9px;padding:8px 18px;cursor:pointer;
+  font-size:13px;color:var(--t2);border-left:3px solid transparent;transition:.16s;
+}
+.sb-item:hover{background:#F7F8FA;color:var(--t1)}
+.sb-item.on{background:var(--xy-light);color:var(--t1);border-left-color:var(--xy);font-weight:600}
+.sb-item .n{
+  width:19px;height:19px;border-radius:5px;background:#F0F1F4;color:var(--t3);
+  font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.sb-item.on .n{background:var(--xy);color:#5A4000}
+.sb-foot{padding:12px 18px;border-top:1px solid var(--line);font-size:11px;color:var(--t3);line-height:1.7}
+
+/* ============ 中间舞台 ============ */
+.stage{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;min-width:0;padding:16px;
+}
+.stage-tip{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  font-size:11.5px;color:var(--t3);background:rgba(255,255,255,.85);
+  padding:5px 14px;border-radius:20px;backdrop-filter:blur(6px);white-space:nowrap;
+}
+.phone{
+  width:375px;height:790px;background:#000;border-radius:46px;
+  padding:11px;box-shadow:0 26px 70px rgba(0,0,0,.28),0 3px 12px rgba(0,0,0,.12);
+  position:relative;flex-shrink:0;
+}
+.phone::before{
+  content:'';position:absolute;top:11px;left:50%;transform:translateX(-50%);
+  width:112px;height:26px;background:#000;border-radius:0 0 15px 15px;z-index:30;
+}
+.screen{
+  width:100%;height:100%;background:var(--bg);border-radius:36px;overflow:hidden;position:relative;
+}
+.screen::-webkit-scrollbar{width:0}
+.page{
+  position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+  background:var(--bg);display:none;
+}
+.page.on{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* 状态栏 */
+.statusbar{
+  height:44px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 22px;font-size:13px;font-weight:600;flex-shrink:0;position:relative;z-index:20;
+}
+.statusbar.dark{color:#fff}
+.statusbar .icons{display:flex;align-items:center;gap:4px}
+.statusbar .icons svg{display:block}
+
+/* 导航栏 */
+.navbar{
+  height:44px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;background:#fff;position:sticky;top:0;z-index:15;flex-shrink:0;
+}
+.navbar .back{width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.navbar .title{font-size:16.5px;font-weight:600;position:absolute;left:50%;transform:translateX(-50%)}
+.navbar .right{font-size:13px;color:var(--t2);cursor:pointer;min-width:30px;text-align:right}
+
+/* 底部 tabbar */
+.tabbar{
+  position:absolute;bottom:0;left:0;right:0;height:56px;background:#fff;
+  border-top:1px solid var(--line);display:flex;z-index:25;padding-bottom:0;
+}
+.tabbar .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:var(--t3)}
+.tabbar .tab.on{color:var(--t1)}
+.tabbar .tab span{font-size:10px}
+.tabbar .tab.on span{font-weight:600}
+.tab-pub{
+  position:absolute;top:-19px;left:50%;transform:translateX(-50%);
+  width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--xy),var(--xy-deep));
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(255,179,0,.45);
+  cursor:pointer;z-index:26;
+}
+.has-tabbar{padding-bottom:60px !important}
+
+/* 通用组件 */
+.row{display:flex;align-items:center}
+.between{display:flex;align-items:center;justify-content:space-between}
+.card{background:#fff;border-radius:var(--radius)}
+.mb8{margin-bottom:8px}
+.p12{padding:12px}
+.grow{flex:1}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ell2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.btn{
+  border:none;border-radius:22px;font-size:15px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;height:44px;
+}
+.btn-y{background:linear-gradient(135deg,var(--xy),var(--xy-deep));color:#3D2B00}
+.btn-r{background:linear-gradient(135deg,#FF5A4D,var(--red));color:#fff}
+.btn-o{border:1px solid #DDD;background:#fff;color:var(--t2);font-weight:500}
+.btn-full{width:100%}
+.btn-s{height:32px;border-radius:16px;font-size:13px;padding:0 16px}
+.tag{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--xy-light);color:#9A6E00;flex-shrink:0}
+.tag-r{background:#FFECEC;color:var(--red)}
+.tag-g{background:#EAF7EE;color:#2E9E52}
+.tag-b{background:#EAF1FF;color:#3C6FF5}
+.price{color:var(--red);font-weight:700}
+.price small{font-size:11px;font-weight:600;margin-right:1px}
+.av{background:linear-gradient(135deg,#DDE2EA,#C7CFDB);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0;overflow:hidden}
+.thumb{position:relative;overflow:hidden;background:#EFEFEF;display:flex;align-items:center;justify-content:center}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2}
+.thumb .emo{font-size:38px;z-index:1;opacity:.85}
+.divider{height:8px;background:var(--bg)}
+.hair{height:1px;background:var(--line)}
+.mask{
+  position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:40;
+  display:flex;align-items:flex-end;
+}
+.sheet{background:#fff;width:100%;border-radius:16px 16px 0 0;padding:18px 16px 26px}
+.pill{font-size:12px;padding:5px 12px;border-radius:14px;background:#F3F4F6;color:var(--t2);cursor:pointer;white-space:nowrap}
+.pill.on{background:var(--xy);color:#4A3400;font-weight:600}
+/* 骨架屏与加载 */
+.sk{background:linear-gradient(90deg,#EDEEF1 25%,#F7F8FA 37%,#EDEEF1 63%);background-size:400% 100%;animation:sk 1.25s ease-in-out infinite;border-radius:4px}
+@keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+.spin{width:17px;height:17px;border-radius:50%;border:2.2px solid #E3E5E9;border-top-color:var(--xy-deep);animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* 状态切换器 */
+.statebar{display:flex;gap:6px;padding:8px 10px;background:#fff;overflow-x:auto;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.statebar .pill{font-size:11.5px;padding:5px 11px;flex-shrink:0}
+.statebar::after{content:'';flex-shrink:0;width:2px}
+
+/* ============ 右侧说明 ============ */
+.notes{
+  width:302px;background:#fff;border-left:1px solid #E3E6EC;overflow-y:auto;
+  padding:20px 20px 40px;flex-shrink:0;
+}
+.nt-tag{display:inline-block;font-size:11px;background:var(--xy-light);color:#9A6E00;padding:3px 9px;border-radius:5px;font-weight:600}
+.nt-h{font-size:18px;font-weight:700;margin:10px 0 4px}
+.nt-sub{font-size:12.5px;color:var(--t2);line-height:1.75;margin-bottom:16px}
+.nt-sec{margin-top:18px}
+.nt-sec h4{
+  font-size:12px;color:var(--t3);letter-spacing:1px;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;
+}
+.nt-sec h4::before{content:'';width:3px;height:11px;background:var(--xy);border-radius:2px}
+.nt-sec ul{list-style:none}
+.nt-sec li{
+  font-size:12.5px;color:#444;line-height:1.7;padding-left:13px;position:relative;margin-bottom:5px;
+}
+.nt-sec li::before{content:'';position:absolute;left:2px;top:9px;width:4px;height:4px;border-radius:50%;background:#D0D3DA}
+.nt-states{display:flex;flex-wrap:wrap;gap:5px}
+.nt-states span{font-size:11px;background:#F5F6F8;color:#555;padding:3px 8px;border-radius:4px}
+.nt-flow{font-size:11.5px;background:#FAFBFC;border:1px dashed #DDE1E8;border-radius:8px;padding:10px;line-height:1.9;color:#555}
+
+@media(max-width:1240px){.notes{display:none}}
+@media(max-width:900px){.sidebar{width:0;overflow:hidden;border:none}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-logo">
+      <div class="mark">🐟</div>
+      <div>
+        <b>闲置集</b>
+        <span>二手交易小程序 · 原型 V1.0</span>
+      </div>
+    </div>
+  </div>
+  <div class="sb-body" id="nav"></div>
+  <div class="sb-foot">
+    参考产品：闲鱼<br>
+    画布 375 × 812 · 17 页<br>
+    点击手机内元素可跳转
+  </div>
+</aside>
+
+<main class="stage">
+  <div class="stage-tip">💡 点击手机屏幕内的按钮、商品卡片、底部导航可跳转页面</div>
+  <div class="phone">
+    <div class="screen" id="screen"></div>
+  </div>
+</main>
+
+<aside class="notes" id="notes"></aside>
+
+<script>
+/* ==================== 数据 ==================== */
+const IMG = (seed,emo)=>`<div class="thumb"><span class="emo">${emo}</span><img src="https://picsum.photos/seed/${seed}/400/400" onerror="this.remove()" alt=""></div>`;
+
+const ITEMS = [
+ {id:1,t:'iPhone 14 Pro 256G 暗紫色 国行',p:4380,o:8999,c:'几乎全新',city:'杭州 · 西湖区',like:236,emo:'📱',s:'数码控小明',g:'#E8ECF3,#C7D0DE'},
+ {id:2,t:'索尼 A7M4 全画幅微单 快门 8000 次',p:12800,o:16999,c:'95新',city:'上海 · 徐汇区',like:89,emo:'📷',s:'摄影老张',g:'#F0EAE0,#D8C9B4'},
+ {id:3,t:'Nintendo Switch OLED 白色主机 + 3 游戏',p:1380,o:2099,c:'9成新',city:'北京 · 朝阳区',like:412,emo:'🎮',s:'游戏仓鼠',g:'#EAF0E9,#C4D6C2'},
+ {id:4,t:'MUJI 无印良品 橡木书桌 110cm',p:320,o:1299,c:'8成新',city:'杭州 · 拱墅区',like:57,emo:'🪑',s:'搬家清仓',g:'#F2EDE6,#DCCDBA'},
+ {id:5,t:'LV 老花 neverfull MM 手袋 全套包装',p:6800,o:12800,c:'9成新',city:'深圳 · 南山区',like:1032,emo:'👜',s:'薇薇的衣橱',g:'#F5E8E8,#DEC3C3'},
+ {id:6,t:'Kindle Paperwhite 5 signature 32G',p:520,o:1399,c:'几乎全新',city:'成都 · 武侯区',like:178,emo:'📚',s:'读书人阿May',g:'#E9EDF2,#C9D3DE'},
+ {id:7,t:'戴森 V12 吸尘器 全套配件 带发票',p:1580,o:3990,c:'9成新',city:'广州 · 天河区',like:246,emo:'🧹',s:'家电小铺',g:'#EDEAF2,#CFC8DE'},
+ {id:8,t:'Nike Air Force 1 白 42.5 码 轻微穿着',p:180,o:799,c:'8成新',city:'武汉 · 江汉区',like:64,emo:'👟',s:'球鞋老炮',g:'#F1EFE8,#D5D0C0'},
+ {id:9,t:'星巴克城市限定马克杯 8 只打包',p:260,o:600,c:'全新',city:'南京 · 鼓楼区',like:391,emo:'☕',s:'杯子收藏家',g:'#EAF0EC,#C6D8CC'},
+ {id:10,t:'乐高 42115 兰博基尼 已拼 带说明书',p:2100,o:3899,c:'已拼完',city:'苏州 · 姑苏区',like:520,emo:'🧱',s:'积木狂魔',g:'#F2E9E4,#DCC5B8'},
+ {id:11,t:'iPad Air 5 64G WIFI 深空灰 送笔',p:2650,o:4399,c:'95新',city:'西安 · 雁塔区',like:143,emo:'💻',s:'学生党出闲置',g:'#E8EAEE,#C6CBD4'},
+ {id:12,t:'宜家 MARKUS 人体工学办公椅 可自提',p:280,o:1099,c:'8成新',city:'杭州 · 滨江区',like:38,emo:'🪑',s:'阿杰搬家',g:'#F0EFE9,#D6D2C4'}
+];
+const CATS = [['📱','手机数码'],['👗','女装男装'],['🏠','家居家电'],['📚','图书文具'],['🎮','潮流玩具'],['⚽','运动户外'],['🍼','母婴用品'],['💄','美妆个护'],['🚲','出行代步'],['🐱','宠物用品']];
+const HOT = ['iPhone 15','Switch 游戏卡','考研资料','相机镜头','露营装备','显示器','机械键盘','婴儿推车'];
+
+/* ==================== 小组件 ==================== */
+const sb = dark => `<div class="statusbar${dark?' dark':''}">
+  <span>23:07</span>
+  <div class="icons">
+    <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+    <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><path d="M8 9.6 6 7.4a2.9 2.9 0 0 1 4 0L8 9.6Zm0-3.3a4.6 4.6 0 0 0-3.2 1.3L3.6 6.2a6.5 6.5 0 0 1 8.8 0l-1.2 1.4A4.6 4.6 0 0 0 8 6.3Zm0-3a7.7 7.7 0 0 0-5.3 2L1.5 4A9.6 9.6 0 0 1 8 1.3 9.6 9.6 0 0 1 14.5 4l-1.2 1.3A7.7 7.7 0 0 0 8 3.3Z"/></svg>
+    <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/><path d="M23 4v4a2.2 2.2 0 0 0 0-4Z" fill="currentColor" opacity=".5"/></svg>
+  </div></div>`;
+
+const tabbar = (cur='home') => {
+  const T = [['home','首页','M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z'],
+             ['circle','圈子','M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z'],
+             ['message','消息','M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H8l-4 4V5a1 1 0 0 1 1-1Z'],
+             ['mine','我的','M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4 0-7 2-7 4.5V20h14v-1.5C19 16 16 14 12 14Z']];
+  let h = '<div class="tabbar">';
+  T.forEach((t,i)=>{
+    if(i===2) h += `<div class="tab-pub" onclick="go('publish')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3D2B00" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>`;
+    h += `<div class="tab${cur===t[0]?' on':''}" onclick="go('${t[0]}')">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="${cur===t[0]?'#1A1A1A':'none'}" stroke="${cur===t[0]?'#1A1A1A':'#9A9A9A'}" stroke-width="1.7" stroke-linejoin="round"><path d="${t[2]}"/></svg>
+      <span>${t[1]}</span></div>`;
+  });
+  return h+'</div>';
+};
+
+const nav = (title,right='',back=true) => `<div class="navbar">
+  ${back?`<div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>`:'<div style="width:30px"></div>'}
+  <div class="title">${title}</div>
+  <div class="right" ${right&&right.includes('onclick')?'':''}>${right||''}</div></div>`;
+
+const cardItem = it => `<div class="card" style="overflow:hidden" onclick="go('detail')">
+  <div style="height:180px;background:linear-gradient(135deg,${it.g})">${IMG('it'+it.id,it.emo)}</div>
+  <div style="padding:8px 9px 10px">
+    <div class="ell2" style="font-size:13px;line-height:1.42;height:37px">${it.t}</div>
+    <div class="row" style="gap:5px;margin:6px 0 5px">
+      <span class="price" style="font-size:17px"><small>¥</small>${it.p}</span>
+      <span style="font-size:10.5px;color:var(--t4);text-decoration:line-through">¥${it.o}</span>
+      <span class="tag" style="margin-left:auto">${it.c}</span>
+    </div>
+    <div class="between" style="font-size:11px;color:var(--t3)">
+      <div class="row" style="gap:3px"><div class="av" style="width:15px;height:15px">${it.s[0]}</div><span class="ell" style="max-width:78px">${it.s}</span></div>
+      <span>♡ ${it.like}</span>
+    </div>
+  </div></div>`;
+
+/* ==================== 页面集合 ==================== */
+const P = [];
+const add = o => { if(o.tabs && !o.render) o.render = function(){ return renderTabs(o); }; P.push(o); };
+function renderTabs(p){
+  return `<div class="page on">
+    <div class="statebar">${p.tabs.map((t,i)=>`<div class="pill spill${i===0?' on':''}" onclick="switchTab('${p.id}',${i})">${t.name}</div>`).join('')}</div>
+    <div id="stateBody">${p.tabs[0].html}</div>
+  </div>`;
+}
+function switchTab(id,i){
+  const p = P.find(x=>x.id===id);
+  const box = document.getElementById('stateBody');
+  if(box && p) box.innerHTML = p.tabs[i].html;
+  document.querySelectorAll('#screen .spill').forEach((el,j)=> el.classList.toggle('on', j===i));
+}
+
+/* ---------- 1 登录授权 ---------- */
+add({id:'login',group:'入口与发现',name:'登录授权',sub:'微信一键授权是小程序唯一的低摩擦入口，手机号与实人认证后置到下单、提现等敏感环节，避免首屏流失。',
+goal:'完成用户身份建立并获取必要授权，为个性化推荐与交易闭环提供账户基础。',
+els:['品牌 Logo + Slogan：强化"闲置循环"心智','微信授权登录主按钮（唯一主 CTA）','手机号登录次入口','用户协议 / 隐私政策勾选（合规必须）','底部"游客浏览"低权重入口'],
+inter:['点击「微信一键登录」→ 调起 wx.login + getUserProfile → 换取 token','未勾选协议点击登录 → Toast"请先阅读并同意协议" + 协议文字高亮抖动','已授权用户下次进入直接静默登录，跳过本页','授权失败 → 展示重新授权按钮与客服入口'],
+states:['未登录','授权中','授权成功','授权失败','协议未勾选','黑名单用户'],
+flow:'进入 → 勾选协议 → 微信授权 → 创建/绑定账户 → 首页',
+render:()=>`<div class="page on" style="background:linear-gradient(165deg,#FFE9A8,#FFCE3D 42%,#FFB300)">
+ ${sb(false)}
+ <div style="padding:46px 34px 0;text-align:center">
+   <div style="width:88px;height:88px;margin:0 auto 18px;border-radius:26px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:46px;box-shadow:0 8px 24px rgba(180,120,0,.18)">🐟</div>
+   <div style="font-size:27px;font-weight:800;letter-spacing:1px">闲置集</div>
+   <div style="font-size:13.5px;color:#7A5A00;margin-top:9px;line-height:1.7">让每一件闲置，都遇到下一个主人<br>已有 <b>1,286 万</b> 人在这里交换好物</div>
+ </div>
+ <div style="margin:52px 26px 0">
+   <div style="background:#fff;border-radius:14px;padding:22px 20px 20px;box-shadow:0 10px 30px rgba(160,110,0,.14)">
+     <button class="btn btn-full" style="background:#07C160;color:#fff;height:47px;font-size:15.5px" onclick="go('home')">
+       <svg width="21" height="21" viewBox="0 0 24 24" fill="#fff" style="margin-right:8px"><path d="M8.7 3C4.6 3 1.2 6 1.2 9.9c0 2.1 1.2 4 3 5.3l-.7 2.2c-.1.4.3.7.6.5l2.5-1.3c.6.2 1.2.3 1.9.4h-.4c3.2 0 5.9-2.2 5.9-5.1S12.9 6.9 9.7 6.9h.4c-.5 0-1 0-1.4.1zM16.2 7.6c-1 0-1.9.2-2.7.6-.2.1-.1.4.1.4 1.2.5 2 1.6 2 2.9 0 1.8-1.5 3.2-3.4 3.2-.4 0-.8-.1-1.1-.2l-.9.5c.6.2 1.3.3 2 .3 3.2 0 5.9-2.2 5.9-5s-2.6-5-4.9-5z"/></svg>
+       微信一键登录
+     </button>
+     <div style="text-align:center;margin:16px 0 4px;font-size:12.5px;color:var(--t3);cursor:pointer" onclick="go('home')">使用手机号登录 / 注册</div>
+   </div>
+   <div class="row" style="justify-content:center;gap:5px;margin-top:24px;font-size:11.5px;color:#6B4E00">
+     <div class="row" style="width:14px;height:14px;border:1.4px solid #6B4E00;border-radius:3px;align-items:center;justify-content:center;font-size:9px">✓</div>
+     <span>已阅读并同意</span><span style="text-decoration:underline">《用户协议》</span><span>与</span><span style="text-decoration:underline">《隐私政策》</span>
+   </div>
+ </div>
+ <div style="text-align:center;margin-top:70px;font-size:12px;color:#8A6600;cursor:pointer;text-decoration:underline" onclick="go('home')">先随便逛逛 ›</div>
+</div>`});
+
+/* ---------- 2 首页 ---------- */
+add({id:'home',group:'入口与发现',name:'首页 · 推荐流',sub:'首页是流量分发主阵地。顶部固定搜索 + 类目 chip 满足主动找货，双列瀑布流承接被动发现，悬浮发布按钮强化供给心智。',
+goal:'在 3 秒内让用户看到感兴趣的商品，并提供明确的搜索与发布入口。',
+els:['顶部：同城定位 + 搜索框（热词轮播）+ 消息入口','类目 chip 横滑：快捷切频道','运营 banner：免费送 / 验货担保 / AI 一键发布','双列瀑布流商品卡：主图、标题、价格、成色标签、卖家、想要数','右下悬浮 + 中部 Tabbar 发布按钮（双入口）','底部 Tabbar：首页 / 圈子 / 发布 / 消息 / 我的'],
+inter:['点击搜索框 → 搜索页','点击商品卡 → 商品详情页','点击类目 chip → 该频道筛选结果，chip 吸顶','下拉刷新拉取新推荐；上拉加载更多（游标分页）','长按商品卡 → 出现"不感兴趣"，选择后记录负反馈并即时刷新','点击发布按钮 → 发布页（需登录）'],
+states:['默认推荐','新用户冷启动（同城热门+类目热度）','加载中骨架屏','空态/网络异常','刷新成功 Toast','已登录 / 未登录'],
+flow:'启动 → 定位授权（可选）→ 拉取推荐流 → 曝光埋点 → 点击 → 详情',
+render:()=>`<div class="page on has-tabbar" style="background:var(--bg)">
+ <div style="background:linear-gradient(180deg,var(--xy),#FFDA71 70%,var(--bg));padding-bottom:8px">
+   ${sb(false)}
+   <div style="padding:2px 12px 0">
+     <div class="row" style="gap:8px">
+       <div class="row" style="gap:2px;font-size:13px;font-weight:600;cursor:pointer">
+         <svg width="13" height="13" viewBox="0 0 24 24" fill="#1A1A1A"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+         杭州<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="3"><path d="M5 8l7 7 7-7"/></svg>
+       </div>
+       <div class="grow" style="background:#fff;border-radius:18px;height:34px;display:flex;align-items:center;padding:0 12px;gap:7px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.05)" onclick="go('search')">
+         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9A9A9A" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6" stroke-linecap="round"/></svg>
+         <span style="font-size:12.5px;color:var(--t3)" class="ell">Switch OLED 游戏卡</span>
+       </div>
+       <div style="position:relative;cursor:pointer" onclick="go('message')">
+         <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H8l-4 4V5a1 1 0 0 1 1-1Z"/></svg>
+         <span style="position:absolute;top:-3px;right:-4px;background:var(--red);color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px">3</span>
+       </div>
+     </div>
+   </div>
+   <div class="row" style="gap:7px;padding:11px 12px 4px;overflow-x:auto">
+     ${['推荐','同城','手机数码','潮玩','家居','图书','免费送'].map((c,i)=>`<div class="pill${i===0?' on':''}" onclick="go('${i===0?'home':'search-result'}')">${c}</div>`).join('')}
+   </div>
+ </div>
+ <div style="padding:8px 9px">
+   <div class="card p12 mb8" style="background:linear-gradient(100deg,#FFF8E4,#FFFDF6)">
+     <div class="between">
+       <div>
+         <div style="font-size:14px;font-weight:700">🎁 免费送 · 同城自提</div>
+         <div style="font-size:11.5px;color:var(--t2);margin-top:3px">送闲置得鱼币，鱼币可换好物</div>
+       </div>
+       <div class="btn btn-y btn-s" style="height:28px">去看看</div>
+     </div>
+   </div>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+     ${ITEMS.map(cardItem).join('')}
+   </div>
+   <div style="text-align:center;color:var(--t4);font-size:11.5px;padding:16px 0 4px">· 已经到底啦，去发布你的闲置吧 ·</div>
+ </div>
+ ${tabbar('home')}
+ <div style="position:absolute;right:14px;bottom:78px;width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:9px;gap:1px;cursor:pointer;z-index:24" onclick="go('publish')">
+   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>发布
+ </div>
+</div>`});
+
+/* ---------- 3 搜索首页 ---------- */
+add({id:'search',group:'入口与发现',name:'搜索首页',sub:'降低输入成本：历史记录 + 热搜榜 + 猜你想找，让用户在进入搜索后 1 秒内就能命中目标。',
+goal:'承接明确搜索意图，缩短从"想找"到"找到"的路径。',
+els:['搜索框（自动聚焦、键盘弹出）+ 取消按钮','历史搜索（可单条删除 / 清空）','热搜榜 Top10（带热度标签与排名）','猜你想找（个性化推荐词，P1）','底部常驻：拍照搜同款入口'],
+inter:['输入关键词 → 实时下拉联想（200ms 防抖）','点击历史/热搜词 → 直接进入搜索结果页','点击历史右侧 × → 单条删除，不触发搜索','点击相机 → 拍照/选图以图搜图','点击取消 → 返回上一页'],
+states:['未输入（历史+热搜）','输入中（联想列表）','联想为空','无历史记录','搜索中 loading','热门榜无数据'],
+flow:'点击搜索框 → 输入/选择词 → 搜索结果页',
+render:()=>`<div class="page on">
+ ${sb(false)}
+ <div style="background:#fff;padding:6px 12px 10px">
+   <div class="row" style="gap:9px">
+     <div class="grow" style="background:#F3F4F6;border-radius:18px;height:36px;display:flex;align-items:center;padding:0 12px;gap:7px;border:1.5px solid var(--xy)">
+       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9A9A9A" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6" stroke-linecap="round"/></svg>
+       <span style="font-size:13px;color:var(--t1)" class="ell">switch</span><span style="color:var(--xy-deep)">|</span>
+     </div>
+     <div style="font-size:14px;color:var(--t2);cursor:pointer" onclick="back()">取消</div>
+   </div>
+ </div>
+ <div style="background:#fff;padding:12px 14px 4px;margin-top:8px">
+   <div class="between" style="margin-bottom:10px">
+     <b style="font-size:13.5px">历史搜索</b>
+     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B0B0B0" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M9 6V4h6v2M7 6l1 14h8l1-14"/></svg>
+   </div>
+   <div style="display:flex;flex-wrap:wrap;gap:8px">
+     ${['iPhone 15','kindle','人体工学椅','考研资料','乐高'].map(h=>`<div class="pill" onclick="go('search-result')">${h}</div>`).join('')}
+   </div>
+ </div>
+ <div style="background:#fff;padding:14px;margin-top:8px">
+   <div class="row" style="gap:6px;margin-bottom:12px"><b style="font-size:13.5px">闲鱼热搜</b><span class="tag tag-r">实时</span></div>
+   ${HOT.map((h,i)=>`<div class="row" style="gap:11px;padding:8px 0;cursor:pointer" onclick="go('search-result')">
+     <span style="font-size:13px;font-weight:700;color:${i<3?'var(--red)':'var(--t3)'};width:16px;text-align:center">${i+1}</span>
+     <span style="font-size:13.5px;flex:1">${h}</span>
+     ${i<3?`<span class="tag ${i===0?'tag-r':''}" style="font-size:9px">${i===0?'爆':i===1?'热':'新'}</span>`:''}
+     <span style="font-size:11px;color:var(--t4)">${(12-i)*3.7|0}.${(i*7)%10}万</span>
+   </div>`).join('')}
+ </div>
+ <div class="card" style="margin:8px 0 20px;padding:14px;text-align:center;cursor:pointer" onclick="go('publish')">
+   <div style="font-size:26px">📷</div>
+   <div style="font-size:13px;margin-top:5px">拍照搜同款，或直接发布闲置</div>
+ </div>
+</div>`});
+
+/* ---------- 4 搜索结果 ---------- */
+add({id:'search-result',group:'入口与发现',name:'搜索结果',sub:'结果页是转化的关键：筛选与排序决定效率，卡片信息密度决定点击率，无结果时的兜底决定留存。',
+goal:'让用户快速定位目标商品并进入详情，同时提供筛选工具收敛结果集。',
+els:['搜索框（回填关键词，可编辑回退）','排序栏：综合 / 价格 / 新发布 / 距离','筛选栏：类目、成色、价格区间、同城、包邮、个人/商家','双列瀑布流结果卡','空结果兜底：相近推荐 + 到货提醒订阅','右上角切换单/双列布局'],
+inter:['点击筛选 → 底部弹出筛选面板，确定后刷新列表并回显标签','点击排序 → 高亮当前排序，列表重置至顶部','点击"收藏搜索" → 到货提醒，命中新商品时订阅消息通知','点击商品 → 详情页，并记录搜索上下文用于回退','上拉加载更多；无更多数据展示"没有更多了"'],
+states:['有结果','加载中','空结果','筛选面板展开','无网络','列表/大图模式'],
+flow:'搜索 → 结果列表 → 筛选/排序 → 点击商品 → 详情',
+render:()=>`<div class="page on">
+ ${sb(false)}
+ <div style="background:#fff;padding:6px 12px 8px;position:sticky;top:0;z-index:12">
+   <div class="row" style="gap:9px">
+     <div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+     <div class="grow" style="background:#F3F4F6;border-radius:16px;height:33px;display:flex;align-items:center;padding:0 11px;gap:7px">
+       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9A9A9A" stroke-width="2.2"><circle cx="11" cy="11" r="7"/></svg>
+       <span style="font-size:12.5px" class="ell">switch oled</span>
+       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B0B0B0" stroke-width="2" style="margin-left:auto"><circle cx="12" cy="12" r="8"/><path d="M9 9l6 6M15 9l-6 6" stroke-linecap="round"/></svg>
+     </div>
+     <div style="font-size:12.5px;color:var(--t2);cursor:pointer">搜索</div>
+   </div>
+   <div class="row" style="gap:16px;margin-top:9px;font-size:13px">
+     ${['综合','价格','新发布','距离'].map((s,i)=>`<div style="color:${i===0?'var(--t1)':'var(--t2)'};font-weight:${i===0?600:400};cursor:pointer" onclick="go('search-result')">${s}${i===1?'<span style="font-size:9px"> ↑</span>':''}</div>`).join('')}
+     <div class="row" style="margin-left:auto;gap:3px;color:var(--t2);font-size:12.5px;cursor:pointer">筛选
+       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+     </div>
+   </div>
+ </div>
+ <div style="padding:9px">
+   <div style="font-size:11.5px;color:var(--t3);margin-bottom:8px">找到 <b style="color:var(--red)">1,286</b> 件相关闲置</div>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+     ${ITEMS.filter(i=>[3,2,10,1,8,6].includes(i.id)).map(cardItem).join('')}
+   </div>
+ </div>
+</div>`});
+
+/* ---------- 5 分类 ---------- */
+add({id:'category',group:'入口与发现',name:'分类频道',sub:'类目是供给侧的组织方式。左侧一级类目 + 右侧二级类目与热门标签，兼顾明确目的型与探索型浏览。',
+goal:'为没有明确关键词的用户提供结构化的浏览路径，并沉淀类目运营位。',
+els:['左侧一级类目竖栏（吸顶、可滚动）','右侧：类目 banner + 二级类目宫格 + 热门标签','类目运营位：活动、新发好物、验货专区','顶部搜索框常驻'],
+inter:['点击左侧类目 → 右侧内容切换，左侧高亮并自动滚动到可视区','点击二级类目/标签 → 进入该类目搜索结果','点击 banner → 活动页','记录最近浏览类目，下次进入默认定位'],
+states:['默认选中第一个类目','切换中','类目无商品','运营位下架'],
+flow:'进入分类 → 选择类目 → 二级/标签 → 结果列表',
+render:()=>`<div class="page on has-tabbar">
+ ${sb(false)}
+ <div style="background:#fff;padding:8px 12px 10px">
+   <div class="grow" style="background:#F3F4F6;border-radius:18px;height:34px;display:flex;align-items:center;padding:0 12px;gap:7px" onclick="go('search')">
+     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9A9A9A" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6" stroke-linecap="round"/></svg>
+     <span style="font-size:12.5px;color:var(--t3)">搜索闲置好物</span>
+   </div>
+ </div>
+ <div class="row" style="align-items:flex-start">
+   <div style="width:88px;background:#F4F5F7;flex-shrink:0">
+     ${['热门推荐','手机数码','电脑办公','家居家电','潮流玩具','服饰鞋包','图书文具','运动户外','母婴宠物','更多'].map((c,i)=>
+       `<div style="padding:14px 6px;text-align:center;font-size:12.5px;color:${i===1?'var(--t1)':'var(--t2)'};background:${i===1?'#fff':'transparent'};font-weight:${i===1?600:400};cursor:pointer;position:relative">
+         ${i===1?'<div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:14px;background:var(--xy);border-radius:2px"></div>':''}${c}</div>`).join('')}
+   </div>
+   <div style="flex:1;padding:10px;min-width:0">
+     <div style="height:78px;border-radius:9px;background:linear-gradient(120deg,#FFEFC0,#FFD86B);padding:11px;display:flex;flex-direction:column;justify-content:center;cursor:pointer">
+       <div style="font-size:14px;font-weight:700;color:#6B4E00">数码尝鲜季</div>
+       <div style="font-size:11px;color:#8A6600;margin-top:3px">验货担保 · 七天无忧</div>
+     </div>
+     <div style="font-size:12px;color:var(--t3);margin:12px 0 8px">全部分类</div>
+     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px 6px;text-align:center">
+       ${[['📱','手机'],['💻','笔记本'],['🎧','耳机音响'],['📷','相机'],['⌚','智能穿戴'],['🎮','游戏设备'],['🖨','打印机'],['🔌','配件'],['🔧','维修']].map(c=>
+         `<div style="cursor:pointer" onclick="go('search-result')"><div style="height:52px;border-radius:9px;background:#F6F7F9;display:flex;align-items:center;justify-content:center;font-size:23px">${c[0]}</div><div style="font-size:11px;color:var(--t2);margin-top:4px">${c[1]}</div></div>`).join('')}
+     </div>
+     <div style="font-size:12px;color:var(--t3);margin:16px 0 8px">热门标签</div>
+     <div style="display:flex;flex-wrap:wrap;gap:7px">
+       ${['iPhone','iPad','switch','相机','机械键盘','显示器','耳机'].map(t=>`<div class="pill" onclick="go('search-result')">${t}</div>`).join('')}
+     </div>
+   </div>
+ </div>
+ ${tabbar('circle')}
+</div>`});
+
+/* ---------- 6 商品详情 ---------- */
+add({id:'detail',group:'商品与交易',name:'商品详情',sub:'详情页承担"信任建立 + 决策促成"。核心是图文真实性、卖家可信度与低摩擦的咨询/下单双路径。',
+goal:'消除信息不对称，让用户敢于咨询或下单。',
+els:['主图轮播（支持视频、放大、指示点）','价格区：现价、原价、成色、运费、想要数','标题 + 描述 + 发布时间 + 浏览/想要数','卖家卡片：头像、昵称、信用分、好评率、在售数','商品参数：类目属性（品牌/型号/购买渠道）','交易说明：发货方式、退换规则、验货担保','相似推荐','底部操作栏：收藏 / 我想要（咨询）/ 立即购买'],
+inter:['点击"我想要" → 进入 IM 会话并自动发送商品卡片','点击"立即购买" → 确认订单页（跳过议价）','点击"收藏" → 图标变红 + Toast，同步收藏夹','点击卖家卡片 → 卖家个人主页','左右滑/点击图片 → 全屏预览，支持双指缩放','点击"举报" → 举报原因面板','卖家本人查看 → 底部变为"编辑/擦亮/下架"'],
+states:['在售','已预定','已售出（置灰，禁止下单）','已下架/违规','审核中（仅卖家可见）','本人商品','已收藏','无物流/自提'],
+flow:'详情 → 我想要 → IM 议价 → 立即购买 → 确认订单 → 支付',
+render:()=>`<div class="page on" style="padding-bottom:62px">
+ ${sb(false)}
+ <div style="position:relative;background:linear-gradient(135deg,#EAF0E9,#C4D6C2)">
+   <div style="height:340px;display:flex;align-items:center;justify-content:center">${IMG('d1','🎮')}</div>
+   <div class="row" style="position:absolute;left:0;right:0;bottom:10px;justify-content:center;gap:5px">
+     ${[1,0,0,0,0].map(a=>`<div style="width:${a?'16px':'6px'};height:6px;border-radius:3px;background:${a?'#fff':'rgba(255,255,255,.5)'}"></div>`).join('')}
+   </div>
+   <div style="position:absolute;top:52px;left:12px;width:31px;height:31px;border-radius:50%;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="back()">
+     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+   <div style="position:absolute;top:52px;right:12px;width:31px;height:31px;border-radius:50%;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center">
+     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></div>
+ </div>
+ <div style="background:#fff;padding:14px 14px 12px;margin-top:-10px;border-radius:12px 12px 0 0;position:relative">
+   <div class="row" style="gap:8px;align-items:flex-end">
+     <span class="price" style="font-size:29px"><small style="font-size:16px">¥</small>1380</span>
+     <span style="font-size:12px;color:var(--t4);text-decoration:line-through;padding-bottom:5px">¥2099</span>
+     <span class="tag tag-r" style="padding:2px 6px;font-size:11px;padding-bottom:3px">直降 719</span>
+   </div>
+   <div style="font-size:15.5px;font-weight:600;line-height:1.5;margin-top:8px">Nintendo Switch OLED 白色主机 + 3 款游戏</div>
+   <div class="row" style="gap:6px;margin-top:9px">
+     <span class="tag">9成新</span><span class="tag">包邮</span><span class="tag tag-g">支持验货</span><span class="tag tag-b">极速发货</span>
+   </div>
+   <div class="between" style="margin-top:12px;font-size:11.5px;color:var(--t3)">
+     <span>👁 3,820 浏览 · ♡ 412 想要</span><span>3 小时前发布</span>
+   </div>
+ </div>
+ <div class="divider"></div>
+ <div class="card p12">
+   <div style="font-size:13.5px;line-height:1.85;color:#333">
+     去年双十一购入，因换主机出闲置，使用频率极低，无磕碰无维修。<br>
+     配件：原装底座、Joy-Con 一对、HDMI、电源、原装包装盒齐全。<br>
+     游戏：《塞尔达 王国之泪》《马力欧卡丁车 8》《喷射战士 3》实体卡带。<br>
+     支持同城面交验机，外地顺丰包邮，拍下 24 小时内发货。
+   </div>
+   <div class="hair" style="margin:12px 0"></div>
+   <div style="font-size:12px;color:var(--t2);line-height:2">
+     <div class="row"><span style="color:var(--t3);width:64px">商品类目</span><span>游戏设备 / 游戏主机</span></div>
+     <div class="row"><span style="color:var(--t3);width:64px">购买渠道</span><span>京东自营（有订单记录）</span></div>
+     <div class="row"><span style="color:var(--t3);width:64px">发货方式</span><span>快递包邮 / 同城面交</span></div>
+     <div class="row"><span style="color:var(--t3);width:64px">所在地</span><span>北京 · 朝阳区</span></div>
+   </div>
+ </div>
+ <div class="divider"></div>
+ <div class="card p12" onclick="go('shop')" style="cursor:pointer">
+   <div class="between">
+     <div class="row" style="gap:10px">
+       <div class="av" style="width:44px;height:44px;font-size:17px;background:linear-gradient(135deg,#FFD86B,#FFB300)">游</div>
+       <div>
+         <div class="row" style="gap:5px"><b style="font-size:14px">游戏仓鼠</b><span class="tag tag-g">实人认证</span></div>
+         <div style="font-size:11.5px;color:var(--t3);margin-top:4px">信用分 782 · 好评率 99.2% · 在售 12 件</div>
+       </div>
+     </div>
+     <div style="font-size:12px;color:var(--t3)">进店 ›</div>
+   </div>
+ </div>
+ <div class="divider"></div>
+ <div style="background:#fff;padding:12px 12px 18px">
+   <div style="font-size:13.5px;font-weight:600;margin-bottom:9px">相似推荐</div>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+     ${ITEMS.filter(i=>[1,6,10].includes(i.id)).map(cardItem).join('')}
+   </div>
+ </div>
+ <div style="position:absolute;bottom:0;left:0;right:0;height:60px;background:#fff;border-top:1px solid var(--line);display:flex;align-items:center;padding:0 12px;gap:10px;z-index:26">
+   <div style="text-align:center;font-size:10px;color:var(--t2);cursor:pointer">
+     <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8"><path d="M12 20s-7-4.6-7-9.4A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.6C19 15.4 12 20 12 20Z"/></svg>
+     <div>收藏</div>
+   </div>
+   <div style="text-align:center;font-size:10px;color:var(--t2);margin-left:6px;cursor:pointer" onclick="go('chat')">
+     <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H8l-4 4V5a1 1 0 0 1 1-1Z"/></svg>
+     <div>咨询</div>
+   </div>
+   <div class="btn btn-y" style="flex:1;height:42px" onclick="go('chat')">我想要</div>
+   <div class="btn btn-r" style="flex:1;height:42px" onclick="go('confirm')">立即购买</div>
+ </div>
+</div>`});
+
+/* ---------- 7 发布闲置 ---------- */
+add({id:'publish',group:'发布与管理',name:'发布闲置',sub:'发布门槛决定供给量。图片上传后 AI 自动识别类目、成色与描述，把"填 10 个字段"压缩成"确认 3 秒"。',
+goal:'让首次用户在 60 秒内完成一次高质量发布。',
+els:['图片/视频上传区（最多 9 图 + 1 视频，首图为主图）','AI 识别结果条：类目、成色、建议价格（可一键采纳）','标题输入（60 字，带热词推荐）','描述（支持话题、语音输入）','类目、成色、价格、原价、运费、交易方式','同城定位（自动填充，可改）','发布按钮（底部固定）','草稿箱入口'],
+inter:['上传图片 → AI 识别 → 自动填充类目/成色/标题草稿 → 用户确认或覆盖','价格低于类目均价 70% → 提示"价格偏低，可能更快卖出"','点击"智能定价" → 展示同类商品成交价区间','离开页面 → 自动存草稿并 Toast 提示','提交 → 内容安全审核（秒级机审）→ 成功页引导分享/擦亮','类目选择 → 动态渲染该类目属性表单'],
+states:['未上传图片（发布按钮禁用）','AI 识别中','识别失败（手动填写）','草稿态','审核中','审核不通过（展示原因+申诉）','发布成功'],
+flow:'选择图片 → AI 识别预填 → 补充信息 → 提交审核 → 发布成功',
+render:()=>`<div class="page on">
+ ${sb(false)}
+ <div class="navbar" style="border-bottom:1px solid var(--line)">
+   <div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+   <div class="title">发布闲置</div>
+   <div class="right" style="color:var(--t3);font-size:12.5px;cursor:pointer">草稿箱</div>
+ </div>
+ <div style="padding:12px 14px 100px">
+   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px">
+     <div style="height:112px;background:linear-gradient(135deg,#EAF0E9,#C4D6C2);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:32px;position:relative">
+       🎮<span style="position:absolute;top:4px;left:4px;background:var(--xy);font-size:9px;padding:1px 4px;border-radius:3px;color:#5A4000">主图</span>
+     </div>
+     <div style="height:112px;background:#F2F3F5;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--t4)">🎮</div>
+     <div style="height:112px;background:#F2F3F5;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--t3);border:1.5px dashed #D8DADD;cursor:pointer">
+       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#9A9A9A" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+       <span style="font-size:11px">添加图片</span>
+     </div>
+   </div>
+   <div class="card p12" style="margin-top:10px;background:linear-gradient(100deg,#FFF8E4,#FFFDF8);border:1px solid #FFE9B0">
+     <div class="row" style="gap:7px">
+       <span style="font-size:15px">✨</span>
+       <div class="grow">
+         <div style="font-size:12.5px;font-weight:600;color:#8A6600">AI 已识别：游戏设备 / Switch OLED</div>
+         <div style="font-size:11.5px;color:#9A8340;margin-top:3px">建议成色「9成新」· 同类成交价 ¥1200-1500</div>
+       </div>
+       <div class="btn btn-y btn-s" style="height:26px;font-size:11.5px">一键填充</div>
+     </div>
+   </div>
+   <div style="background:#fff;border-radius:10px;margin-top:10px;padding:0 14px">
+     <div class="row" style="padding:13px 0;border-bottom:1px solid var(--line)">
+       <input placeholder="标题：品牌+型号+成色更容易被搜到" style="border:none;outline:none;font-size:14px;flex:1" value="Nintendo Switch OLED 白色主机 + 3 款游戏">
+     </div>
+     <div class="row" style="padding:13px 0;border-bottom:1px solid var(--line)">
+       <textarea placeholder="描述一下宝贝的入手渠道、使用感受、转手原因…" style="border:none;outline:none;font-size:13.5px;flex:1;height:56px;resize:none;line-height:1.6">去年双十一京东购入，使用频率低，无磕碰无维修，配件齐全。附三张实体卡带，支持同城面交验货。</textarea>
+     </div>
+     ${[['类目','游戏设备 / 游戏主机'],['成色','9成新'],['售价','¥ 1380'],['原价','¥ 2099'],['运费','包邮'],['交易方式','快递发货 / 同城面交'],['所在地','北京 · 朝阳区']].map((f,i)=>
+       `<div class="between" style="padding:13px 0;${i===6?'':'border-bottom:1px solid var(--line)'};cursor:pointer">
+         <span style="font-size:13.5px;color:var(--t2)">${f[0]}</span>
+         <span class="row" style="gap:5px;font-size:13.5px;color:${f[0]==='售价'?'var(--red)':'var(--t1)'}">${f[1]}<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+       </div>`).join('')}
+   </div>
+   <div class="card p12" style="margin-top:10px">
+     <div class="between">
+       <div>
+         <div style="font-size:13px;font-weight:600">验货担保</div>
+         <div style="font-size:11px;color:var(--t3);margin-top:3px">平台验机后发货，成交率提升 40%</div>
+       </div>
+       <div style="width:40px;height:22px;border-radius:11px;background:var(--xy);position:relative;cursor:pointer"><div style="position:absolute;right:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)"></div></div>
+     </div>
+   </div>
+ </div>
+ <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:9px 14px 20px;display:flex;gap:10px;align-items:center;z-index:26">
+   <div class="btn btn-o" style="width:96px;height:44px;font-size:13.5px">存草稿</div>
+   <div class="btn btn-y grow" style="height:44px" onclick="go('my-items')">确认发布</div>
+ </div>
+</div>`});
+
+/* ---------- 8 确认订单 ---------- */
+add({id:'confirm',group:'商品与交易',name:'确认订单',sub:'下单页只做一件事：让用户在 15 秒内确认"买什么、寄哪里、花多少钱"，任何多余信息都会造成流失。',
+goal:'明确价格构成与履约方式，促成支付。',
+els:['收货地址卡（可切换，无地址时引导新增）','商品快照卡：图、标题、成色、单价','数量（二手多为 1 件，可隐藏）','运费、优惠、议价抵扣','金额明细：商品金额 + 运费 - 优惠 = 实付','交易保障说明（担保交易、7 天无理由）','底部：实付金额 + 提交订单'],
+inter:['点击地址 → 地址列表选择/新增','点击优惠券 → 选择可用券（不可用券置灰并说明原因）','点击"发票/备注" → 展开备注输入','提交 → 创建订单（幂等）→ 调起微信支付','支付成功 → 订单详情；取消 → 生成待支付订单','商品在提交前被买走 → 弹窗提示并返回详情'],
+states:['有默认地址','无地址（引导新增）','有可用券','无可用券','库存被占用','提交中','待支付'],
+flow:'确认订单 → 提交 → 微信支付 → 支付成功 → 待发货',
+render:()=>`<div class="page on" style="padding-bottom:64px">
+ ${sb(false)}
+ ${nav('确认订单')}
+ <div class="card p12 mb8" style="margin:8px">
+   <div class="between" onclick="go('order-list')" style="cursor:pointer">
+     <div class="row" style="gap:9px">
+       <svg width="17" height="17" viewBox="0 0 24 24" fill="#FF3939"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+       <div>
+         <div style="font-size:14.5px;font-weight:600">张小苗 <span style="font-weight:400;color:var(--t2)">138****6027</span></div>
+         <div style="font-size:12.5px;color:var(--t2);margin-top:3px">浙江省 杭州市 西湖区 文三路 100 号 5 幢 802</div>
+       </div>
+     </div>
+     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+   </div>
+ </div>
+ <div class="card p12 mb8" style="margin:0 8px">
+   <div class="row" style="gap:10px">
+     <div style="width:66px;height:66px;border-radius:8px;background:linear-gradient(135deg,#EAF0E9,#C4D6C2);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">🎮</div>
+     <div class="grow" style="min-width:0">
+       <div class="ell2" style="font-size:13.5px;line-height:1.45">Nintendo Switch OLED 白色主机 + 3 款游戏</div>
+       <div style="font-size:11.5px;color:var(--t3);margin-top:4px">9成新 · 包邮</div>
+       <div class="price" style="font-size:16px;margin-top:4px"><small>¥</small>1380</div>
+     </div>
+   </div>
+   <div class="hair" style="margin:12px 0"></div>
+   <div class="between" style="font-size:13px;color:var(--t2)"><span>数量</span><span style="color:var(--t1)">× 1</span></div>
+ </div>
+ <div class="card p12 mb8" style="margin:0 8px">
+   ${[['商品金额','¥1380'],['运费','包邮 ¥0'],['新人优惠券','- ¥20']].map(l=>
+     `<div class="between" style="font-size:13px;color:var(--t2);padding:5px 0"><span>${l[0]}</span><span style="color:${l[1].startsWith('-')?'var(--red)':'var(--t1)'}">${l[1]}</span></div>`).join('')}
+   <div class="hair" style="margin:8px 0"></div>
+   <div class="between" style="font-size:13.5px"><span>备注</span><span style="color:var(--t4);font-size:12.5px">选填，可备注发货要求 ›</span></div>
+ </div>
+ <div class="card p12" style="margin:0 8px;background:#FAFBFC">
+   <div style="font-size:11.5px;color:var(--t2);line-height:1.95">
+     <div class="row" style="gap:6px"><span>🛡</span><span><b>担保交易</b>：货款由平台托管，确认收货后才打给卖家</span></div>
+     <div class="row" style="gap:6px"><span>🚚</span><span>卖家 72 小时内发货，超时自动退款</span></div>
+     <div class="row" style="gap:6px"><span>↩</span><span>确认收货后 7 天内可申请售后</span></div>
+   </div>
+ </div>
+ <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:9px 14px 20px;display:flex;align-items:center;z-index:26">
+   <div class="grow" style="font-size:12.5px;color:var(--t2)">实付 <span class="price" style="font-size:20px"><small>¥</small>1360</span></div>
+   <div class="btn btn-r" style="width:132px;height:44px" onclick="go('order-list')">提交订单</div>
+ </div>
+</div>`});
+
+/* ---------- 9 我的订单 ---------- */
+add({id:'order-list',group:'商品与交易',name:'订单列表',sub:'买卖双视角统一入口，通过状态 tab 收敛信息，让用户在"下一步该做什么"上零思考。',
+goal:'让用户快速找到目标订单并完成下一步动作。',
+els:['状态 tab：全部 / 待付款 / 待发货 / 待收货 / 已完成 / 售后','订单卡：商品图、标题、金额、状态标签、动态操作按钮','搜索订单（按商品名/订单号）','空态：去逛逛推荐','已关闭订单可删除'],
+inter:['点击 tab → 切换列表（本地缓存 + 下拉刷新）','点击订单 → 订单详情','点击主按钮 → 支付/提醒发货/确认收货/评价','点击次要按钮 → 取消订单/查看物流/申请售后','左滑订单 → 删除（已关闭订单）'],
+states:['有订单','空态','加载中','待付款倒计时','售后中','已删除'],
+flow:'订单列表 → 选择状态 → 点击订单 → 详情 → 操作',
+render:()=>`<div class="page on">
+ ${sb(false)}
+ ${nav('我的订单','<span onclick="go(\'message\')" style="cursor:pointer">客服</span>')}
+ <div class="row" style="background:#fff;padding:0 4px;overflow-x:auto;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:12">
+   ${['全部','待付款','待发货','待收货','已完成','售后'].map((t,i)=>
+     `<div style="padding:11px 13px;font-size:13.5px;color:${i===2?'var(--t1)':'var(--t2)'};font-weight:${i===2?600:400};position:relative;white-space:nowrap;cursor:pointer">
+       ${t}${i===2?'<div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:18px;height:3px;background:var(--xy);border-radius:2px"></div>':''}</div>`).join('')}
+ </div>
+ ${[
+  {s:'待发货',c:'#FF7A00',t:'Nintendo Switch OLED 白色主机 + 3 款游戏',p:1360,emo:'🎮',g:'#EAF0E9,#C4D6C2',btns:['提醒发货','申请退款'],tip:'卖家已接单，等待发货'},
+  {s:'待收货',c:'#3C6FF5',t:'Kindle Paperwhite 5 signature 32G',p:520,emo:'📚',g:'#E9EDF2,#C9D3DE',btns:['查看物流','确认收货'],tip:'【杭州市】快件已到达 西湖区文三路网点'},
+  {s:'已完成',c:'#9A9A9A',t:'MUJI 橡木书桌 110cm',p:320,emo:'🪑',g:'#F2EDE6,#DCCDBA',btns:['评价得鱼币','再次购买'],tip:'交易完成，快来评价'}
+ ].map(o=>`<div class="card mb8" style="margin:8px" onclick="go('order-detail')">
+   <div class="between" style="padding:11px 12px;border-bottom:1px solid var(--line)">
+     <span style="font-size:12.5px;color:var(--t3)">订单号 20260916${Math.floor(Math.random()*9e4+1e4)}</span>
+     <span style="font-size:12.5px;color:${o.c};font-weight:600">${o.s}</span>
+   </div>
+   <div class="row" style="gap:10px;padding:12px">
+     <div style="width:62px;height:62px;border-radius:8px;background:linear-gradient(135deg,${o.g});display:flex;align-items:center;justify-content:center;font-size:27px;flex-shrink:0">${o.emo}</div>
+     <div class="grow" style="min-width:0">
+       <div class="ell" style="font-size:13.5px">${o.t}</div>
+       <div style="font-size:11.5px;color:var(--t3);margin-top:5px" class="ell">${o.tip}</div>
+     </div>
+     <div style="text-align:right">
+       <div class="price" style="font-size:15px"><small>¥</small>${o.p}</div>
+       <div style="font-size:11px;color:var(--t3);margin-top:3px">共 1 件</div>
+     </div>
+   </div>
+   <div style="padding:0 12px 12px;text-align:right">
+     ${o.btns.map((b,i)=>`<span class="btn ${i===o.btns.length-1?'btn-y':'btn-o'} btn-s" style="display:inline-flex;margin-left:8px">${b}</span>`).join('')}
+   </div>
+ </div>`).join('')}
+</div>`});
+
+/* ---------- 10 订单详情 ---------- */
+add({id:'order-detail',group:'商品与交易',name:'订单详情 · 物流',sub:'履约透明化是降低客服压力的关键。用状态卡 + 物流时间轴让用户随时知道"货在哪、下一步是什么"。',
+goal:'清晰呈现订单履约进度与可执行动作，减少用户焦虑与咨询量。',
+els:['状态头图：图标 + 主状态 + 倒计时/预计到达','物流时间轴（最新置顶，支持展开全程）','收货地址 + 快递公司/单号（可复制）','商品快照 + 金额明细','底部动态操作区（随状态变化）','联系卖家 / 电话入口'],
+inter:['点击"查看物流" → 展开完整轨迹','点击单号 → 复制到剪贴板 + Toast','点击"确认收货" → 二次确认弹窗（资金将打给卖家）','点击"延长收货" → 选择延长 3/5/7 天','倒计时归零 → 自动确认收货并结算','点击"申请售后" → 售后页'],
+states:['待付款（30min 倒计时）','待发货（72h 倒计时）','待收货（10 天自动确认）','已完成','退款中','已关闭','物流异常'],
+flow:'待发货 → 已发货 → 物流在途 → 确认收货 → 结算 → 互评',
+render:()=>`<div class="page on" style="padding-bottom:62px">
+ ${sb(false)}
+ <div style="background:linear-gradient(135deg,#4A7CF7,#3C6FF5);color:#fff;padding:6px 16px 20px">
+   <div style="font-size:19px;font-weight:700;margin-top:6px">卖家已发货，运输中</div>
+   <div style="font-size:12.5px;opacity:.92;margin-top:6px">预计 9 月 18 日送达 · 还有 <b>7 天 12 时</b> 自动确认收货</div>
+ </div>
+ <div class="card" style="margin:-10px 8px 8px;padding:14px">
+   <div class="row" style="gap:9px;align-items:flex-start">
+     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3C6FF5" stroke-width="1.9" style="margin-top:2px"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.7"/><circle cx="17.5" cy="18" r="1.7"/></svg>
+     <div class="grow">
+       <div style="font-size:13.5px;font-weight:600">【杭州市】快件已到达 西湖区文三路网点</div>
+       <div style="font-size:11.5px;color:var(--t3);margin-top:4px">2026-09-16 18:24 · 顺丰速运 SF1002837465</div>
+       <div style="font-size:11.5px;color:var(--t3);margin-top:2px">派件员 李师傅 138****2210</div>
+     </div>
+     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+   </div>
+   <div class="hair" style="margin:12px 0 10px"></div>
+   <div style="padding-left:10px">
+     ${[['已签收','—',0],['派送中','2026-09-16 18:24',1],['到达 杭州转运中心','2026-09-16 09:12',0],['已从 北京朝阳 发出','2026-09-15 21:03',0],['卖家已发货','2026-09-15 19:40',0],['买家已付款','2026-09-15 19:22',0]].map((t,i)=>
+       `<div style="position:relative;padding:0 0 14px 12px;font-size:12.5px;color:${i===0?'var(--t4)':'var(--t2)'}">
+         <div style="position:absolute;left:-9px;top:4px;width:7px;height:7px;border-radius:50%;background:${t[2]?'#3C6FF5':'#D8DBE0'}"></div>
+         ${t[0]}<span style="color:var(--t4);margin-left:6px;font-size:11px">${t[1]}</span>
+       </div>`).join('')}
+   </div>
+ </div>
+ <div class="card p12 mb8" style="margin:0 8px">
+   <div class="row" style="gap:9px;align-items:flex-start">
+     <svg width="15" height="15" viewBox="0 0 24 24" fill="#9A9A9A" style="margin-top:2px"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+     <div>
+       <div style="font-size:13.5px"><b>张小苗</b> <span style="color:var(--t2)">138****6027</span></div>
+       <div style="font-size:12px;color:var(--t2);margin-top:4px">浙江省 杭州市 西湖区 文三路 100 号 5 幢 802</div>
+     </div>
+   </div>
+ </div>
+ <div class="card p12" style="margin:0 8px">
+   <div class="row" style="gap:10px">
+     <div style="width:58px;height:58px;border-radius:8px;background:linear-gradient(135deg,#E9EDF2,#C9D3DE);display:flex;align-items:center;justify-content:center;font-size:25px">📚</div>
+     <div class="grow"><div style="font-size:13.5px" class="ell">Kindle Paperwhite 5 signature 32G</div><div style="font-size:11.5px;color:var(--t3);margin-top:4px">几乎全新 · 包邮</div></div>
+     <div class="price" style="font-size:15px"><small>¥</small>520</div>
+   </div>
+   <div class="hair" style="margin:12px 0"></div>
+   ${[['商品金额','¥520'],['运费','¥0'],['实付款','¥520']].map((l,i)=>
+     `<div class="between" style="font-size:12.5px;padding:3px 0;color:${i===2?'var(--t1)':'var(--t2)'}"><span>${l[0]}</span><span style="${i===2?'color:var(--red);font-weight:600':''}">${l[1]}</span></div>`).join('')}
+   <div class="hair" style="margin:10px 0"></div>
+   <div class="between" style="font-size:12.5px;color:var(--t3)">
+     <span>订单号 2026091522001<span style="font-size:11px;color:#3C6FF5;margin-left:5px">复制</span></span>
+     <span>下单 2026-09-15 19:22</span>
+   </div>
+ </div>
+ <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:9px 14px 20px;display:flex;gap:9px;align-items:center;z-index:26">
+   <div class="row" style="gap:16px;font-size:11px;color:var(--t2)">
+     <div style="text-align:center;cursor:pointer" onclick="go('chat')"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H8l-4 4V5a1 1 0 0 1 1-1Z"/></svg><div>联系卖家</div></div>
+     <div style="text-align:center;cursor:pointer" onclick="go('refund')"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round"><path d="M4 10h13l-3-3M20 14H7l3 3"/></svg><div>申请售后</div></div>
+   </div>
+   <div class="grow"></div>
+   <div class="btn btn-o btn-s" style="height:38px">延长收货</div>
+   <div class="btn btn-y" style="width:110px;height:38px;font-size:14px" onclick="go('order-list')">确认收货</div>
+ </div>
+</div>`});
+
+/* ---------- 11 申请售后 ---------- */
+add({id:'refund',group:'商品与交易',name:'申请售后',sub:'售后是二手交易的高风险区。规则前置、举证结构化、超时自动兜底，能同时保护买家体验与平台判责效率。',
+goal:'让买家低成本发起售后，并收集足够的判责信息。',
+els:['售后类型：仅退款 / 退货退款','退款原因单选（带常见标签）','退款金额（自动计算，可修改上限）','问题描述 + 图片/视频举证（最多 6 张）','退货物流填写（卖家同意后）','协商倒计时提示：卖家 48 小时未响应自动同意','提交按钮'],
+inter:['选择类型 → 动态显示"是否已收到货"分支与金额上限','选择原因 → 展示该类原因需补充的举证项','上传图片 → 实时压缩上传，可删除','提交 → 生成售后单，卖家端推送通知','卖家 48h 未响应 → 系统自动同意并进入退款','卖家拒绝 → 可申请平台介入（补充举证）'],
+states:['仅退款（未发货）','退货退款（已发货）','协商中','卖家已同意（待买家退货）','待卖家收货','平台介入中','已完成','已撤销'],
+flow:'发起 → 卖家处理（48h）→ 同意/拒绝 → 退货 → 退款 / 平台介入',
+render:()=>`<div class="page on" style="padding-bottom:70px">
+ ${sb(false)}
+ <div class="navbar" style="border-bottom:1px solid var(--line)">
+   <div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+   <div class="title">申请售后</div><div class="right"></div>
+ </div>
+ <div class="card p12 mb8" style="margin:8px">
+   <div class="row" style="gap:10px">
+     <div style="width:56px;height:56px;border-radius:8px;background:linear-gradient(135deg,#E9EDF2,#C9D3DE);display:flex;align-items:center;justify-content:center;font-size:24px">📚</div>
+     <div class="grow"><div style="font-size:13.5px" class="ell">Kindle Paperwhite 5 signature 32G</div><div style="font-size:11.5px;color:var(--t3);margin-top:4px">实付 ¥520 · 订单号 2026091522001</div></div>
+   </div>
+ </div>
+ <div class="card p12 mb8" style="margin:0 8px">
+   <div style="font-size:13.5px;font-weight:600;margin-bottom:10px">售后类型</div>
+   <div class="row" style="gap:9px">
+     <div style="flex:1;border:1.8px solid var(--xy);background:var(--xy-light);border-radius:9px;padding:11px;cursor:pointer">
+       <div style="font-size:13.5px;font-weight:600">仅退款</div>
+       <div style="font-size:11px;color:var(--t2);margin-top:3px">未收到货，直接退款</div>
+     </div>
+     <div style="flex:1;border:1.5px solid var(--line);border-radius:9px;padding:11px;cursor:pointer">
+       <div style="font-size:13.5px;font-weight:600">退货退款</div>
+       <div style="font-size:11px;color:var(--t2);margin-top:3px">已收到货，需退回</div>
+     </div>
+   </div>
+ </div>
+ <div class="card p12 mb8" style="margin:0 8px">
+   <div style="font-size:13.5px;font-weight:600;margin-bottom:8px">退款原因 <span style="color:var(--red)">*</span></div>
+   ${['商品与描述不符','商品存在质量问题','卖家迟迟未发货','物流异常/丢件','不想要了','其他'].map((r,i)=>
+     `<div class="between" style="padding:8px 0;font-size:13.5px;cursor:pointer">
+       <span style="color:${i===0?'var(--t1)':'var(--t2)'}">${r}</span>
+       <div style="width:18px;height:18px;border-radius:50%;border:${i===0?'5px solid var(--xy)':'1.5px solid #D8DADD'}"></div>
+     </div>`).join('')}
+ </div>
+ <div class="card p12 mb8" style="margin:0 8px">
+   <div class="between" style="padding:6px 0;font-size:13.5px">
+     <span>退款金额</span><span class="price" style="font-size:16px"><small>¥</small>520</span>
+   </div>
+   <div style="font-size:11px;color:var(--t3)">最多可退 ¥520，含商品金额与实付运费</div>
+ </div>
+ <div class="card p12" style="margin:0 8px">
+   <div style="font-size:13.5px;font-weight:600;margin-bottom:8px">问题描述与凭证</div>
+   <div style="background:#F7F8FA;border-radius:8px;padding:10px;font-size:12.5px;color:var(--t2);line-height:1.7">
+     收到货后屏幕有明显划痕，与卖家描述的"几乎全新"不符，已与卖家沟通未达成一致。
+   </div>
+   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px">
+     <div style="height:74px;border-radius:7px;background:linear-gradient(135deg,#F0EAE0,#D8C9B4);display:flex;align-items:center;justify-content:center;font-size:24px;position:relative">📷<span style="position:absolute;top:3px;right:3px;width:15px;height:15px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center">×</span></div>
+     <div style="height:74px;border-radius:7px;background:linear-gradient(135deg,#EAEDF2,#C9D2DE);display:flex;align-items:center;justify-content:center;font-size:24px">📷</div>
+     <div style="height:74px;border-radius:7px;border:1.5px dashed #D8DADD;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--t3)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9A9A9A" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-size:10px">添加</span></div>
+   </div>
+ </div>
+ <div class="card p12 mb8" style="margin:8px;background:#FFF8E4;border:1px solid #FFE9B0">
+   <div style="font-size:11.5px;color:#8A6600;line-height:1.85">
+     ⏱ 提交后卖家需在 <b>48 小时</b> 内处理，超时系统将自动同意退款。<br>
+     📌 请保留商品及包装，平台介入时可能需要补充举证。
+   </div>
+ </div>
+ <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:9px 14px 20px;z-index:26">
+   <div class="btn btn-r" style="height:44px" onclick="go('order-list')">提交申请</div>
+ </div>
+</div>`});
+
+/* ---------- 12 消息列表 ---------- */
+add({id:'message',group:'沟通与社区',name:'消息列表',sub:'二手交易 70% 的成交发生在咨询之后。消息列表必须让"待办"优先于"闲聊"，把系统通知分栏处理。',
+goal:'让用户快速回到未完成的对话，并感知交易与系统动态。',
+els:['顶部通知分类：交易 / 互动 / 系统（红点提示）','会话列表：头像、昵称、最后一条消息、时间、未读角标','会话标签：商品名，便于识别上下文','置顶：系统通知','左滑：删除/置顶会话','空态引导'],
+inter:['点击会话 → 进入聊天页，清空未读','左滑 → 显示删除/置顶','点击顶部分类 → 切换消息流','长按会话 → 标记已读 / 不感兴趣','新消息 → WebSocket 实时到达，离线走订阅消息兜底'],
+states:['有未读','全部已读','空态','网络断开（顶部提示条）','被禁言','账号异常'],
+flow:'消息列表 → 会话 → 议价 → 下单',
+render:()=>`<div class="page on has-tabbar">
+ ${sb(false)}
+ <div style="background:#fff;padding:8px 0 0">
+   <div style="font-size:19px;font-weight:700;padding:2px 14px 10px">消息</div>
+   <div class="row" style="gap:8px;padding:0 14px 10px">
+     ${[['交易通知','🚚',3],['互动消息','❤️',0],['系统通知','📢',1]].map(n=>
+       `<div style="flex:1;background:#F7F8FA;border-radius:10px;padding:9px 8px;position:relative;cursor:pointer">
+         <div style="font-size:19px">${n[1]}</div>
+         <div style="font-size:11.5px;color:var(--t2);margin-top:3px">${n[0]}</div>
+         ${n[2]?`<span style="position:absolute;top:6px;right:8px;background:var(--red);color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px">${n[2]}</span>`:''}
+       </div>`).join('')}
+   </div>
+ </div>
+ <div class="hair"></div>
+ ${[
+  {n:'游戏仓鼠',l:'可以的，1200 给您，包邮顺丰',t:'刚刚',u:2,e:'🎮',g:'#FFD86B,#FFB300',tag:'Switch OLED'},
+  {n:'薇薇的衣橱',l:'[图片] 亲，这只全新未使用哦',t:'10:24',u:1,e:'👜',g:'#F5E8E8,#DEC3C3',tag:'LV neverfull'},
+  {n:'搬家清仓',l:'桌子还在的，随时可以看货',t:'昨天',u:0,e:'🪑',g:'#F2EDE6,#DCCDBA',tag:'MUJI 书桌'},
+  {n:'读书人阿May',l:'已发货，祝您阅读愉快～',t:'昨天',u:0,e:'📚',g:'#E9EDF2,#C9D3DE',tag:'Kindle'},
+  {n:'球鞋老炮',l:'[议价] 160 可以出吗？',t:'9月14日',u:0,e:'👟',g:'#F1EFE8,#D5D0C0',tag:'AF1'}
+ ].map(c=>`<div class="between" style="background:#fff;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer" onclick="go('chat')">
+   <div class="row" style="gap:10px;min-width:0">
+     <div style="position:relative">
+       <div class="av" style="width:46px;height:46px;font-size:19px;background:linear-gradient(135deg,${c.g})">${c.e}</div>
+       ${c.u?`<span style="position:absolute;top:-2px;right:-3px;background:var(--red);color:#fff;font-size:10px;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff">${c.u}</span>`:''}
+     </div>
+     <div style="min-width:0">
+       <div class="row" style="gap:6px"><b style="font-size:14.5px">${c.n}</b><span class="tag" style="font-size:9px">${c.tag}</span></div>
+       <div style="font-size:12.5px;color:var(--t3);margin-top:5px;max-width:196px" class="ell">${c.l}</div>
+     </div>
+   </div>
+   <div style="text-align:right;flex-shrink:0;padding-left:8px"><div style="font-size:11px;color:var(--t4)">${c.t}</div></div>
+ </div>`).join('')}
+ ${tabbar('message')}
+</div>`});
+
+/* ---------- 13 IM 会话 ---------- */
+add({id:'chat',group:'沟通与社区',name:'IM 会话',sub:'议价是二手交易的核心动作。把议价做成结构化卡片，可一键转为订单金额，避免口头承诺纠纷。',
+goal:'提供流畅的咨询体验，并把议价结果结构化沉淀到交易链路。',
+els:['顶部：卖家昵称、在线状态、商品卡快捷入口','消息区：商品卡片首条自动发送、文本/图片/语音、议价卡片','系统提示条（安全提醒、状态变更）','快捷短语栏','底部输入：键盘/语音切换、图片、拍照、常用语','议价卡片：金额 + 有效期 + 接受/拒绝/还价'],
+inter:['进入会话 → 自动发送商品卡片（带图、价、标题）','买家发起议价 → 生成卡片，卖家点"接受"→ 订单金额自动更新','卖家接受议价 → 买家端出现"去下单"按钮，直达确认订单','点击"发送地址" → 结构化地址卡，买家一键填入','输入外链/手机号 → 风控折叠并提示风险','消息发送失败 → 红色感叹号，点击重发'],
+states:['在线/离线','对方已读','发送中/发送失败','议价中/议价成功/议价过期','商品已售出（提示）','被禁言','对方拉黑'],
+flow:'咨询 → 议价 → 接受 → 生成优惠 → 下单',
+render:()=>`<div class="page on" style="display:flex;flex-direction:column">
+ ${sb(false)}
+ <div class="navbar" style="border-bottom:1px solid var(--line)">
+   <div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+   <div class="title" style="font-size:15.5px">游戏仓鼠</div>
+   <div class="right"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="5" r="1.6" fill="#1A1A1A"/><circle cx="12" cy="12" r="1.6" fill="#1A1A1A"/><circle cx="12" cy="19" r="1.6" fill="#1A1A1A"/></svg></div>
+ </div>
+ <div style="flex:1;overflow-y:auto;background:#F4F5F7;padding:12px">
+   <div style="text-align:center;font-size:11px;color:var(--t4);margin-bottom:12px">今天 22:41</div>
+   <div class="row" style="justify-content:center;margin-bottom:14px">
+     <div style="background:rgba(0,0,0,.05);font-size:11px;color:var(--t2);padding:4px 10px;border-radius:5px">平台不会以任何理由要求你添加外部联系方式</div>
+   </div>
+   <div class="row" style="align-items:flex-start;gap:8px;margin-bottom:14px">
+     <div class="av" style="width:34px;height:34px;font-size:15px;background:linear-gradient(135deg,#FFD86B,#FFB300)">游</div>
+     <div style="background:#fff;border-radius:11px;padding:11px;max-width:250px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+       <div style="font-size:13.5px">你好，Switch 还在的，配件齐全，支持验货～</div>
+     </div>
+   </div>
+   <div style="background:#fff;border-radius:11px;padding:9px;max-width:220px;margin:0 0 14px auto;display:flex;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+     <div style="width:46px;height:46px;border-radius:6px;background:linear-gradient(135deg,#EAF0E9,#C4D6C2);display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0">🎮</div>
+     <div style="min-width:0">
+       <div style="font-size:11.5px;color:var(--t2)" class="ell">Nintendo Switch OLED…</div>
+       <div class="price" style="font-size:14px;margin-top:3px"><small>¥</small>1380</div>
+     </div>
+   </div>
+   <div class="row" style="align-items:flex-start;gap:8px;margin-bottom:14px">
+     <div class="av" style="width:34px;height:34px;font-size:15px;background:linear-gradient(135deg,#FFD86B,#FFB300)">游</div>
+     <div style="background:#fff;border-radius:11px;padding:11px;max-width:250px;box-shadow:0 1px 3px rgba(0,0,0,.05)"><div style="font-size:13.5px">诚心要的话可以小刀，您出个价？</div></div>
+   </div>
+   <div style="background:#fff;border-radius:11px;overflow:hidden;max-width:250px;margin:0 0 8px auto;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+     <div style="background:linear-gradient(135deg,var(--xy),var(--xy-deep));padding:8px 11px;font-size:11.5px;color:#5A4000;font-weight:600">🤝 议价请求 · 24 小时内有效</div>
+     <div style="padding:11px">
+       <div class="row" style="gap:6px;align-items:baseline"><span style="font-size:12px;color:var(--t2)">买家出价</span><span class="price" style="font-size:21px"><small>¥</small>1200</span><span style="font-size:11px;color:var(--t4);text-decoration:line-through">¥1380</span></div>
+       <div style="font-size:11px;color:var(--t3);margin-top:5px">接受后买家可直接按下单价下单</div>
+     </div>
+     <div class="row" style="border-top:1px solid var(--line)">
+       <div style="flex:1;text-align:center;padding:9px;font-size:13px;color:var(--t2);border-right:1px solid var(--line);cursor:pointer">拒绝</div>
+       <div style="flex:1;text-align:center;padding:9px;font-size:13px;color:var(--red);font-weight:600;cursor:pointer">还价</div>
+       <div style="flex:1;text-align:center;padding:9px;font-size:13px;color:#5A4000;font-weight:700;background:var(--xy-light);cursor:pointer" onclick="go('confirm')">接受</div>
+     </div>
+   </div>
+   <div style="text-align:right;font-size:10.5px;color:var(--t4);margin-bottom:14px">议价待处理</div>
+ </div>
+ <div class="row" style="gap:6px;padding:6px 12px;background:#fff;border-top:1px solid var(--line);overflow-x:auto">
+   ${['还能便宜吗？','包邮吗？','支持验货吗？','什么时候发货？','可以面交吗？'].map(q=>`<div class="pill" style="font-size:11.5px">${q}</div>`).join('')}
+ </div>
+ <div class="row" style="gap:10px;background:#fff;padding:9px 12px 22px;border-top:1px solid var(--line)">
+   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round"><path d="M12 16V5m0 0L8 9m4-4 4 4M5 19h14"/></svg>
+   <div class="grow" style="background:#F4F5F7;border-radius:18px;height:36px;display:flex;align-items:center;padding:0 13px">
+     <span style="font-size:13px;color:var(--t4)">说点什么…</span>
+   </div>
+   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="11" r="1.6"/><path d="m4 17 4.5-4 3 2.6L15 12l5 4.4"/></svg>
+   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+ </div>
+</div>`});
+/* ---------- 14 我的 ---------- */
+add({id:'mine',group:'用户与信任',name:'我的',sub:'个人中心是能力聚合页。顶部信用资产与订单状态快捷入口优先，其余按使用频次组织。',
+goal:'提供账户、资产、订单、工具的统一入口，并强化信用心智。',
+els:['用户信息区：头像、昵称、信用分、实名状态','资产栏：鱼币、优惠券、收藏、足迹','我的订单横向入口（5 个状态带角标）','工具宫格：我发布的、我卖出的、我买到的、免费送','设置入口：地址、客服、账号安全'],
+inter:['点击头像 → 个人资料编辑','点击信用分 → 信用中心','点击订单状态图标 → 对应订单列表','点击"我发布的" → 卖家商品管理','点击设置 → 账号安全、隐私、通知、关于','未登录 → 展示登录引导态'],
+states:['已登录','未登录','未实名','有未读消息','被处罚（展示处置提示）','卖家身份'],
+flow:'我的 → 订单/资产/工具 → 目标页',
+render:()=>`<div class="page on has-tabbar">
+ ${sb(false)}
+ <div style="background:linear-gradient(160deg,#FFE9A8,#FFCE3D 55%,#FFC01F);padding:0 14px 16px">
+   <div class="between" style="padding:6px 0 14px">
+     <div style="font-size:17px;font-weight:700">我的</div>
+     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.9-.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.1-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.1V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.6 1.1Z"/></svg>
+   </div>
+   <div class="row" style="gap:12px" onclick="go('shop')">
+     <div class="av" style="width:58px;height:58px;font-size:25px;background:linear-gradient(135deg,#fff,#F0F2F5);color:#8A6600">🐟</div>
+     <div class="grow">
+       <div class="row" style="gap:6px"><b style="font-size:18px">小苗同学</b><span class="tag" style="background:rgba(0,0,0,.08);color:#5A4000">实人认证</span></div>
+       <div class="row" style="gap:7px;margin-top:6px;font-size:11.5px;color:#7A5A00">
+         <span onclick="go('credit')">信用分 <b style="font-size:13px">762</b></span><span style="opacity:.5">|</span><span>好评率 98.6%</span><span style="opacity:.5">|</span><span>注册 128 天</span>
+       </div>
+     </div>
+     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7A5A00" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+   </div>
+   <div class="row" style="margin-top:16px;background:rgba(255,255,255,.3);border-radius:11px;padding:11px 0">
+     ${[['1,286','鱼币'],['12','优惠券'],['86','收藏'],['342','足迹']].map(a=>
+       `<div style="flex:1;text-align:center;cursor:pointer"><div style="font-size:16px;font-weight:700">${a[0]}</div><div style="font-size:11px;color:#7A5A00;margin-top:2px">${a[1]}</div></div>`).join('')}
+   </div>
+ </div>
+ <div class="card mb8" style="margin:8px">
+   <div class="between" style="padding:12px 14px 6px">
+     <b style="font-size:14.5px">我的订单</b>
+     <span style="font-size:12px;color:var(--t3);cursor:pointer" onclick="go('order-list')">全部订单 ›</span>
+   </div>
+   <div class="row" style="padding:8px 0 14px">
+     ${[['待付款','💳',0],['待发货','📦',1],['待收货','🚚',2],['待评价','⭐',5],['售后','↩',0]].map(o=>
+       `<div style="flex:1;text-align:center;position:relative;cursor:pointer" onclick="go('order-list')">
+         <div style="font-size:23px">${o[1]}</div>
+         <div style="font-size:11.5px;color:var(--t2);margin-top:4px">${o[0]}</div>
+         ${o[2]?`<span style="position:absolute;top:-3px;right:16px;background:var(--red);color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px">${o[2]}</span>`:''}
+       </div>`).join('')}
+   </div>
+ </div>
+ <div class="card mb8" style="margin:0 8px;padding:4px 0">
+   ${[['📋','我发布的','在售 8 件','my-items'],['💰','我卖出的','累计 ¥12,860','order-list'],['🧾','我买到的','累计 23 单','order-list'],['🎁','免费送记录','已送出 6 件','home']].map(i=>
+     `<div class="between" style="padding:13px 14px;cursor:pointer" onclick="go('${i[3]}')">
+       <div class="row" style="gap:11px"><span style="font-size:18px">${i[0]}</span><span style="font-size:14px">${i[1]}</span></div>
+       <div class="row" style="gap:5px;font-size:12px;color:var(--t3)">${i[2]}<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+     </div>`).join('')}
+ </div>
+ <div class="card" style="margin:0 8px 8px;padding:4px 0">
+   ${[['🛡','信用中心','信用分 762 · 良好','credit'],['🏠','收货地址','管理 3 个地址','order-list'],['🎧','客服中心','在线 9:00-22:00','message'],['⚙️','设置','账号安全 / 隐私 / 通知','mine']].map(i=>
+     `<div class="between" style="padding:13px 14px;cursor:pointer" onclick="go('${i[3]}')">
+       <div class="row" style="gap:11px"><span style="font-size:18px">${i[0]}</span><span style="font-size:14px">${i[1]}</span></div>
+       <div class="row" style="gap:5px;font-size:12px;color:var(--t3)">${i[2]}<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
+     </div>`).join('')}
+ </div>
+ ${tabbar('mine')}
+</div>`});
+
+/* ---------- 15 卖家主页 ---------- */
+add({id:'shop',group:'用户与信任',name:'卖家主页',sub:'买家的决策一半基于商品、一半基于人。主页要把"可信"可视化：信用分、历史成交、评价标签、回复速度。',
+goal:'建立卖家可信度，促进关注与横向转化。',
+els:['卖家信息：头像、昵称、认证标识、信用分、好评率','数据条：在售、已售、关注数、回复时长','评价标签云（买家真实评价聚合）','商品列表：在售 / 已售切换','关注按钮','举报入口'],
+inter:['点击"关注" → 变为已关注，同步到消息流','切换"在售/已售" → 列表切换','点击商品 → 详情页','点击评价标签 → 展开对应评价列表','点击"聊一聊" → 进入 IM 会话','本人访问 → 显示"编辑资料/分享主页"'],
+states:['在售有货','全部售出','被封禁','未认证','已关注/未关注','本人视角'],
+flow:'卖家主页 → 浏览商品 → 咨询 → 下单',
+render:()=>`<div class="page on">
+ ${sb(false)}
+ <div style="background:linear-gradient(160deg,#FFE9A8,#FFCE3D 60%,#FFC01F);padding:0 14px 14px">
+   <div class="row" style="justify-content:space-between;padding:6px 0 12px">
+     <div style="width:31px;height:31px;border-radius:50%;background:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="back()">
+       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3D2B00" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+     <div style="font-size:19px">⋯</div>
+   </div>
+   <div class="row" style="gap:12px">
+     <div class="av" style="width:60px;height:60px;font-size:26px;background:linear-gradient(135deg,#fff,#F0F2F5);color:#8A6600">游</div>
+     <div class="grow">
+       <div class="row" style="gap:6px"><b style="font-size:18px">游戏仓鼠</b><span class="tag" style="background:rgba(0,0,0,.08);color:#5A4000">实人认证</span></div>
+       <div style="font-size:11.5px;color:#7A5A00;margin-top:6px">北京 · 朝阳区 · 加入 3 年 2 个月</div>
+     </div>
+   </div>
+   <div class="row" style="gap:8px;margin-top:14px">
+     <div class="btn" style="flex:1;height:36px;background:rgba(255,255,255,.92);color:#5A4000;font-size:14px" onclick="go('chat')">聊一聊</div>
+     <div class="btn" style="flex:1;height:36px;background:var(--xy-deep);color:#fff;font-size:14px">+ 关注</div>
+   </div>
+ </div>
+ <div class="card mb8" style="margin:8px;padding:14px">
+   <div class="row" style="text-align:center">
+     ${[['782','信用分'],['99.2%','好评率'],['12','在售'],['268','已售'],['3分钟','平均回复']].map((d,i)=>
+       `<div style="flex:1;${i<4?'border-right:1px solid var(--line)':''}"><div style="font-size:16px;font-weight:700;color:${i===0?'#FF8F00':'var(--t1)'}">${d[0]}</div><div style="font-size:10.5px;color:var(--t3);margin-top:3px">${d[1]}</div></div>`).join('')}
+   </div>
+   <div class="hair" style="margin:13px 0 11px"></div>
+   <div style="font-size:12.5px;color:var(--t2);margin-bottom:8px">买家印象</div>
+   <div style="display:flex;flex-wrap:wrap;gap:6px">
+     ${[['描述相符',128],['发货很快',96],['包装用心',74],['沟通顺畅',63],['物超所值',55],['实物更好看',41]].map(t=>`<span class="tag" style="padding:4px 9px;font-size:11.5px">${t[0]} ${t[1]}</span>`).join('')}
+   </div>
+ </div>
+ <div class="row" style="background:#fff;padding:0 4px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:12">
+   ${['在售 12','已售 268','评价 268'].map((t,i)=>
+     `<div style="padding:11px 15px;font-size:13.5px;color:${i===0?'var(--t1)':'var(--t2)'};font-weight:${i===0?600:400};position:relative;cursor:pointer">
+       ${t}${i===0?'<div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:18px;height:3px;background:var(--xy);border-radius:2px"></div>':''}</div>`).join('')}
+ </div>
+ <div style="padding:9px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+   ${ITEMS.filter(i=>[3,2,10,11,1,6].includes(i.id)).map(cardItem).join('')}
+ </div>
+</div>`});
+
+/* ---------- 16 我发布的 ---------- */
+add({id:'my-items',group:'发布与管理',name:'我发布的',sub:'卖家侧的核心运营位。曝光数据反馈 + 一键促成交工具（擦亮、降价、改标题），直接提升供给效率。',
+goal:'让卖家看清商品表现并快速采取提升曝光的动作。',
+els:['状态 tab：在售 / 已售出 / 审核中 / 已下架','商品卡：图、标题、价格、浏览/想要数、状态','数据条：今日浏览、今日想要、咨询数、待发货','快捷操作：擦亮、降价、编辑、下架、删除','批量管理入口','继续发布按钮'],
+inter:['点击"擦亮" → 商品排到类目前列，每日限 1 次 + Toast','点击"降价" → 弹窗输入新价，同步推送给收藏用户','点击"下架" → 二次确认，商品进入已下架','点击"删除" → 二次确认（已售商品不可删）','审核中商品 → 展示审核进度；不通过展示原因与申诉','点击商品 → 预览买家视角详情'],
+states:['在售','已售出','审核中','审核不通过','已下架','违规冻结'],
+flow:'我发布的 → 擦亮/降价 → 提升曝光 → 咨询 → 成交',
+render:()=>`<div class="page on">
+ ${sb(false)}
+ <div class="navbar" style="border-bottom:1px solid var(--line)">
+   <div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+   <div class="title">我发布的</div>
+   <div class="right" style="font-size:12.5px;color:var(--t3)">批量管理</div>
+ </div>
+ <div class="card mb8" style="margin:8px;padding:14px;background:linear-gradient(100deg,#FFF8E4,#FFFDF8)">
+   <div class="row" style="text-align:center">
+     ${[['1,286','今日浏览'],['42','今日想要'],['8','咨询未回复'],['3','待发货']].map((d,i)=>
+       `<div style="flex:1;${i<3?'border-right:1px solid #F0E4C4':''}"><div style="font-size:17px;font-weight:700;color:#C98A00">${d[0]}</div><div style="font-size:10.5px;color:var(--t2);margin-top:3px">${d[1]}</div></div>`).join('')}
+   </div>
+ </div>
+ <div class="row" style="background:#fff;padding:0 4px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:12">
+   ${['在售 8','已售出 24','审核中 1','已下架 3'].map((t,i)=>
+     `<div style="padding:11px 13px;font-size:13px;color:${i===0?'var(--t1)':'var(--t2)'};font-weight:${i===0?600:400};position:relative;white-space:nowrap;cursor:pointer">
+       ${t}${i===0?'<div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:3px;background:var(--xy);border-radius:2px"></div>':''}</div>`).join('')}
+ </div>
+ ${[
+  {t:'Nintendo Switch OLED 白色主机',p:1380,emo:'🎮',g:'#EAF0E9,#C4D6C2',v:'3,820',w:'412',s:'在售',c:'#2E9E52'},
+  {t:'Sony WH-1000XM4 头戴耳机',p:890,emo:'🎧',g:'#EDEAF2,#CFC8DE',v:'1,204',w:'86',s:'在售',c:'#2E9E52'},
+  {t:'Kindle Paperwhite 4 8G',p:380,emo:'📚',g:'#E9EDF2,#C9D3DE',v:'642',w:'31',s:'在售',c:'#2E9E52'},
+  {t:'宜家 MARKUS 办公椅',p:280,emo:'🪑',g:'#F0EFE9,#D6D2C4',v:'218',w:'12',s:'审核中',c:'#FF7A00'}
+ ].map(it=>`<div class="card mb8" style="margin:8px;padding:11px">
+   <div class="row" style="gap:10px">
+     <div style="width:70px;height:70px;border-radius:8px;background:linear-gradient(135deg,${it.g});display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0">${it.emo}</div>
+     <div class="grow" style="min-width:0">
+       <div class="ell" style="font-size:14px">${it.t}</div>
+       <div class="price" style="font-size:17px;margin-top:5px"><small>¥</small>${it.p}</div>
+       <div style="font-size:11px;color:var(--t3);margin-top:5px">👁 ${it.v} 浏览 · ♡ ${it.w} 想要</div>
+     </div>
+     <span style="font-size:11.5px;color:${it.c};font-weight:600">${it.s}</span>
+   </div>
+   <div class="row" style="gap:7px;margin-top:11px;justify-content:flex-end">
+     ${['擦亮','降价','编辑','下架'].map((b,i)=>`<span class="btn ${i===0?'btn-y':'btn-o'} btn-s">${b}</span>`).join('')}
+   </div>
+ </div>`).join('')}
+ <div style="padding:6px 8px 24px">
+   <div class="btn btn-o btn-full" style="height:44px" onclick="go('publish')">+ 继续发布闲置</div>
+ </div>
+</div>`});
+
+/* ---------- 17 信用中心 ---------- */
+add({id:'credit',group:'用户与信任',name:'信用中心',sub:'信用是二手交易的隐形货币。把分数、权益、加分路径显性化，能把"守规矩"变成可感知的收益。',
+goal:'提升用户对信用体系的认知与履约意愿，降低平台纠纷。',
+els:['信用分环形图 + 等级 + 更新时间','权益卡：免押金、优先曝光、专属客服、提额','加分任务：实人认证、绑定手机、按时发货、获得好评','信用明细流水（加分/扣分记录）','规则说明与申诉入口','降级/处罚预警'],
+inter:['点击"加分任务" → 跳转对应操作（认证/绑定等）','点击"明细" → 查看按月分组的流水','发生扣分 → 首页红点提示 + 展示扣分原因','点击"规则" → 展示评分维度与权重','被处罚 → 展示处罚原因、期限与申诉按钮'],
+states:['优秀/良好/一般/较差','分数变动中','有扣分未读','处罚中','未认证（展示加分引导）'],
+flow:'信用中心 → 完成加分任务 → 提升信用 → 解锁权益',
+render:()=>`<div class="page on">
+ ${sb(false)}
+ <div class="navbar" style="border-bottom:1px solid var(--line)">
+   <div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+   <div class="title">信用中心</div>
+   <div class="right" style="font-size:12.5px;color:var(--t3)">规则</div>
+ </div>
+ <div style="background:linear-gradient(165deg,#FFF0C2,#FFCE3D 62%,#FFC01F);padding:6px 16px 56px;text-align:center">
+   <div style="position:relative;width:146px;height:146px;margin:6px auto 0">
+     <svg width="146" height="146" viewBox="0 0 146 146">
+       <circle cx="73" cy="73" r="63" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="11"/>
+       <circle cx="73" cy="73" r="63" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round"
+         stroke-dasharray="396" stroke-dashoffset="95" transform="rotate(-90 73 73)"/>
+     </svg>
+     <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+       <div style="font-size:40px;font-weight:800;line-height:1">762</div>
+       <div style="font-size:12px;color:#7A5A00;margin-top:4px">信用良好</div>
+     </div>
+   </div>
+   <div style="font-size:12.5px;color:#7A5A00;margin-top:10px">超过 <b>72%</b> 的用户 · 每月 1 日更新</div>
+ </div>
+ <div class="card mb8" style="margin:-46px 8px 8px;padding:14px">
+   <div style="font-size:14px;font-weight:600;margin-bottom:11px">我的权益</div>
+   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px 4px;text-align:center">
+     ${[['🛡','免押金'],['🔥','优先曝光'],['🎧','专属客服'],['💳','提额']].map(e=>
+       `<div><div style="height:42px;width:42px;margin:0 auto;border-radius:12px;background:var(--xy-light);display:flex;align-items:center;justify-content:center;font-size:20px">${e[0]}</div><div style="font-size:11px;color:var(--t2);margin-top:5px">${e[1]}</div></div>`).join('')}
+   </div>
+ </div>
+ <div class="card mb8" style="margin:0 8px;padding:14px">
+   <div class="between" style="margin-bottom:8px"><b style="font-size:14px">加分任务</b><span style="font-size:11.5px;color:var(--t3)">本月还可加 38 分</span></div>
+   ${[['完成实人认证','+30','去认证'],['绑定手机号','+10','去绑定']].map(t=>`<div class="between" style="padding:9px 0">
+       <div><div style="font-size:13.5px">${t[0]}</div><div style="font-size:11px;color:var(--t3);margin-top:3px">完成后立即生效</div></div>
+       <div class="row" style="gap:9px"><span style="font-size:13px;color:#FF7A00;font-weight:600">${t[1]}</span><span class="btn btn-y btn-s" style="height:28px;font-size:12px">${t[2]}</span></div>
+     </div>`).join('')}
+   ${[['保持按时发货','+8','已完成'],['累计 5 条好评','+5','进行中 3/5'],['完成一笔交易','+2','进行中 0/1']].map(t=>`<div class="between" style="padding:9px 0">
+       <div style="font-size:13.5px;color:${t[2]==='已完成'?'var(--t3)':'var(--t1)'}">${t[0]}</div>
+       <div class="row" style="gap:9px"><span style="font-size:13px;color:var(--t3);font-weight:600">${t[1]}</span><span style="font-size:11.5px;color:${t[2]==='已完成'?'#2E9E52':'var(--t3)'}">${t[2]}</span></div>
+     </div>`).join('')}
+ </div>
+ <div class="card" style="margin:0 8px 8px;padding:14px">
+   <b style="font-size:14px">信用明细</b>
+   ${[['获得好评','+2','09-14'],['按时发货','+1','09-12'],['发布违规商品','-10','09-08'],['完成实人认证','+30','08-20'],['完成交易','+2','08-15']].map(l=>
+     `<div class="between" style="padding:9px 0;border-bottom:1px solid #F6F7F9">
+       <div><div style="font-size:13px">${l[0]}</div><div style="font-size:11px;color:var(--t4);margin-top:2px">${l[2]}</div></div>
+       <span style="font-size:14px;font-weight:700;color:${l[1].startsWith('+')?'#2E9E52':'var(--red)'}">${l[1]}</span>
+     </div>`).join('')}
+   <div style="text-align:center;font-size:12px;color:var(--t3);padding:12px 0 2px;cursor:pointer">查看全部明细 ›</div>
+ </div>
+</div>`});
+
+/* ---------- 18 加载态 ---------- */
+add({id:'state-loading',group:'全局状态',name:'加载态 · 全套',sub:'加载反馈决定"快慢感知"。骨架屏优于转圈：它提前告知页面结构，把等待变成可预期的 200ms。',
+goal:'统一全端加载反馈，避免白屏与重复触发，降低用户等待焦虑。',
+els:['骨架屏（首屏/列表/详情）','上拉加载更多（底部 spinner + 文案）','下拉刷新指示器','按钮提交中（禁用 + 内联 spinner）','图片上传进度','局部加载（Tab 切换、弹窗内容）'],
+inter:['首屏：骨架屏，禁止用户操作，超时 8s 转异常态','列表：保留旧内容 + 底部 loading，无更多数据时展示"没有更多了"','按钮：点击后立即置为 loading 并禁用，防重复提交（配合幂等键）','上传：单图进度圈，全部完成才可提交','刷新：下拉距离 >60px 触发，展示 1s 内最少停留时间避免闪烁'],
+states:['首屏骨架屏','列表加载中','加载更多','无更多数据','按钮提交中','上传中','刷新中','加载超时'],
+flow:'进入页面 → 骨架屏 → 数据到达 → 内容渲染（或超时转异常态）',
+tabs:[
+ {name:'首页骨架屏',html:`<div style="background:linear-gradient(180deg,var(--xy),#FFDA71 70%,var(--bg));padding-bottom:8px">
+   ${sb(false)}
+   <div style="padding:2px 12px 0"><div class="row" style="gap:8px">
+     <div class="sk" style="width:52px;height:16px;border-radius:8px;background:rgba(255,255,255,.5)"></div>
+     <div class="sk" style="flex:1;height:34px;border-radius:17px"></div>
+     <div class="sk" style="width:23px;height:23px;border-radius:50%"></div>
+   </div></div>
+   <div class="row" style="gap:7px;padding:11px 12px 4px">${[62,52,68,52,52,58].map(w=>`<div class="sk" style="width:${w}px;height:26px;border-radius:13px;background:rgba(255,255,255,.55)"></div>`).join('')}</div>
+ </div>
+ <div style="padding:9px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+   ${[180,150,200,160,140,190].map((h,i)=>`<div class="card" style="overflow:hidden">
+     <div class="sk" style="height:${h}px"></div>
+     <div style="padding:9px">
+       <div class="sk" style="height:12px;margin-bottom:6px"></div>
+       <div class="sk" style="height:12px;width:72%"></div>
+       <div class="row" style="gap:8px;margin-top:10px"><div class="sk" style="height:16px;width:58px"></div><div class="sk" style="height:12px;width:34px;margin-left:auto"></div></div>
+       <div class="sk" style="height:10px;width:80%;margin-top:9px"></div>
+     </div></div>`).join('')}
+ </div>`},
+ {name:'详情页骨架',html:`${sb(false)}
+  <div class="sk" style="height:340px"></div>
+  <div style="background:#fff;padding:15px">
+    <div class="sk" style="height:26px;width:130px"></div>
+    <div class="sk" style="height:15px;margin-top:13px"></div>
+    <div class="sk" style="height:15px;width:76%;margin-top:8px"></div>
+    <div class="row" style="gap:7px;margin-top:13px">${[52,44,64,58].map(w=>`<div class="sk" style="height:17px;width:${w}px;border-radius:3px"></div>`).join('')}</div>
+  </div>
+  <div class="divider"></div>
+  <div style="background:#fff;padding:15px">
+    ${[100,96,88,72,54].map(w=>`<div class="sk" style="height:12px;width:${w}%;margin-bottom:11px"></div>`).join('')}
+  </div>
+  <div class="divider"></div>
+  <div style="background:#fff;padding:15px" class="row">
+    <div class="sk" style="width:44px;height:44px;border-radius:50%"></div>
+    <div style="flex:1;margin-left:11px"><div class="sk" style="height:14px;width:96px"></div><div class="sk" style="height:11px;width:150px;margin-top:9px"></div></div>
+  </div>`},
+ {name:'加载更多',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">搜索结果</div><div class="right"></div></div>
+  <div style="padding:9px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    ${ITEMS.slice(0,6).map(cardItem).join('')}
+  </div>
+  <div class="row" style="justify-content:center;gap:8px;padding:18px 0 26px">
+    <div class="spin"></div><span style="font-size:12.5px;color:var(--t3)">正在加载更多…</span>
+  </div>`},
+ {name:'无更多数据',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">搜索结果</div><div class="right"></div></div>
+  <div style="padding:9px;display:grid;grid-template-columns:1fr 1fr;gap:8px">${ITEMS.slice(0,4).map(cardItem).join('')}</div>
+  <div class="row" style="justify-content:center;gap:9px;padding:22px 0 26px">
+    <div style="width:26px;height:1px;background:#DDD"></div>
+    <span style="font-size:12px;color:var(--t4)">没有更多了</span>
+    <div style="width:26px;height:1px;background:#DDD"></div>
+  </div>`},
+ {name:'按钮提交中',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">确认订单</div><div class="right"></div></div>
+  <div class="card p12" style="margin:8px"><div class="row" style="gap:10px">
+    <div style="width:66px;height:66px;border-radius:8px;background:linear-gradient(135deg,#EAF0E9,#C4D6C2);display:flex;align-items:center;justify-content:center;font-size:28px">🎮</div>
+    <div><div style="font-size:13.5px">Nintendo Switch OLED 白色主机</div><div class="price" style="font-size:16px;margin-top:6px"><small>¥</small>1380</div></div>
+  </div></div>
+  <div class="card p12" style="margin:0 8px;font-size:13px;color:var(--t2);line-height:2.1">
+    <div class="between"><span>商品金额</span><span style="color:var(--t1)">¥1380</span></div>
+    <div class="between"><span>运费</span><span style="color:var(--t1)">包邮 ¥0</span></div>
+  </div>
+  <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:9px 14px 20px;display:flex;align-items:center;z-index:26">
+    <div class="grow" style="font-size:12.5px;color:var(--t2)">实付 <span class="price" style="font-size:20px"><small>¥</small>1380</span></div>
+    <div class="btn" style="width:132px;height:44px;background:#F0D98A;color:#8A6A20">
+      <span class="spin" style="width:15px;height:15px;border-width:2px;border-color:rgba(90,64,0,.3);border-top-color:#5A4000;margin-right:7px"></span>提交中…
+    </div>
+  </div>
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);border-radius:10px;padding:14px 18px;text-align:center;z-index:30">
+    <div class="spin" style="width:26px;height:26px;border-width:2.5px;border-color:rgba(255,255,255,.3);border-top-color:#fff;margin:0 auto 8px"></div>
+    <div style="font-size:12px;color:#fff">正在创建订单</div>
+  </div>`},
+ {name:'图片上传中',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">发布闲置</div><div class="right"></div></div>
+  <div style="padding:12px 14px">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px">
+      <div style="height:112px;background:linear-gradient(135deg,#EAF0E9,#C4D6C2);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:32px;position:relative">🎮<span style="position:absolute;top:4px;left:4px;background:var(--xy);font-size:9px;padding:1px 4px;border-radius:3px;color:#5A4000">主图</span></div>
+      <div style="height:112px;background:#F2F3F5;border-radius:9px;display:flex;align-items:center;justify-content:center;position:relative">
+        <span style="font-size:22px;opacity:.35">🎮</span>
+        <div style="position:absolute;inset:0;background:rgba(255,255,255,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+          <svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="19" fill="none" stroke="#E3E5E9" stroke-width="4"/><circle cx="23" cy="23" r="19" fill="none" stroke="#FFCE3D" stroke-width="4" stroke-linecap="round" stroke-dasharray="119" stroke-dashoffset="42" transform="rotate(-90 23 23)"/></svg>
+          <span style="font-size:10.5px;color:var(--t2)">65%</span>
+        </div>
+      </div>
+      <div style="height:112px;background:#F2F3F5;border-radius:9px;display:flex;align-items:center;justify-content:center;position:relative">
+        <span style="font-size:22px;opacity:.35">🎮</span>
+        <div style="position:absolute;inset:0;background:rgba(255,255,255,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+          <div class="spin" style="width:24px;height:24px"></div><span style="font-size:10.5px;color:var(--t2)">上传中</span>
+        </div>
+      </div>
+    </div>
+    <div class="card p12" style="margin-top:10px;background:#F7F8FA">
+      <div style="font-size:12px;color:var(--t2);line-height:1.9">图片上传完成前无法提交发布<br>大图已自动压缩至 1080px，请保持网络畅通</div>
+    </div>
+  </div>`}
+]});
+
+/* ---------- 19 空态 ---------- */
+add({id:'state-empty',group:'全局状态',name:'空态 · 全套',sub:'空态是最便宜的留人机会。好的空态 = 一句解释 + 一个立即能做的动作，而不是一句冷冰冰的"暂无数据"。',
+goal:'把"什么都没有"转化为下一步行动，避免用户直接退出。',
+els:['插画/图标（弱品牌化、低饱和）','主文案：说明现状（不是报错）','副文案：解释原因或给出承诺','主 CTA：唯一且明确','次 CTA：备选路径（如订阅到货提醒、切换条件）','推荐兜底内容（能推就推）'],
+inter:['主 CTA 点击 → 直达目标页（发布/逛分类/搜索）','搜索无结果 → 提供"订阅到货提醒"，命中后订阅消息通知','空态同样上报埋点，用于识别真实空态率','有筛选条件时，主 CTA 改为"清空筛选条件"','空态不展示加载动画，避免"假加载"误解'],
+states:['首页无推荐（新用户冷启动）','搜索无结果','订单空态','消息空态','收藏/足迹空态','我发布的空态','筛选后无结果','圈子空态'],
+flow:'进入页面 → 数据为空 → 展示空态 → 点击 CTA → 转化或兜底推荐',
+tabs:[
+ {name:'首页无推荐',html:`<div style="background:linear-gradient(180deg,var(--xy),#FFDA71 70%,var(--bg));padding-bottom:8px">
+   ${sb(false)}
+   <div style="padding:2px 12px 0"><div class="row" style="gap:8px">
+     <div class="row" style="gap:2px;font-size:13px;font-weight:600">杭州<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="3"><path d="M5 8l7 7 7-7"/></svg></div>
+     <div class="grow" style="background:#fff;border-radius:18px;height:34px;display:flex;align-items:center;padding:0 12px;gap:7px" onclick="go('search')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9A9A9A" stroke-width="2.2"><circle cx="11" cy="11" r="7"/></svg><span style="font-size:12.5px;color:var(--t3)">搜索闲置好物</span></div>
+   </div></div>
+ </div>
+ <div style="text-align:center;padding:76px 40px 0">
+   <div style="font-size:64px;line-height:1">📭</div>
+   <div style="font-size:16px;font-weight:600;margin-top:18px">这里还空空如也</div>
+   <div style="font-size:12.5px;color:var(--t3);margin-top:8px;line-height:1.8">刚来到闲置集？先挑几个感兴趣的类目<br>我们会为你挑选同城好物</div>
+   <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px">
+     ${['📱 手机数码','🏠 家居家电','📚 图书文具','🎮 潮流玩具','👗 服饰鞋包','⚽ 运动户外'].map(c=>`<div class="pill" onclick="go('search-result')">${c}</div>`).join('')}
+   </div>
+   <div class="btn btn-y" style="margin:26px auto 0;width:170px;height:42px" onclick="go('home')">看看同城好物</div>
+ </div>`},
+ {name:'搜索无结果',html:`${sb(false)}
+  <div style="background:#fff;padding:6px 12px 8px">
+    <div class="row" style="gap:9px">
+      <div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div>
+      <div class="grow" style="background:#F3F4F6;border-radius:16px;height:33px;display:flex;align-items:center;padding:0 11px;gap:7px"><span style="font-size:12.5px">「绝版限定手办 xyz」</span></div>
+      <div style="font-size:12.5px;color:var(--t2)">搜索</div>
+    </div>
+  </div>
+  <div style="text-align:center;padding:66px 34px 0">
+    <div style="font-size:60px;line-height:1">🔍</div>
+    <div style="font-size:15.5px;font-weight:600;margin-top:16px">没有找到相关闲置</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:8px">换个关键词，或订阅到货提醒，有货第一时间通知你</div>
+    <div class="row" style="gap:9px;justify-content:center;margin-top:20px">
+      <div class="btn btn-o" style="width:118px;height:38px;font-size:13.5px" onclick="go('search')">修改关键词</div>
+      <div class="btn btn-y" style="width:118px;height:38px;font-size:13.5px">🔔 到货提醒</div>
+    </div>
+  </div>
+  <div style="margin-top:28px;background:#fff;padding:12px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:9px">猜你想找</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${ITEMS.slice(6,10).map(cardItem).join('')}</div>
+  </div>`},
+ {name:'订单空态',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">我的订单</div><div class="right"></div></div>
+  <div class="row" style="background:#fff;padding:0 4px;border-bottom:1px solid var(--line)">
+    ${['全部','待付款','待发货','待收货','已完成','售后'].map((t,i)=>`<div style="padding:11px 13px;font-size:13.5px;color:${i===0?'var(--t1)':'var(--t2)'};font-weight:${i===0?600:400};position:relative;white-space:nowrap">${t}${i===0?'<div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:18px;height:3px;background:var(--xy);border-radius:2px"></div>':''}</div>`).join('')}
+  </div>
+  <div style="text-align:center;padding:88px 40px 0">
+    <div style="font-size:62px;line-height:1">🧾</div>
+    <div style="font-size:16px;font-weight:600;margin-top:16px">还没有相关订单</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:8px">去逛逛，好物都在等你挑</div>
+    <div class="btn btn-y" style="margin:22px auto 0;width:150px;height:40px" onclick="go('home')">去逛逛</div>
+  </div>`},
+ {name:'消息空态',html:`${sb(false)}
+  <div style="background:#fff;padding:8px 0 0"><div style="font-size:19px;font-weight:700;padding:2px 14px 10px">消息</div></div>
+  <div style="text-align:center;padding:96px 40px 0">
+    <div style="font-size:62px;line-height:1">💬</div>
+    <div style="font-size:16px;font-weight:600;margin-top:16px">还没有任何消息</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:8px;line-height:1.8">看到心动的好物，点「我想要」就能和卖家聊聊<br>自己有闲置也可以发布出来</div>
+    <div class="row" style="gap:9px;justify-content:center;margin-top:22px">
+      <div class="btn btn-o" style="width:120px;height:38px;font-size:13.5px" onclick="go('home')">去逛逛</div>
+      <div class="btn btn-y" style="width:120px;height:38px;font-size:13.5px" onclick="go('publish')">发布闲置</div>
+    </div>
+  </div>`},
+ {name:'收藏/足迹空',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">我的收藏</div><div class="right"></div></div>
+  <div style="text-align:center;padding:92px 40px 0">
+    <div style="font-size:60px;line-height:1">♡</div>
+    <div style="font-size:16px;font-weight:600;margin-top:16px">收藏夹还是空的</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:8px">遇到心动的好物，点一下收藏就不会丢啦</div>
+    <div class="btn btn-y" style="margin:22px auto 0;width:150px;height:40px" onclick="go('home')">去挑好物</div>
+  </div>`},
+ {name:'我发布的空',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">我发布的</div><div class="right"></div></div>
+  <div style="text-align:center;padding:84px 36px 0">
+    <div style="font-size:62px;line-height:1">📦</div>
+    <div style="font-size:16px;font-weight:600;margin-top:16px">还没有发布过闲置</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:8px;line-height:1.8">拍张照片，30 秒就能发布<br>让闲置遇到下一个主人</div>
+    <div class="btn btn-y" style="margin:24px auto 0;width:170px;height:42px" onclick="go('publish')">+ 发布第一件闲置</div>
+    <div style="font-size:11.5px;color:var(--t4);margin-top:16px">发布完全免费，不收取任何手续费</div>
+  </div>`},
+ {name:'筛选无结果',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">搜索结果</div><div class="right"></div></div>
+  <div class="row" style="gap:6px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap">
+    ${['价格 500-800','95新','包邮','同城 3km内'].map(t=>`<span class="tag" style="padding:4px 8px;font-size:11.5px">${t} ×</span>`).join('')}
+  </div>
+  <div style="text-align:center;padding:70px 36px 0">
+    <div style="font-size:58px;line-height:1">🎯</div>
+    <div style="font-size:15.5px;font-weight:600;margin-top:16px">条件太严格啦，没有匹配的商品</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:8px">试着放宽价格区间或取消同城限制</div>
+    <div class="btn btn-o" style="margin:20px auto 0;width:160px;height:40px;font-size:13.5px">清空筛选条件</div>
+    <div style="margin-top:26px;background:#fff;padding:12px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:9px;text-align:left">放宽条件后的推荐</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${ITEMS.slice(0,2).map(cardItem).join('')}</div>
+    </div>
+  </div>`}
+]});
+
+/* ---------- 20 异常态 ---------- */
+add({id:'state-error',group:'全局状态',name:'异常态 · 全套',sub:'异常不可避免，但"不知道发生了什么"是可以避免的。每条异常都必须回答三件事：怎么了、为什么、现在能做什么。',
+goal:'降低异常场景下的流失与客诉，把错误转化为可执行的下一步。',
+els:['插画/图标（区分网络、服务、权限、业务四类）','标题：说清发生了什么','说明：原因 + 影响 + 承诺','主 CTA：重试 / 去设置 / 重新登录 / 申诉','次 CTA：联系客服 / 返回首页','错误码（便于客服定位，用户可复制）'],
+inter:['网络异常：监听网络恢复自动重试一次','服务异常：展示错误码，支持复制，重试按钮 3s 防抖','登录失效：静默重登一次，失败才弹登录页','业务异常（已售出/违规）：提供等价替代路径','所有异常上报监控，错误码可追踪到具体请求','禁止展示技术术语（如 NullPointerException）'],
+states:['网络异常','服务异常 500','定位未授权','登录失效','支付失败','内容违规/审核不通过','商品已售出或下架','账号被封禁/禁言','风控拦截','操作超时/库存冲突'],
+flow:'触发异常 → 分类判定 → 展示对应态 → 重试/替代路径 → 恢复或转人工',
+tabs:[
+ {name:'网络异常',html:`${sb(false)}
+  <div style="text-align:center;padding:130px 40px 0">
+    <div style="font-size:62px;line-height:1">📶</div>
+    <div style="font-size:16.5px;font-weight:600;margin-top:18px">网络连接不可用</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:9px;line-height:1.8">请检查手机网络设置<br>恢复后页面会自动重新加载</div>
+    <div class="btn btn-y" style="margin:24px auto 0;width:150px;height:42px">重新加载</div>
+    <div style="font-size:11.5px;color:var(--t4);margin-top:18px">错误码 NET_001 · 可复制</div>
+  </div>
+  <div style="position:absolute;top:44px;left:0;right:0;background:#FFF4E5;color:#B4690E;font-size:12px;padding:8px 14px;text-align:center">当前网络不可用，部分内容可能不是最新的</div>`},
+ {name:'服务异常',html:`${sb(false)}
+  <div style="text-align:center;padding:130px 40px 0">
+    <div style="font-size:62px;line-height:1">🛠</div>
+    <div style="font-size:16.5px;font-weight:600;margin-top:18px">服务开小差了</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:9px;line-height:1.8">我们已收到反馈，正在紧急修复<br>你的数据不会丢失，请稍后重试</div>
+    <div class="btn btn-o" style="margin:24px auto 0;width:150px;height:42px">重试</div>
+    <div class="row" style="justify-content:center;gap:18px;margin-top:18px;font-size:12px;color:var(--t3)">
+      <span>返回首页</span><span style="color:#DDD">|</span><span>联系客服</span>
+    </div>
+    <div style="font-size:11.5px;color:var(--t4);margin-top:14px">错误码 SRV_500 · 时间 23:07:12</div>
+  </div>`},
+ {name:'定位未授权',html:`${sb(false)}
+  <div style="text-align:center;padding:126px 36px 0">
+    <div style="font-size:60px;line-height:1">📍</div>
+    <div style="font-size:16.5px;font-weight:600;margin-top:18px">需要获取位置信息</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:9px;line-height:1.8">用于为你推荐同城的闲置好物<br>我们不会在后台持续获取你的位置</div>
+    <div class="btn btn-y" style="margin:24px auto 0;width:170px;height:42px">去设置开启定位</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:16px;text-decoration:underline">暂不开启，浏览全国好物</div>
+  </div>`},
+ {name:'登录失效',html:`${sb(false)}
+  <div style="text-align:center;padding:126px 36px 0">
+    <div style="font-size:60px;line-height:1">🔐</div>
+    <div style="font-size:16.5px;font-weight:600;margin-top:18px">登录状态已过期</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:9px;line-height:1.8">为了账户安全，请重新登录<br>你的收藏与订单数据都已保留</div>
+    <div class="btn btn-y" style="margin:24px auto 0;width:170px;height:42px" onclick="go('login')">重新登录</div>
+    <div style="font-size:11.5px;color:var(--t4);margin-top:16px">错误码 AUTH_401</div>
+  </div>`},
+ {name:'支付失败',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">支付结果</div><div class="right"></div></div>
+  <div style="text-align:center;padding:44px 34px 0">
+    <div style="width:60px;height:60px;border-radius:50%;background:#FFECEC;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto">✕</div>
+    <div style="font-size:17px;font-weight:700;margin-top:16px">支付未完成</div>
+    <div style="font-size:13px;color:var(--t2);margin-top:9px">原因：银行卡余额不足</div>
+    <div class="card p12" style="margin:20px 0 0;text-align:left">
+      <div class="row" style="gap:10px">
+        <div style="width:52px;height:52px;border-radius:8px;background:linear-gradient(135deg,#EAF0E9,#C4D6C2);display:flex;align-items:center;justify-content:center;font-size:23px">🎮</div>
+        <div class="grow"><div style="font-size:13px" class="ell">Nintendo Switch OLED 白色主机</div><div class="price" style="font-size:16px;margin-top:4px"><small>¥</small>1380</div></div>
+      </div>
+      <div class="hair" style="margin:11px 0"></div>
+      <div class="between" style="font-size:12px;color:var(--t3)"><span>订单保留至</span><span style="color:var(--red)">29:58 后自动关闭</span></div>
+    </div>
+    <div class="btn btn-r" style="margin:22px auto 0;width:200px;height:44px">重新支付</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-top:14px;text-decoration:underline">更换支付方式</div>
+  </div>`},
+ {name:'内容违规',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">发布结果</div><div class="right"></div></div>
+  <div style="text-align:center;padding:38px 24px 0">
+    <div style="width:60px;height:60px;border-radius:50%;background:#FFECEC;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto">!</div>
+    <div style="font-size:17px;font-weight:700;margin-top:16px">商品未通过审核</div>
+    <div style="font-size:13px;color:var(--t2);margin-top:9px">违规类型：疑似发布平台禁售商品</div>
+    <div class="card p12" style="margin:18px 0 0;text-align:left;background:#FFF8F8;border:1px solid #FFDDDD">
+      <div style="font-size:12.5px;color:#C0392B;line-height:1.9">
+        涉及原因：第 2 张图片疑似包含平台禁售品（管制器具）。<br>
+        处理意见：商品已下架，信用分 -10。<br>
+        如你认为判定有误，可在 7 天内提交申诉。
+      </div>
+    </div>
+    <div class="card p12" style="margin:10px 0 0;text-align:left">
+      <div class="row" style="gap:10px">
+        <div style="width:52px;height:52px;border-radius:8px;background:linear-gradient(135deg,#F0EAE0,#D8C9B4);display:flex;align-items:center;justify-content:center;font-size:23px">🔧</div>
+        <div class="grow"><div style="font-size:13px">多功能工具钳 户外便携</div><div style="font-size:11.5px;color:var(--t3);margin-top:4px">审核时间 2026-09-16 22:58</div></div>
+      </div>
+    </div>
+    <div class="row" style="gap:9px;margin-top:20px">
+      <div class="btn btn-o grow" style="height:42px" onclick="go('my-items')">重新编辑</div>
+      <div class="btn btn-y grow" style="height:42px">提交申诉</div>
+    </div>
+    <div style="font-size:11.5px;color:var(--t4);margin-top:14px">审核编号 AUD_20260916_8821</div>
+  </div>`},
+ {name:'商品已售出',html:`${sb(false)}
+  <div class="navbar" style="border-bottom:1px solid var(--line)"><div class="back" onclick="back()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><div class="title">商品详情</div><div class="right"></div></div>
+  <div style="position:relative"><div style="height:300px;background:linear-gradient(135deg,#EAF0E9,#C4D6C2);display:flex;align-items:center;justify-content:center;opacity:.45">${IMG('sold','🎮')}</div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+      <div style="width:88px;height:88px;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">已售出</div>
+    </div>
+  </div>
+  <div style="background:#fff;padding:14px">
+    <div class="row" style="gap:8px"><span class="price" style="font-size:26px;color:var(--t3)"><small>¥</small>1380</span><span class="tag" style="background:#F0F1F4;color:var(--t3)">已售出</span></div>
+    <div style="font-size:15px;color:var(--t2);margin-top:8px">Nintendo Switch OLED 白色主机 + 3 款游戏</div>
+  </div>
+  <div class="card p12" style="margin:8px;background:#FAFBFC">
+    <div style="font-size:12.5px;color:var(--t2);line-height:1.9">这件商品已经被买走啦。你可以：<br>· 看看卖家还在卖的其他闲置<br>· 订阅相似商品，有货时通知你</div>
+    <div class="row" style="gap:9px;margin-top:12px">
+      <div class="btn btn-o grow" style="height:38px;font-size:13.5px" onclick="go('shop')">看卖家其他闲置</div>
+      <div class="btn btn-y grow" style="height:38px;font-size:13.5px">🔔 相似到货提醒</div>
+    </div>
+  </div>
+  <div style="background:#fff;padding:12px;margin:0 0 8px">
+    <div style="font-size:13.5px;font-weight:600;margin-bottom:9px">相似商品推荐</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${ITEMS.filter(i=>[1,3,10].includes(i.id)).map(cardItem).join('')}</div>
+  </div>
+  <div style="position:absolute;bottom:0;left:0;right:0;height:60px;background:#fff;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center">
+    <span style="font-size:14px;color:var(--t4)">该商品已售出，无法购买</span>
+  </div>`},
+ {name:'账号被处置',html:`${sb(false)}
+  <div style="text-align:center;padding:96px 32px 0">
+    <div style="font-size:58px;line-height:1">🚫</div>
+    <div style="font-size:17px;font-weight:700;margin-top:16px">账号功能已被限制</div>
+    <div style="font-size:13px;color:var(--t2);margin-top:10px">违规类型：发布虚假商品信息</div>
+    <div class="card p12" style="margin:20px 0 0;text-align:left">
+      <div style="font-size:12.5px;color:var(--t2);line-height:2">
+        <div class="between"><span>限制范围</span><span style="color:var(--t1)">禁止发布商品</span></div>
+        <div class="between"><span>限制期限</span><span style="color:var(--t1)">2026-09-23 解除</span></div>
+        <div class="between"><span>剩余</span><span style="color:var(--red)">6 天 8 小时</span></div>
+        <div class="between"><span>信用分扣减</span><span style="color:var(--red)">-30（当前 732）</span></div>
+      </div>
+      <div class="hair" style="margin:11px 0"></div>
+      <div style="font-size:11.5px;color:var(--t3);line-height:1.8">限制期间仍可正常浏览、购买与收货。若对判定有异议，可在解除前提交一次申诉。</div>
+    </div>
+    <div class="btn btn-o" style="margin:18px auto 0;width:170px;height:42px">提交申诉</div>
+    <div style="font-size:12px;color:var(--t3);margin-top:14px;text-decoration:underline">查看社区规则</div>
+  </div>`},
+ {name:'风控拦截',html:`${sb(false)}
+  <div class="mask" style="align-items:center">
+    <div style="background:#fff;border-radius:14px;width:290px;padding:22px 20px 18px;text-align:center">
+      <div style="font-size:42px">⚠️</div>
+      <div style="font-size:16px;font-weight:700;margin-top:12px">操作存在风险，已暂时拦截</div>
+      <div style="font-size:12.5px;color:var(--t2);margin-top:10px;line-height:1.8">系统检测到本次操作存在异常（短时间内频繁议价），为保障账户安全已拦截。<br>请稍后再试，或完成身份验证后继续。</div>
+      <div class="btn btn-y" style="margin-top:18px;height:40px;font-size:14px">完成身份验证</div>
+      <div style="font-size:12.5px;color:var(--t3);margin-top:12px">稍后再试</div>
+    </div>
+  </div>
+  <div style="text-align:center;padding:150px 40px 0;color:var(--t3);font-size:12.5px">（弹窗态：拦截时保留上下文，关闭后回到原页面）</div>`},
+ {name:'库存冲突',html:`${sb(false)}
+  <div class="mask" style="align-items:center">
+    <div style="background:#fff;border-radius:14px;width:290px;padding:22px 20px 18px;text-align:center">
+      <div style="font-size:42px">😥</div>
+      <div style="font-size:16px;font-weight:700;margin-top:12px">手慢了一步</div>
+      <div style="font-size:12.5px;color:var(--t2);margin-top:10px;line-height:1.8">这件商品刚刚被其他买家买走了。<br>已为你保留相似好物，去看看？</div>
+      <div class="row" style="gap:9px;margin-top:18px">
+        <div class="btn btn-o grow" style="height:40px;font-size:13.5px">返回</div>
+        <div class="btn btn-y grow" style="height:40px;font-size:13.5px" onclick="go('home')">看相似好物</div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;padding:150px 40px 0;color:var(--t3);font-size:12.5px">（弹窗态：下单时库存校验失败，错误码 ITEM_20002）</div>`}
+]});
+
+/* ==================== P-1~P-4 评审缺口补充页 ==================== */
+function vdPage(mode){
+ const hero = {
+   cover:`<div style="position:relative;height:300px;background:linear-gradient(135deg,#2A2A2E,#4A4A52);display:flex;align-items:center;justify-content:center;color:#fff">
+       <div style="width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div>
+       <span style="position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.5);font-size:11px;padding:2px 6px;border-radius:4px">00:18</span>
+       <span style="position:absolute;left:10px;top:10px;background:rgba(0,0,0,.4);font-size:10.5px;padding:2px 7px;border-radius:4px">视频展示</span>
+     </div>`,
+   play:`<div style="position:relative;height:300px;background:linear-gradient(135deg,#2A2A2E,#4A4A52);display:flex;align-items:center;justify-content:center;color:#fff">
+       <div style="width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></div>
+       <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.3)"><div style="width:45%;height:100%;background:var(--xy)"></div></div>
+       <div style="position:absolute;left:10px;bottom:8px;font-size:10.5px;color:#fff;opacity:.85">00:08 / 00:18</div>
+     </div>`,
+   mute:`<div style="position:relative;height:300px;background:linear-gradient(135deg,#2A2A2E,#4A4A52);display:flex;align-items:center;justify-content:center;color:#fff">
+       <div style="width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></div>
+       <div style="position:absolute;right:10px;top:10px;background:rgba(0,0,0,.5);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M4 9v6h4l5 5V4L8 9H4zM16 8l4 4M20 8l-4 4"/></svg></div>
+       <div style="position:absolute;left:10px;bottom:8px;font-size:10.5px;color:#fff;opacity:.85">🔇 静音中 · 点击开启声音</div>
+     </div>`
+ }[mode];
+ return `<div class="page on" style="padding-bottom:10px">
+   ${sb(false)}
+   ${nav('商品详情','')}
+   ${hero}
+   <div class="card" style="margin:8px;padding:12px">
+     <div class="row" style="gap:8px;align-items:flex-end">
+       <span class="price" style="font-size:22px"><small>¥</small>12800</span>
+       <span style="font-size:11.5px;color:var(--t3);text-decoration:line-through">¥16999</span>
+       <span class="tag" style="margin-left:auto">95新</span>
+     </div>
+     <div style="font-size:14px;margin-top:8px">索尼 A7M4 全画幅微单 快门 8000 次</div>
+     <div class="hair" style="margin:11px 0"></div>
+     <div class="row" style="gap:8px;font-size:12px;color:var(--t2)"><div class="av" style="width:20px;height:20px">摄</div>摄影老张 · 杭州 · 信用 812</div>
+   </div>
+   <div class="card" style="margin:0 8px 8px;padding:12px;font-size:12.5px;color:var(--t2);line-height:1.8">向下滑动查看图文详情 ▾<br>包含：机身细节、配件清单、快门数验证、实拍样张。</div>
+ </div>`;
+}
+
+/* ---------- 21 卖家订单中心 ---------- */
+add({id:'seller-order',group:'商品与交易',name:'卖家订单中心',sub:'当前订单中心仅画了买家视角，卖家需要"待发货 / 已发货 / 待收款"视图来完成履约与收款。',
+goal:'让卖家在一个页面完成发货、改价、催付与收款跟踪，降低履约摩擦。',
+els:['顶部待办汇总：待发货 N / 退款 N / 待收款 N','状态 tab：待发货 / 已发货 / 待收款 / 全部','订单卡：买家、商品、金额、状态、操作按钮','操作：发货（填单号）/ 改价 / 提醒付款 / 查看物流','批量发货入口','空态：暂无订单'],
+inter:['点击"发货" → 弹出填单号面板（或对接电子面单）','点击"改价" → 调起改价（仅待付款订单）','点击"提醒付款" → 发送订阅消息，24h 限一次','点击订单 → 订单详情（卖家视角）','点击 tab → 切换列表'],
+states:['待发货','已发货','待收款','退款中','空态','批量发货中'],
+flow:'待付款 → 提醒付款/改价 → 待发货 → 发货 → 待收款 → 确认收货 → 结算',
+render:()=>`<div class="page on">
+ ${sb(false)}
+ ${nav('卖家订单','<span style="cursor:pointer">批量发货</span>')}
+ <div class="row" style="gap:8px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line)">
+   ${[['待发货',3,'#FF7A00'],['退款',1,'#E64545'],['待收款',2,'#3C6FF5']].map(b=>`<div style="flex:1;background:var(--bg);border-radius:10px;padding:10px 12px">
+     <div style="font-size:20px;font-weight:800;color:${b[2]}">${b[1]}</div>
+     <div style="font-size:11.5px;color:var(--t3);margin-top:2px">${b[0]}</div></div>`).join('')}
+ </div>
+ <div class="row" style="background:#fff;padding:0 4px;overflow-x:auto;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:12">
+   ${['待发货','已发货','待收款','全部'].map((t,i)=>
+     `<div style="padding:11px 13px;font-size:13.5px;color:${i===0?'var(--t1)':'var(--t2)'};font-weight:${i===0?600:400};position:relative;white-space:nowrap;cursor:pointer">
+       ${t}${i===0?'<div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:18px;height:3px;background:var(--xy);border-radius:2px"></div>':''}</div>`).join('')}
+ </div>
+ ${[
+  {s:'待发货',c:'#FF7A00',t:'索尼 A7M4 全画幅微单 快门 8000 次',p:12800,emo:'📷',g:'#F0EAE0,#D8C9B4',b:'发货',sub:'买家已付款，请尽快发货',buyer:'摄影老张'},
+  {s:'待发货',c:'#FF7A00',t:'Kindle Paperwhite 5 signature 32G',p:520,emo:'📚',g:'#E9EDF2,#C9D3DE',b:'发货',sub:'09-15 19:22 付款 · 等待你的发货',buyer:'读书人阿May'},
+  {s:'已发货',c:'#3C6FF5',t:'Nike Air Force 1 白 42.5 码',p:180,emo:'👟',g:'#F1EFE8,#D5D0C0',b:'查看物流',sub:'顺丰 SF1002837465 · 运输中',buyer:'球鞋老炮'}
+ ].map(o=>`<div class="card" style="margin:8px" onclick="go('order-detail')">
+   <div class="between" style="padding:11px 12px;border-bottom:1px solid var(--line)">
+     <span style="font-size:12.5px;color:var(--t3)">买家 ${o.buyer}</span>
+     <span style="font-size:12.5px;color:${o.c};font-weight:600">${o.s}</span>
+   </div>
+   <div class="row" style="gap:10px;padding:12px">
+     <div style="width:62px;height:62px;border-radius:8px;background:linear-gradient(135deg,${o.g});display:flex;align-items:center;justify-content:center;font-size:27px;flex-shrink:0">${o.emo}</div>
+     <div class="grow" style="min-width:0">
+       <div class="ell" style="font-size:13.5px">${o.t}</div>
+       <div style="font-size:11.5px;color:var(--t3);margin-top:5px" class="ell">${o.sub}</div>
+     </div>
+     <div class="price" style="font-size:15px"><small>¥</small>${o.p}</div>
+   </div>
+   <div style="padding:0 12px 12px;text-align:right">
+     <span class="btn btn-y btn-s" style="display:inline-flex;margin-left:8px" onclick="go('order-detail')">${o.b}</span>
+   </div>
+ </div>`).join('')}
+</div>`});
+
+/* ---------- 22 评价页 ---------- */
+add({id:'review',group:'商品与交易',name:'评价',sub:'原型有评价入口但无独立评价页。评价是信用体系与复购的源头，需独立承载星级、标签与匿名。',
+goal:'让用户以最低成本完成一次结构化评价，沉淀信用与内容。',
+els:['被评价交易快照：商品图、标题、对手方','星级评分（1-5，点击即选）','快捷标签：描述相符/发货速度/服务态度 + 自定义','匿名评价开关（默认关）','文字评价（最多 200 字）','晒图（最多 9 张，占位）','提交按钮 + 提交中 + 成功态'],
+inter:['点击星 → 高亮 1~N 星并联动标签推荐','点击标签 → 多选切换','开启匿名 → 评价显示"匿名用户"','点击图片位 → 选图（占位）','点击提交 → 提交中（禁用按钮）→ 成功页','提交成功 → 返回订单或去评价下一条'],
+states:['待评价','可评价（已填星）','提交中','评价成功','已评价','评价超时关闭'],
+flow:'进入评价 → 评分 → 选标签/写文字/晒图 → 提交 → 成功',
+render:()=>`<div class="page on" style="padding-bottom:70px">
+ ${sb(false)}
+ ${nav('评价','')}
+ <div class="card" style="margin:8px;padding:12px">
+   <div class="row" style="gap:10px">
+     <div style="width:54px;height:54px;border-radius:8px;background:linear-gradient(135deg,#E9EDF2,#C9D3DE);display:flex;align-items:center;justify-content:center;font-size:24px">📚</div>
+     <div class="grow"><div style="font-size:13.5px" class="ell">Kindle Paperwhite 5 signature 32G</div><div style="font-size:11.5px;color:var(--t3);margin-top:4px">交易完成 · 与 读书人阿May</div></div>
+   </div>
+ </div>
+ <div class="card" style="margin:0 8px;padding:16px;text-align:center">
+   <div style="font-size:13.5px;color:var(--t2)">为这次交易打分</div>
+   <div style="font-size:34px;margin:10px 0 4px;letter-spacing:4px">★★★★★</div>
+   <div style="font-size:12.5px;color:#B8860B;font-weight:600">非常满意</div>
+ </div>
+ <div class="card" style="margin:8px;padding:14px">
+   <div style="font-size:12.5px;color:var(--t3);margin-bottom:9px">大家都关注（可多选）</div>
+   <div style="display:flex;flex-wrap:wrap;gap:8px">
+     ${['描述相符','发货快','包装用心','沟通顺畅','性价比高'].map(t=>`<span style="font-size:12.5px;padding:6px 12px;border-radius:14px;background:var(--bg);color:var(--t2);border:1px solid #EEE">${t}</span>`).join('')}
+   </div>
+   <div class="hair" style="margin:13px 0"></div>
+   <div class="row" style="gap:10px;align-items:center">
+     <span style="font-size:13px;color:var(--t2)">匿名评价</span>
+     <div style="width:42px;height:24px;border-radius:12px;background:var(--xy);position:relative;margin-left:auto"><div style="position:absolute;right:2px;top:2px;width:20px;height:20px;border-radius:50%;background:#fff"></div></div>
+   </div>
+   <textarea placeholder="说说这次交易的过程吧（选填，最多 200 字）" style="width:100%;height:74px;margin-top:12px;border:1px solid #EEE;border-radius:10px;padding:10px;font-size:13px;resize:none;box-sizing:border-box"></textarea>
+   <div style="display:flex;gap:8px;margin-top:10px">
+     ${[1,2,3,4].map(()=>`<div style="width:54px;height:54px;border-radius:8px;background:var(--bg);border:1px dashed #DDD;display:flex;align-items:center;justify-content:center;font-size:22px;color:#CCC">+</div>`).join('')}
+   </div>
+ </div>
+ <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:9px 14px 20px;z-index:26">
+   <div class="btn btn-y" style="width:100%;height:44px;font-size:15px">提交评价</div>
+ </div>
+</div>`});
+
+/* ---------- 23 商品详情·视频态 ---------- */
+add({id:'detail-video',group:'商品与交易',name:'商品详情·视频态',sub:'详情页支持视频时无播放态设计（封面、播放、静音策略）。视频能更真实地展示成色与功能，是二手转化的关键载体。',
+goal:'在详情页用视频还原商品真实状态，并提供清晰的播放/静音交互。',
+els:['视频封面：首帧 + 居中播放按钮 + 时长角标','播放态：进度条 + 暂停/播放 + 时间','静音策略：默认自动静音，点击解除；提供静音切换','视频置顶，与图文混排','封面加载失败 → 回退图文首图','滑动下方 → 图文详情'],
+inter:['点击封面播放按钮 → 进入播放态（默认静音）','点击画面 → 暂停/继续','点击静音图标 → 切换声音','滑动下方 → 图文详情','视频结束 → 回到封面态','进入页面自动弱提示"视频展示中"'],
+states:['图文态','视频封面态','视频播放态','视频静音态','视频加载失败'],
+flow:'进入详情 → 视频封面 → 点击播放（静音）→ 解除静音/全屏 → 看完 → 图文',
+tabs:[
+ {name:'封面态',html:vdPage('cover')},
+ {name:'播放态',html:vdPage('play')},
+ {name:'静音态',html:vdPage('mute')}
+]});
+
+/* ---------- 24 支付成功 ---------- */
+add({id:'pay-success',group:'商品与交易',name:'支付成功',sub:'支付完成后缺少明确的成功页与"查看订单 / 继续逛"引导。成功页要确认支付结果并引导下一步，降低焦虑。',
+goal:'明确告知支付成功，说明担保交易与物流预期，并引导查看订单或继续浏览。',
+els:['成功动效：绿色对勾 + "支付成功"','担保交易说明：钱款由平台担保，确认收货后打给卖家','物流预期：卖家将在 48 小时内发货','订单摘要：商品、金额、订单号','主操作：查看订单 / 继续逛 / 联系卖家','结果查询中（弱网兜底态）'],
+inter:['进入页 → 展示成功态与担保说明','点击"查看订单" → 订单详情','点击"继续逛" → 首页','点击"联系卖家" → IM 会话','支付结果异步确认中 → 显示"结果查询中"骨架，成功后切换','点击订单号 → 复制'],
+states:['支付成功','等待卖家发货','结果查询中','支付失败（兜底）'],
+flow:'支付完成 → 成功页 → 担保说明 → 查看订单 / 继续逛',
+render:()=>`<div class="page on" style="padding-bottom:30px">
+ ${sb(false)}
+ ${nav('支付成功','')}
+ <div style="text-align:center;padding:30px 24px 10px">
+   <div style="width:64px;height:64px;border-radius:50%;background:#07C160;margin:0 auto;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(7,193,96,.3)"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
+   <div style="font-size:20px;font-weight:800;margin-top:14px">支付成功</div>
+   <div style="font-size:12.5px;color:var(--t2);margin-top:6px">实付 <b style="color:var(--red)">¥520</b> · 订单号 2026091522001</div>
+ </div>
+ <div class="card" style="margin:14px 12px;padding:14px;background:#F6FBF8;border:1px solid #D8EFE2">
+   <div class="row" style="gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#07C160" stroke-width="2"><path d="M12 2 4 6v6c0 5 8 10 8 10s8-5 8-10V6z"/></svg><span style="font-size:13px;font-weight:600;color:#07C160">担保交易 · 资金由平台保管</span></div>
+   <div style="font-size:12px;color:var(--t2);margin-top:8px;line-height:1.8">你确认收货后，钱款才会打给卖家。如遇问题，可在确认收货前随时申请售后。</div>
+   <div class="hair" style="margin:10px 0;background:#D8EFE2"></div>
+   <div class="row" style="gap:8px;font-size:12px;color:var(--t2)"><span style="color:#FF7A00;font-weight:600">⏱ 48 小时内</span> 卖家将发货，发货后可在订单查看物流</div>
+ </div>
+ <div class="card mb8" style="margin:0 12px;padding:12px">
+   <div class="row" style="gap:10px">
+     <div style="width:56px;height:56px;border-radius:8px;background:linear-gradient(135deg,#E9EDF2,#C9D3DE);display:flex;align-items:center;justify-content:center;font-size:24px">📚</div>
+     <div class="grow"><div style="font-size:13.5px" class="ell">Kindle Paperwhite 5 signature 32G</div><div style="font-size:11.5px;color:var(--t3);margin-top:4px">几乎全新 · 包邮</div></div>
+   </div>
+ </div>
+ <div style="padding:14px 14px 0;display:flex;flex-direction:column;gap:10px">
+   <div class="btn btn-y" style="width:100%;height:44px;font-size:15px" onclick="go('order-detail')">查看订单</div>
+   <div class="row" style="gap:10px">
+     <div class="btn btn-o grow" style="height:42px;font-size:14px" onclick="go('home')">继续逛逛</div>
+     <div class="btn btn-o grow" style="height:42px;font-size:14px" onclick="go('chat')">联系卖家</div>
+   </div>
+ </div>
+</div>`});
+
+/* ==================== 引擎 ==================== */
+const screen = document.getElementById('screen');
+const navBox = document.getElementById('nav');
+const notesBox = document.getElementById('notes');
+let stack = [];
+
+let navHtml = '', g = '';
+P.forEach((p,i)=>{
+  if(p.group !== g){ g = p.group; navHtml += `<div class="sb-group">${g}</div>`; }
+  navHtml += `<div class="sb-item" data-id="${p.id}"><span class="n">${i+1}</span>${p.name}</div>`;
+});
+navBox.innerHTML = navHtml;
+navBox.querySelectorAll('.sb-item').forEach(el=>{ el.onclick = ()=> go(el.dataset.id); });
+
+function render(id){
+  const p = P.find(x=>x.id===id) || P[0];
+  screen.innerHTML = p.render();
+  stack.push(id);
+  if(stack.length>8) stack.shift();
+  navBox.querySelectorAll('.sb-item').forEach(el=> el.classList.toggle('on', el.dataset.id===id));
+  const el = navBox.querySelector('.sb-item.on');
+  if(el) el.scrollIntoView({block:'nearest'});
+  notesBox.innerHTML = `
+    <span class="nt-tag">${p.group}</span>
+    <div class="nt-h">${p.name}</div>
+    <div class="nt-sub">${p.sub}</div>
+    <div class="nt-sec"><h4>页面目标</h4><ul><li>${p.goal}</li></ul></div>
+    <div class="nt-sec"><h4>核心元素</h4><ul>${p.els.map(e=>`<li>${e}</li>`).join('')}</ul></div>
+    <div class="nt-sec"><h4>交互说明</h4><ul>${p.inter.map(e=>`<li>${e}</li>`).join('')}</ul></div>
+    <div class="nt-sec"><h4>状态清单</h4><div class="nt-states">${p.states.map(s=>`<span>${s}</span>`).join('')}</div></div>
+    ${p.tabs?`<div class="nt-sec"><h4>状态切换演示</h4><div class="nt-flow">点击下方手机顶部的标签可切换状态，共 ${p.tabs.length} 种：<br><b>${p.tabs.map(t=>t.name).join(' / ')}</b></div></div>`:''}
+    <div class="nt-sec"><h4>流程</h4><div class="nt-flow">${p.flow}</div></div>`;
+  notesBox.scrollTop = 0;
+}
+function go(id){ render(id); }
+function back(){
+  stack.pop();
+  const prev = stack[stack.length-1] || 'home';
+  stack.pop();
+  render(prev);
+}
+render('login');
+window.onerror = (m,s,l)=>{ screen.innerHTML = `<div style="padding:30px;font-size:13px;color:#c00">页面渲染异常：${m}<br>行 ${l}</div>`; };
+</script>
+</body>
+</html>

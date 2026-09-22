@@ -1,0 +1,36 @@
+<view class="addr">
+  <view class="list">
+    <view class="a-item card" wx:for="{{list}}" wx:key="id">
+      <view class="a-top">
+        <text class="a-name">{{item.name}}</text>
+        <text class="a-tag" wx:if="{{item.isDefault}}">默认</text>
+      </view>
+      <view class="a-receiver">{{item.receiver}} {{item.phone}}</view>
+      <view class="a-detail">{{item.province}}{{item.city}}{{item.district}} {{item.detail}}</view>
+      <view class="a-ops">
+        <text class="op" data-id="{{item.id}}" bindtap="setDefault" wx:if="{{!item.isDefault}}">设为默认</text>
+        <text class="op" data-id="{{item.id}}" bindtap="edit">编辑</text>
+        <text class="op danger" data-id="{{item.id}}" bindtap="remove">删除</text>
+      </view>
+    </view>
+  </view>
+
+  <button class="btn btn-block add-btn" bindtap="addNew">＋ 新增收货地址</button>
+
+  <!-- 编辑弹层 -->
+  <view class="mask" wx:if="{{showForm}}" bindtap="closeForm"></view>
+  <view class="form-panel" wx:if="{{showForm}}">
+    <view class="fp-title">{{form.id ? '编辑地址' : '新增地址'}}</view>
+    <view class="fp-field"><text class="fp-label">标签</text><input class="fp-input" value="{{form.name}}" data-k="name" bindinput="onField" placeholder="家/公司/学校" /></view>
+    <view class="fp-field"><text class="fp-label">收货人</text><input class="fp-input" value="{{form.receiver}}" data-k="receiver" bindinput="onField" /></view>
+    <view class="fp-field"><text class="fp-label">手机号</text><input class="fp-input" type="number" value="{{form.phone}}" data-k="phone" bindinput="onField" /></view>
+    <view class="fp-field"><text class="fp-label">省/市</text><input class="fp-input" value="{{form.province}}" data-k="province" bindinput="onField" placeholder="省" /><input class="fp-input" value="{{form.city}}" data-k="city" bindinput="onField" placeholder="市" /></view>
+    <view class="fp-field"><text class="fp-label">区/县</text><input class="fp-input" value="{{form.district}}" data-k="district" bindinput="onField" /></view>
+    <view class="fp-field"><text class="fp-label">详细</text><input class="fp-input" value="{{form.detail}}" data-k="detail" bindinput="onField" placeholder="街道门牌" /></view>
+    <view class="fp-field row"><text class="fp-label">默认</text><switch checked="{{form.isDefault}}" color="#FFB300" bindchange="onDefault" /></view>
+    <view class="fp-btns">
+      <view class="btn btn-ghost fp-btn" bindtap="closeForm">取消</view>
+      <view class="btn fp-btn" bindtap="save">保存</view>
+    </view>
+  </view>
+</view>
