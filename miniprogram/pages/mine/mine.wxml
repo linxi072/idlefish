@@ -1,0 +1,34 @@
+<view class="mine">
+  <view class="header">
+    <image class="avatar" src="{{user.avatar || 'https://picsum.photos/seed/me/200'}}" mode="aspectFill" />
+    <view class="h-info">
+      <view class="nickname">{{user.nickname}}</view>
+      <view class="credit">信用分 {{user.creditScore}} · 已实名</view>
+    </view>
+  </view>
+
+  <view class="grid card">
+    <view class="g-item" bindtap="goPublish">
+      <view class="g-num">+</view><view class="g-name">发布闲置</view>
+    </view>
+    <view class="g-item" data-url="/pages/order/list/list" bindtap="onMenu">
+      <view class="g-num">📋</view><view class="g-name">我的订单</view>
+    </view>
+    <view class="g-item" data-url="/pages/message/message" bindtap="onMenu">
+      <view class="g-num">💬</view><view class="g-name">消息</view>
+    </view>
+    <view class="g-item" data-url="/pages/address/address" bindtap="onMenu">
+      <view class="g-num">📍</view><view class="g-name">地址</view>
+    </view>
+  </view>
+
+  <view class="menu card">
+    <view class="m-item" wx:for="{{menus}}" wx:key="name" data-url="{{item.url}}" bindtap="onMenu">
+      <text class="m-ico">{{item.icon}}</text>
+      <text class="m-name">{{item.name}}</text>
+      <text class="m-arrow">›</text>
+    </view>
+  </view>
+
+  <button class="btn btn-ghost btn-block logout" bindtap="logout">退出登录</button>
+</view>

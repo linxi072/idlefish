@@ -1,0 +1,21 @@
+{
+  "description": "闲置集 C2C 二手交易小程序 · 前端工程",
+  "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "utils/mock.js" }
+    ]
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.4.0",
+  "appid": "touristappid",
+  "projectname": "idlefish-miniprogram",
+  "condition": {}
+}

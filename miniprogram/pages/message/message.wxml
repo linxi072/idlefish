@@ -1,0 +1,22 @@
+<view class="message">
+  <view class="list">
+    <view class="c-item" wx:for="{{list}}" wx:key="convId" data-c="{{item}}" bindtap="goChat">
+      <image class="c-avatar" src="{{item.peer.avatar}}" mode="aspectFill" />
+      <view class="c-body">
+        <view class="c-top">
+          <text class="c-name">{{item.peer.nickname}}</text>
+          <text class="c-time">{{item.timeT}}</text>
+        </view>
+        <view class="c-bottom">
+          <text class="c-last ellipsis">{{item.lastMsg}}</text>
+          <text class="c-badge" wx:if="{{item.unread>0}}">{{item.unread}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty" wx:if="{{!loading && list.length===0}}">
+    <view class="icon">💬</view><view class="tip">还没有会话，去商品详情联系卖家吧</view>
+  </view>
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+</view>

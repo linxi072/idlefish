@@ -1,0 +1,52 @@
+<view class="cat-page">
+  <!-- 左侧顶级类目 -->
+  <scroll-view scroll-y class="left">
+    <view class="top-item {{current.id===null ? 'active':''}}" data-id="null">推荐</view>
+    <view class="top-item {{current.id===item.id ? 'active':''}}" wx:for="{{tree}}" wx:key="id" data-id="{{item.id}}" bindtap="onTopTap">
+      {{item.name}}
+    </view>
+  </scroll-view>
+
+  <!-- 右侧内容 -->
+  <scroll-view scroll-y class="right" bindscrolltolower="onReachBottom">
+    <!-- 面包屑 -->
+    <view class="crumb" wx:if="{{crumb.length>0}}">
+      <text class="c-item" data-idx="0" bindtap="onCrumbTap">推荐</text>
+      <text class="c-sep" wx:for="{{crumb}}" wx:key="id" wx:for-index="ci"> › <text class="c-item" data-idx="{{ci+1}}" bindtap="onCrumbTap">{{item.name}}</text></text>
+    </view>
+
+    <!-- 子类目 chips -->
+    <view class="subs" wx:if="{{subs.length>0}}">
+      <view class="sub-chip {{current.id===item.id?'on':''}}" wx:for="{{subs}}" wx:key="id" data-id="{{item.id}}" bindtap="onSubTap">
+        {{item.name}}
+      </view>
+    </view>
+
+    <!-- 排序 -->
+    <view class="sort">
+      <text class="s-tab {{sort==='default'?'on':''}}" data-sort="default" bindtap="changeSort">综合</text>
+      <text class="s-tab {{sort==='price_asc'?'on':''}}" data-sort="price_asc" bindtap="changeSort">价格↑</text>
+      <text class="s-tab {{sort==='price_desc'?'on':''}}" data-sort="price_desc" bindtap="changeSort">价格↓</text>
+      <text class="s-tab {{sort==='new'?'on':''}}" data-sort="new" bindtap="changeSort">最新</text>
+    </view>
+
+    <!-- 商品网格 -->
+    <view class="grid">
+      <view class="g-item" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+        <image class="g-cover" src="{{item.img}}" mode="aspectFill" />
+        <view class="g-title ellipsis-2">{{item.title}}</view>
+        <view class="g-meta">
+          <text class="price"><text class="symbol">¥</text>{{item.priceText}}</text>
+          <text class="g-cond">{{item.condition}}</text>
+        </view>
+        <view class="g-loc">{{item.location}}</view>
+      </view>
+    </view>
+
+    <view class="loading" wx:if="{{loading}}">加载中…</view>
+    <view class="nomore" wx:if="{{!hasMore && items.length>0}}">— 没有更多了 —</view>
+    <view class="empty" wx:if="{{!loading && items.length===0}}">
+      <view class="icon">📦</view><view class="tip">该类目暂无商品</view>
+    </view>
+  </scroll-view>
+</view>

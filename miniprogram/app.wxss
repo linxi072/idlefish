@@ -1,0 +1,83 @@
+/* app.wxss —— 全局样式与设计 token（对齐《页面原型图 V1.0》） */
+page {
+  --xy: #FFCE3D;
+  --xy-deep: #FFB300;
+  --xy-light: #FFF6DA;
+  --red: #FF3939;
+  --red-dark: #E52E2E;
+  --bg: #F4F5F7;
+  --t1: #1A1A1A;
+  --t2: #666666;
+  --t3: #9A9A9A;
+  --t4: #C4C4C4;
+  --green: #2E9E52;
+  --blue: #3C6FF5;
+  --orange: #FF7A00;
+
+  background: var(--bg);
+  color: var(--t1);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Helvetica, sans-serif;
+  font-size: 28rpx;
+}
+
+view, text, scroll-view { box-sizing: border-box; }
+
+/* 通用容器 */
+.page { min-height: 100vh; background: var(--bg); padding-bottom: 40rpx; }
+.card {
+  background: #fff; border-radius: 20rpx; padding: 28rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.04);
+}
+.row { display: flex; align-items: center; }
+.between { justify-content: space-between; }
+.center { justify-content: center; }
+.col { display: flex; flex-direction: column; }
+
+/* 文本 */
+.t1 { color: var(--t1); }
+.t2 { color: var(--t2); }
+.t3 { color: var(--t3); }
+.bold { font-weight: 600; }
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ellipsis-2 {
+  display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; overflow: hidden;
+}
+
+/* 价格 */
+.price { color: var(--red); font-weight: 700; }
+.price .symbol { font-size: 22rpx; }
+.price-lg { font-size: 40rpx; }
+
+/* 标签 */
+.tag {
+  display: inline-block; font-size: 20rpx; color: var(--t2);
+  background: #F0F1F4; border-radius: 8rpx; padding: 4rpx 12rpx; margin-right: 10rpx;
+}
+.tag-yellow { color: #7A5A00; background: var(--xy-light); }
+.tag-green { color: var(--green); background: #EAF6EE; }
+.tag-red { color: var(--red); background: #FFECEC; }
+
+/* 按钮 */
+.btn {
+  display: flex; align-items: center; justify-content: center;
+  height: 88rpx; border-radius: 44rpx; font-size: 30rpx; font-weight: 600;
+  background: linear-gradient(135deg, var(--xy), var(--xy-deep));
+  color: #5A4000; border: none;
+}
+.btn::after { border: none; }
+.btn-block { width: 100%; }
+.btn-ghost { background: #fff; color: var(--t1); border: 2rpx solid #E5E7EB; }
+.btn-red { background: linear-gradient(135deg, var(--red), var(--red-dark)); color: #fff; }
+.btn-sm { height: 60rpx; font-size: 24rpx; border-radius: 30rpx; padding: 0 28rpx; display: inline-flex; }
+
+/* 空态 */
+.empty { padding: 120rpx 0; text-align: center; color: var(--t3); }
+.empty .icon { font-size: 96rpx; }
+.empty .tip { margin-top: 20rpx; font-size: 26rpx; }
+
+/* 骨架占位 */
+.skeleton { background: linear-gradient(90deg,#eee,#f5f5f5,#eee); border-radius: 8rpx; }
+
+/* 状态条 */
+.status-bar { padding: 16rpx 28rpx; font-size: 24rpx; }

@@ -1,0 +1,55 @@
+<view class="publish">
+  <view class="card">
+    <view class="field">
+      <text class="label">商品标题</text>
+      <input class="input" placeholder="例如：95新 iPhone 14 Pro" value="{{title}}" bindinput="onTitle" maxlength="30" />
+    </view>
+    <view class="field">
+      <text class="label">售价(¥)</text>
+      <input class="input" type="digit" placeholder="0" value="{{price}}" bindinput="onPrice" />
+    </view>
+    <view class="field">
+      <text class="label">原价(¥)</text>
+      <input class="input" type="digit" placeholder="选填" value="{{originalPrice}}" bindinput="onOriginal" />
+    </view>
+    <view class="field">
+      <text class="label">类目</text>
+      <picker mode="selector" range="{{cats}}" range-key="name" value="{{catIndex}}" bindchange="onCat">
+        <view class="picker {{catIndex>=0 ? '' : 'ph'}}">{{catName}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">成色</text>
+      <picker mode="selector" range="{{conditions}}" value="{{condIndex}}" bindchange="onCond">
+        <view class="picker">{{conditions[condIndex]}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">同城</text>
+      <input class="input" placeholder="如：北京·朝阳" value="{{location}}" bindinput="onLocation" />
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="sec-title">商品图片<text class="t3">（最多9张）</text></view>
+    <view class="imgs">
+      <view class="img-box" wx:for="{{images}}" wx:key="*this">
+        <image class="img" src="{{item}}" mode="aspectFill" />
+        <view class="del" data-idx="{{index}}" catchtap="removeImage">×</view>
+      </view>
+      <view class="img-box add" bindtap="chooseImage" wx:if="{{images.length<9}}">＋</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="sec-title">描述</view>
+    <textarea class="textarea" placeholder="补充商品细节、入手渠道、瑕疵说明等" value="{{description}}" bindinput="onDesc" maxlength="500" />
+  </view>
+
+  <view class="card row between">
+    <text>允许买家议价</text>
+    <switch checked="{{bargainEnable}}" color="#FFB300" bindchange="onBargain" />
+  </view>
+
+  <button class="btn btn-block submit" loading="{{submitting}}" bindtap="submit">提交发布（担保交易）</button>
+</view>

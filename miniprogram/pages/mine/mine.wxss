@@ -1,0 +1,17 @@
+.mine { padding: 0 20rpx 40rpx; }
+.header { display: flex; align-items: center; padding: 50rpx 30rpx; background: linear-gradient(135deg,#FFCE3D,#FFB300); border-radius: 0 0 30rpx 30rpx; }
+.avatar { width: 120rpx; height: 120rpx; border-radius: 50%; border: 4rpx solid #fff; background: #eee; }
+.h-info { margin-left: 24rpx; color: #5A4000; }
+.nickname { font-size: 36rpx; font-weight: 700; }
+.credit { font-size: 24rpx; margin-top: 10rpx; }
+.grid { display: flex; margin-top: -30rpx; position: relative; }
+.g-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 24rpx 0; }
+.g-num { font-size: 44rpx; }
+.g-name { font-size: 24rpx; color: var(--t2); margin-top: 8rpx; }
+.menu { margin-top: 20rpx; }
+.m-item { display: flex; align-items: center; padding: 30rpx 10rpx; border-bottom: 2rpx solid #F2F3F5; }
+.m-item:last-child { border-bottom: none; }
+.m-ico { font-size: 36rpx; margin-right: 20rpx; }
+.m-name { flex: 1; font-size: 28rpx; color: var(--t1); }
+.m-arrow { color: var(--t4); font-size: 36rpx; }
+.logout { margin-top: 30rpx; color: var(--red); border-color: #FFD0D0; }

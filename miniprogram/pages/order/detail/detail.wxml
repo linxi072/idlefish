@@ -1,0 +1,104 @@
+<view class="od" wx:if="{{order}}">
+  <!-- 状态条 -->
+  <view class="status-banner">
+    <view class="sb-title">{{statusT}}</view>
+    <view class="sb-sub">
+      <block wx:if="{{order.status==='pending_pay'}}">请在 30 分钟内完成支付，超时订单自动关闭</block>
+      <block wx:elif="{{order.status==='paid' || order.status==='pending_ship'}}">买家已付款（资金托管中），请尽快发货</block>
+      <block wx:elif="{{order.status==='shipping'}}">卖家已发货，确认收货后货款结算给卖家</block>
+      <block wx:elif="{{order.status==='completed'}}">交易完成，货款已结算</block>
+      <block wx:else>订单已关闭</block>
+    </view>
+  </view>
+
+  <!-- 商品 -->
+  <view class="card goods" bindtap="goItem">
+    <image class="g-img" src="{{order.item.img}}" mode="aspectFill" />
+    <view class="g-info">
+      <view class="g-title ellipsis-2">{{order.item.title}}</view>
+      <view class="g-price">¥{{order.amountText}}</view>
+    </view>
+  </view>
+
+  <!-- 金额 -->
+  <view class="card amount">
+    <view class="a-row"><text>商品金额</text><text>¥{{order.amountText}}</text></view>
+    <view class="a-row"><text>运费</text><text>¥{{order.item ? 0 : 0}}</text></view>
+    <view class="a-row total"><text>实付/实收</text><text class="price">¥{{order.amountText}}</text></view>
+  </view>
+
+  <!-- 收货地址 -->
+  <view class="card addr" wx:if="{{order.addressSnapshot}}">
+    <view class="addr-top">📍 收货信息</view>
+    <view class="addr-detail">{{order.addressSnapshot.receiver}} {{order.addressSnapshot.phone}}</view>
+    <view class="addr-detail">{{order.addressSnapshot.province}}{{order.addressSnapshot.city}}{{order.addressSnapshot.district}} {{order.addressSnapshot.detail}}</view>
+  </view>
+
+  <!-- 物流 -->
+  <view class="card logistics" wx:if="{{order.logistics}}">
+    <view class="addr-top">🚚 物流信息</view>
+    <view class="addr-detail">{{order.logistics.company}} · {{order.logistics.logisticNo}}</view>
+  </view>
+
+  <!-- 订单信息 -->
+  <view class="card meta">
+    <view class="a-row"><text>订单号</text><text class="t2">{{order.orderNo}}</text></view>
+    <view class="a-row"><text>下单时间</text><text class="t2">{{timeT}}</text></view>
+    <view class="a-row"><text>交易角色</text><text class="t2">{{order.role==='buyer'?'我是买家':'我是卖家'}}</text></view>
+  </view>
+
+  <!-- 底部操作 -->
+  <view class="action-bar">
+    <!-- 买家 -->
+    <block wx:if="{{order.role==='buyer'}}">
+      <block wx:if="{{order.status==='pending_pay'}}">
+        <view class="btn btn-ghost ab" bindtap="contact">联系卖家</view>
+        <view class="btn ab" bindtap="pay">去支付 ¥{{order.amountText}}</view>
+      </block>
+      <block wx:elif="{{order.status==='shipping'}}">
+        <view class="btn btn-ghost ab" bindtap="contact">联系卖家</view>
+        <view class="btn btn-red ab" bindtap="confirm">确认收货</view>
+      </block>
+      <block wx:elif="{{order.status==='completed'}}">
+        <view class="btn btn-ghost ab" bindtap="openRefund">申请售后</view>
+        <view class="btn ab" bindtap="contact">联系卖家</view>
+      </block>
+      <block wx:else>
+        <view class="btn btn-ghost ab" bindtap="contact">联系卖家</view>
+      </block>
+    </block>
+    <!-- 卖家 -->
+    <block wx:if="{{order.role==='seller'}}">
+      <block wx:if="{{order.status==='paid' || order.status==='pending_ship'}}">
+        <view class="btn ab" bindtap="openShip">发货</view>
+      </block>
+      <block wx:elif="{{order.status==='shipping'}}">
+        <view class="btn btn-ghost ab" bindtap="contact">查看物流</view>
+      </block>
+      <block wx:else>
+        <view class="btn btn-ghost ab" bindtap="contact">联系买家</view>
+      </block>
+    </block>
+  </view>
+
+  <!-- 发货弹层 -->
+  <view class="mask" wx:if="{{showShip}}" bindtap="closeShip"></view>
+  <view class="panel" wx:if="{{showShip}}">
+    <view class="p-title">填写发货信息</view>
+    <view class="p-field"><text class="p-label">物流公司</text><input class="p-input" value="{{shipForm.company}}" data-k="company" bindinput="onShipField" placeholder="如：顺丰速运" /></view>
+    <view class="p-field"><text class="p-label">运单号</text><input class="p-input" value="{{shipForm.logisticNo}}" data-k="logisticNo" bindinput="onShipField" placeholder="请输入运单号" /></view>
+    <view class="p-btns"><view class="btn btn-ghost p-btn" bindtap="closeShip">取消</view><view class="btn p-btn" bindtap="submitShip">确认发货</view></view>
+  </view>
+
+  <!-- 退款弹层 -->
+  <view class="mask" wx:if="{{showRefund}}" bindtap="closeRefund"></view>
+  <view class="panel" wx:if="{{showRefund}}">
+    <view class="p-title">申请退款</view>
+    <view class="p-types">
+      <view class="p-type {{refundForm.type==='only_refund'?'on':''}}" data-type="only_refund" bindtap="onRefundType">仅退款</view>
+      <view class="p-type {{refundForm.type==='return_refund'?'on':''}}" data-type="return_refund" bindtap="onRefundType">退货退款</view>
+    </view>
+    <textarea class="p-textarea" value="{{refundForm.reason}}" data-k="reason" bindinput="onRefundField" placeholder="请说明退款原因（可上传凭证）" />
+    <view class="p-btns"><view class="btn btn-ghost p-btn" bindtap="closeRefund">取消</view><view class="btn p-btn" bindtap="submitRefund">提交申请</view></view>
+  </view>
+</view>

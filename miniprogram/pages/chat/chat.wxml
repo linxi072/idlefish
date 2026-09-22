@@ -1,0 +1,42 @@
+<view class="chat">
+  <!-- 关联商品卡 -->
+  <view class="ctx-card" wx:if="{{itemId}}">
+    <image class="ctx-img" src="{{itemImg}}" mode="aspectFill" wx:if="{{itemImg}}" />
+    <view class="ctx-info">
+      <view class="ctx-title ellipsis-2">{{itemTitle}}</view>
+      <view class="ctx-price" wx:if="{{itemPrice}}">¥{{itemPrice}}</view>
+    </view>
+    <view class="ctx-send" bindtap="sendProductCard">发卡片</view>
+  </view>
+
+  <scroll-view class="msgs" scroll-y scroll-into-view="{{bottomId}}" scroll-with-animation>
+    <view wx:for="{{messages}}" wx:key="msgId" id="m{{item.seq}}">
+      <!-- 文本 -->
+      <view class="msg {{item.isMe?'mine':'peer'}}" wx:if="{{item.type==='text'}}">
+        <view class="bubble">{{item.content}}</view>
+      </view>
+      <!-- 商品卡 -->
+      <view class="msg {{item.isMe?'mine':'peer'}}" wx:if="{{item.type==='product_card'}}">
+        <view class="card-msg">
+          <text class="card-tag">商品</text>
+          <view class="card-title ellipsis-2">{{item.card.title || item.content}}</view>
+        </view>
+      </view>
+      <!-- 议价卡 -->
+      <view class="msg {{item.isMe?'mine':'peer'}}" wx:if="{{item.type==='bargain_card'}}">
+        <view class="card-msg bargain">
+          <text class="card-tag">议价</text>
+          <view class="card-title">出价 ¥{{item.card.offer}}</view>
+        </view>
+      </view>
+    </view>
+    <view id="bottom"></view>
+  </scroll-view>
+
+  <!-- 输入栏 -->
+  <view class="input-bar">
+    <view class="bargain-btn" bindtap="bargain" wx:if="{{itemId}}">议价</view>
+    <input class="t-input" value="{{input}}" bindinput="onInput" placeholder="输入消息" confirm-type="send" bindconfirm="send" />
+    <view class="send-btn" bindtap="send">发送</view>
+  </view>
+</view>

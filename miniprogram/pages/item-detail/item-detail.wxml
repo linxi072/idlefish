@@ -1,0 +1,60 @@
+<view class="detail" wx:if="{{item}}">
+  <!-- 图集 -->
+  <swiper class="gallery" indicator-dots indicator-active-color="#FFB300" bindchange="onImgChange">
+    <swiper-item wx:for="{{item.images}}" wx:key="*this">
+      <image class="g-img" src="{{item.images[index]}}" mode="aspectFill" />
+    </swiper-item>
+  </swiper>
+  <view class="img-index">{{curImg+1}}/{{item.images.length}}</view>
+
+  <!-- 价格 -->
+  <view class="price-bar">
+    <text class="price price-lg"><text class="symbol">¥</text>{{item.priceText}}</text>
+    <text class="original" wx:if="{{item.originalText}}">¥{{item.originalText}}</text>
+    <text class="tag tag-yellow" wx:if="{{item.bargainEnable}}">可议价</text>
+  </view>
+
+  <!-- 标题 -->
+  <view class="title">{{item.title}}</view>
+  <view class="tags">
+    <text class="tag">{{item.condition}}</text>
+    <text class="tag">📍{{item.location}}</text>
+    <text class="tag">浏览 {{item.viewCount}}</text>
+  </view>
+
+  <!-- 卖家 -->
+  <view class="seller card">
+    <image class="avatar" src="{{item.seller.avatar}}" mode="aspectFill" />
+    <view class="s-info">
+      <view class="s-name">{{item.seller.nickname}}</view>
+      <view class="s-credit">信用分 {{item.seller.creditScore}} · 实名认证</view>
+    </view>
+    <view class="btn btn-sm" data-id="{{item.seller.id}}">主页</view>
+  </view>
+
+  <!-- 描述 -->
+  <view class="desc card">
+    <view class="sec-title">商品描述</view>
+    <view class="desc-text">{{item.description}}</view>
+  </view>
+
+  <!-- 担保提示 -->
+  <view class="safe-tip">🛡️ 担保交易：付款后资金由平台托管，确认收货后打款给卖家</view>
+
+  <!-- 底部操作栏 -->
+  <view class="action-bar">
+    <view class="act" bindtap="toggleFav">
+      <text class="act-ico">{{fav ? '⭐' : '☆'}}</text>
+      <text class="act-txt">收藏</text>
+    </view>
+    <view class="act" bindtap="contactSeller">
+      <text class="act-ico">💬</text>
+      <text class="act-txt">联系卖家</text>
+    </view>
+    <view class="btn btn-ghost buy-sm" bindtap="buyNow">立即购买</view>
+  </view>
+</view>
+
+<view class="empty" wx:if="{{!item && !loading}}">
+  <view class="icon">🔍</view><view class="tip">商品不存在或已下架</view>
+</view>
