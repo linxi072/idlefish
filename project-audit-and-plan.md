@@ -197,6 +197,19 @@
 | RK-7 支付回调伪造 | ✅ 代码已落地 | `PayService.notify` 增加金额一致性校验（`BIZ_ERROR`）+ `escrow.verifyNotify` 验签骨架（`MockWechatEscrowServiceImpl` 通过；`RealWechatEscrowServiceImpl` 接证书后启用并安全失败）；`PayController` 增加 `amount` 入参 |
 | RK-8 后台越权暴露 | ✅ 代码已落地 | 移除客户端 `X-Admin-Role` 提权通道；新增 `/api/admin/auth/login` 独立登录签发 admin JWT；`AdminAuthInterceptor` 校验 admin 标志；`WebConfig` 将 `/api/admin/**` 纳入独立鉴权，写操作审计落痕 `operatorId` |
 
+#### 5.1.1 二次加固（2026-09-22 · 代码级补齐）
+
+基于只读代码审计，对 4 项风险做进一步代码级闭环（已 `mvn -o test-compile` BUILD SUCCESS）：
+
+| 风险 | 加固点 | 落地证据 |
+|---|---|---|
+| RK-2 双重结算资损 | `t_fund_flow.biz_no` 补 UNIQUE 约束（原仅普通索引，存在并发重复放款）；`SettlementService.processDue` 改为「`WHERE id AND status='pending'` CAS 认领 + `@Transactional` + 唯一约束兜底」，彻底杜绝双重放款 | `schema.sql:153` `biz_no VARCHAR(32) UNIQUE`；`SettlementService.java` `processDue` CAS `update(...).eq(Id).eq(Status,"pending")`，影响行数 0 即跳过 |
+| RK-1 金额单位资损 | 补齐聊天场景价格口径：会话列表 `message.js` 原先传原始「分」值导致聊天卡 `¥{{itemPrice}}` 显示 100 倍；统一改为 `formatPrice` 元字符串（`item-detail.js` 已合规） | `miniprogram/pages/message/message.js:19` 改为 `formatPrice(c.item.price)` 并 `encodeURIComponent`；`chat.wxml:7` 直接展示元值 |
+| RK-6 PC CDN 生产故障 | `index.html` 兜底由仅检测 Vue/ElementPlus 扩展为逐一检测 Vue/ElementPlus/axios/echarts，任一缺失即渲染友好面板并列出缺失项（含提示生产改本地打包 + SRI/离线） | `pc-admin/index.html` 底部兜底脚本重写为 `required[]` 遍历检测并渲染缺失清单 |
+| RK-7 支付回调伪造 | `PayService.notify` 向 `escrow.verifyNotify` 传入完整回调上下文（payNo/transactionId/amount），为证书接入后的真实验签提供参数；真实路径仍 `RealWechatEscrowServiceImpl.verifyNotify` 显式失败关闭（fail-closed，伪造回调不可绕过） | `PayService.java` 构建 `notifyParams` Map 传入；`RealWechatEscrowServiceImpl.java:33` 仍抛 `UnsupportedOperationException` |
+
+> 注：RK-3/RK-5（验证/联调脚本）、RK-4（单人自评，已在事项系统 `rrBb0G` 留痕）本轮未改动；RK-7 真实微信验签需平台证书 + APIv3 密钥，属上线前凭据接入项，当前以 fail-closed 兜底。
+
 > **验收门槛**：后端已 `BUILD SUCCESS`（0 ERROR），8 项风险的代码/脚本/流程均已落地。端到端功能正确性仍须在本机/连接器对**真实后端（H2 本地）**联调验证（见 `scripts/verify-backend.sh`），沙箱 localhost 跨进程隔离无法在 Bash 内完成真机联调。
 
 ### 5.2 功能模块落地进展（已落地 · 2026-09-22）

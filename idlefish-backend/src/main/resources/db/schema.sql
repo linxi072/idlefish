@@ -150,7 +150,7 @@ CREATE INDEX IF NOT EXISTS idx_settle_seller ON t_settlement (seller_id, status)
 
 CREATE TABLE IF NOT EXISTS t_fund_flow (
     id             BIGINT        PRIMARY KEY,
-    biz_no         VARCHAR(32),
+    biz_no         VARCHAR(32)   UNIQUE,
     user_id        BIGINT,
     direction      VARCHAR(16),
     amount         BIGINT,
@@ -160,6 +160,7 @@ CREATE TABLE IF NOT EXISTS t_fund_flow (
     updated_at     TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_fund_biz ON t_fund_flow (biz_no);
+CREATE INDEX IF NOT EXISTS idx_fund_user ON t_fund_flow (user_id, direction);
 
 CREATE TABLE IF NOT EXISTS t_conversation (
     id             BIGINT        PRIMARY KEY,

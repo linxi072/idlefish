@@ -65,8 +65,13 @@ public class PayService {
         if (amount != null && !amount.equals(po.getAmount())) {
             throw new BizException(Code.BIZ_ERROR, "回调金额与订单金额不一致");
         }
-        // 验签：Mock 直接通过；非 Mock（真实微信）必须验签，否则拒绝（防伪造支付成功）
-        boolean verified = escrow.verifyNotify(java.util.Collections.singletonMap("payNo", payNo));
+        // 验签：Mock 直接通过；非 Mock（真实微信）必须验签，否则拒绝（防伪造支付成功）。
+        // 传入完整回调上下文（payNo/transactionId/amount），供真实实现基于平台证书 + APIv3 密钥验签。
+        java.util.Map<String, String> notifyParams = new java.util.HashMap<>(4);
+        notifyParams.put("payNo", payNo);
+        notifyParams.put("transactionId", transactionId);
+        notifyParams.put("amount", amount != null ? String.valueOf(amount) : null);
+        boolean verified = escrow.verifyNotify(notifyParams);
         if (!verified) {
             throw new BizException(Code.BIZ_ERROR, "支付通知验签失败");
         }

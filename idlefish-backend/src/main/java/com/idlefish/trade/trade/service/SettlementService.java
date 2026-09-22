@@ -1,6 +1,7 @@
 package com.idlefish.trade.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.trade.entity.FundFlow;
 import com.idlefish.trade.trade.entity.Order;
@@ -8,7 +9,9 @@ import com.idlefish.trade.trade.entity.Settlement;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.SettlementMapper;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,21 +59,31 @@ public class SettlementService {
         s.setSettleAt(LocalDateTime.now().plusDays(1));
         try {
             settlementMapper.insert(s);
-        } catch (org.springframework.dao.DuplicateKeyException e) {
+        } catch (DuplicateKeyException e) {
             // 并发场景由 t_settlement.order_no 唯一约束兜底，安全忽略
         }
     }
 
-    /** 定时：T+1 结算到期 pending → settled，卖家入账。 */
+    /**
+     * 定时：T+1 结算到期 pending → settled，卖家入账。
+     * 防资损双保险：① 以「WHERE id AND status='pending'」做 CAS 认领，仅一个线程能置为 settled；
+     * ② 资金流水 biz_no 唯一约束兜底，杜绝并发/重跑导致的重复放款。
+     */
+    @Transactional(rollbackFor = Exception.class)
     public void processDue() {
         List<Settlement> due = settlementMapper.selectList(new LambdaQueryWrapper<Settlement>()
                 .eq(Settlement::getStatus, "pending")
                 .le(Settlement::getSettleAt, LocalDateTime.now()));
         for (Settlement s : due) {
+            // CAS 认领：仅当仍处于 pending 时置为 settled，影响行数为 0 说明已被其它线程/上次执行认领
             Settlement upd = new Settlement();
-            upd.setId(s.getId());
             upd.setStatus("settled");
-            settlementMapper.updateById(upd);
+            int claimed = settlementMapper.update(upd, new LambdaUpdateWrapper<Settlement>()
+                    .eq(Settlement::getId, s.getId())
+                    .eq(Settlement::getStatus, "pending"));
+            if (claimed == 0) {
+                continue;
+            }
 
             FundFlow ff = new FundFlow();
             ff.setBizNo(s.getSettleNo());
@@ -79,7 +92,11 @@ public class SettlementService {
             ff.setAmount(s.getAmount());
             ff.setType("SETTLE");
             ff.setBalanceAfter(s.getAmount());
-            fundFlowMapper.insert(ff);
+            try {
+                fundFlowMapper.insert(ff);
+            } catch (DuplicateKeyException e) {
+                // biz_no 唯一约束兜底：绝不重复放款（与 CAS 认领共同构成双保险）
+            }
         }
     }
 }

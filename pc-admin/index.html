@@ -66,23 +66,29 @@
   <div id="app"></div>
   <script type="module" src="./src/main.js"></script>
   <script>
-    // CDN 兜底：若 1.5s 后全局 Vue/ElementPlus 仍未就绪，说明 jsDelivr CDN 加载失败，
-    // 展示友好提示避免白屏（生产应改用本地打包构建，避免依赖公共 CDN）。
+    // RK-6 CDN 生产兜底：jsDelivr 不可达会导致后台白屏/功能不可用。
+    // 逐一检测关键 CDN 资源（Vue / ElementPlus / axios / echarts），任一缺失即展示友好面板并列出缺失项，
+    // 避免白屏与静默误用；同时提示生产应改用本地打包构建（SRI/离线兜底）。
     window.addEventListener('load', function () {
       setTimeout(function () {
-        if (!window.Vue || !window.ElementPlus) {
-          var app = document.getElementById('app');
-          if (app && !app.childElementCount) {
-            app.innerHTML = '<div style="max-width:560px;margin:120px auto;padding:32px;background:#fff;'
-              + 'border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.1);text-align:center;color:#1A1A1A;">'
-              + '<h2 style="color:#FF3939;">资源加载失败</h2>'
-              + '<p style="color:#666;line-height:1.7;">运营后台依赖的 Vue / Element Plus 通过 jsDelivr CDN 加载，'
-              + '当前环境可能无法访问外网。</p>'
-              + '<p style="color:#9A9A9A;font-size:13px;">建议：① 检查网络后刷新；② 生产部署请改用本地打包构建'
-              + '（npm install &amp;&amp; vite build），避免依赖公共 CDN。</p>'
-              + '</div>';
-          }
-        }
+        var required = [
+          { key: 'Vue', label: 'Vue' },
+          { key: 'ElementPlus', label: 'Element Plus' },
+          { key: 'axios', label: 'axios' },
+          { key: 'echarts', label: 'ECharts' }
+        ];
+        var missing = required.filter(function (r) { return !window[r.key]; }).map(function (r) { return r.label; });
+        if (missing.length === 0) return; // 全部就绪，正常进入应用
+        var app = document.getElementById('app');
+        if (!app) return;
+        app.innerHTML = '<div style="max-width:600px;margin:120px auto;padding:32px;background:#fff;'
+          + 'border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.1);text-align:center;color:#1A1A1A;">'
+          + '<h2 style="color:#FF3939;">依赖资源加载失败</h2>'
+          + '<p style="color:#666;line-height:1.7;">运营后台依赖以下 CDN 资源，当前环境可能无法访问 jsDelivr 外网：</p>'
+          + '<p style="color:#FF3939;font-weight:600;">缺失：' + missing.join('、') + '</p>'
+          + '<p style="color:#9A9A9A;font-size:13px;">建议：① 检查网络后刷新；② 生产部署请改用本地打包构建'
+          + '（npm install &amp;&amp; vite build）并引入 SRI / 离线兜底，避免依赖公共 CDN。</p>'
+          + '</div>';
       }, 1500);
     });
   </script>
