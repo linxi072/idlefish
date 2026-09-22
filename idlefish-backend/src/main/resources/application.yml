@@ -1,0 +1,44 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: idlefish-backend
+  datasource:
+    url: jdbc:h2:mem:idlefish;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+# 业务自定义配置
+idlefish:
+  jwt:
+    # 生产环境务必替换为高强度密钥（>= 32 字节）并通过环境变量注入，切勿明文提交
+    secret: "${JWT_SECRET:idlefish-secret-key-2026-change-me-in-prod-abcdefghijklmnop}"
+    expire-seconds: 86400
+    refresh-seconds: 2592000
+  pay:
+    # mock=true 走本地 Mock 支付（跑通链路）；生产部署请通过环境变量 IDLEFISH_PAY_MOCK=false 关闭
+    mock: ${IDLEFISH_PAY_MOCK:true}          # true=本地 Mock 支付（跑通链路）；false=对接真实微信分账
+  search:
+    mock: true          # true=基于数据库的实现（模拟 ES）；false=对接真实 Elasticsearch
+  mq:
+    mock: true          # true=基于 Spring 事件 + 定时器的本地实现；false=对接真实 RocketMQ
+  file:
+    mock: false         # false=真实落盘到本地 uploads 目录，并由后端静态映射 /uploads 提供访问（演示可用）；生产应改为 OSS/S3
+    base-url: "/uploads/"

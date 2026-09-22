@@ -1,0 +1,72 @@
+<view class="home">
+  <!-- 顶部搜索 -->
+  <view class="topbar">
+    <view class="search" bindtap="goSearch">
+      <text class="s-icon">🔍</text>
+      <input class="s-input" placeholder="搜索二手好物" value="{{keyword}}" confirm-type="search"
+             bindinput="onInput" bindconfirm="onSearch" focus="{{focus}}" />
+      <view class="s-btn" bindtap="onSearch">搜索</view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="scroll">
+    <!-- 分类快捷入口 -->
+    <view class="cats card">
+      <view class="cat" wx:for="{{cats}}" wx:key="id" data-id="{{item.id}}" bindtap="goCategory">
+        <view class="cat-icon">{{item.icon}}</view>
+        <text class="cat-name">{{item.name}}</text>
+      </view>
+    </view>
+
+    <!-- 运营 banner -->
+    <view class="banner">
+      <view class="banner-title">担保交易 · 确认收货才付款</view>
+      <view class="banner-sub">资金由平台托管，买卖更安心</view>
+    </view>
+
+    <!-- 瀑布流 -->
+    <view class="feed">
+      <view class="col">
+        <view class="item" wx:for="{{left}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+          <image class="cover" src="{{item.img}}" mode="aspectFill" />
+          <view class="info">
+            <view class="title ellipsis-2">{{item.title}}</view>
+            <view class="meta">
+              <text class="price"><text class="symbol">¥</text>{{item.priceText}}</text>
+              <text class="tag tag-yellow" wx:if="{{item.bargainEnable}}">可议价</text>
+            </view>
+            <view class="sub">
+              <text class="loc">📍{{item.location}}</text>
+              <text class="cond">{{item.condition}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="col">
+        <view class="item" wx:for="{{right}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+          <image class="cover" src="{{item.img}}" mode="aspectFill" />
+          <view class="info">
+            <view class="title ellipsis-2">{{item.title}}</view>
+            <view class="meta">
+              <text class="price"><text class="symbol">¥</text>{{item.priceText}}</text>
+              <text class="tag tag-yellow" wx:if="{{item.bargainEnable}}">可议价</text>
+            </view>
+            <view class="sub">
+              <text class="loc">📍{{item.location}}</text>
+              <text class="cond">{{item.condition}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="loading" wx:if="{{loading}}">加载中…</view>
+    <view class="nomore" wx:if="{{!hasMore && (left.length+right.length)>0}}">— 没有更多了 —</view>
+    <view class="empty" wx:if="{{!loading && (left.length+right.length)===0}}">
+      <view class="icon">🛍️</view><view class="tip">暂无商品，去发布第一件吧</view>
+    </view>
+  </scroll-view>
+
+  <!-- 发布悬浮按钮 -->
+  <view class="fab" bindtap="goPublish">＋</view>
+</view>

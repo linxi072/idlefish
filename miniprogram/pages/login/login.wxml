@@ -1,0 +1,19 @@
+<view class="login">
+  <view class="brand">
+    <view class="logo">闲</view>
+    <view class="name">闲置集</view>
+    <view class="slogan">让闲置流转，让好物重逢</view>
+  </view>
+
+  <view class="form">
+    <button class="btn btn-block wx-btn" loading="{{loading}}" bindtap="wechatLogin">
+      <text class="wx-icon">微</text> 微信一键登录
+    </button>
+    <button class="btn btn-ghost btn-block phone-btn" bindtap="phoneLogin">手机号快捷登录</button>
+  </view>
+
+  <view class="agreement" bindtap="toggleAgree">
+    <view class="checkbox {{agreed ? 'checked' : ''}}">{{agreed ? '✓' : ''}}</view>
+    <text class="t3">已阅读并同意《用户协议》《隐私政策》《交易规则》</text>
+  </view>
+</view>

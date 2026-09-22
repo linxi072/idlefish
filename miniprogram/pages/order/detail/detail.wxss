@@ -1,0 +1,29 @@
+.od { padding-bottom: 140rpx; }
+.status-banner { background: linear-gradient(135deg,#FFCE3D,#FFB300); padding: 40rpx 30rpx; color: #5A4000; }
+.sb-title { font-size: 38rpx; font-weight: 700; }
+.sb-sub { font-size: 24rpx; margin-top: 12rpx; }
+.card { margin: 20rpx; }
+.goods { display: flex; }
+.g-img { width: 160rpx; height: 160rpx; border-radius: 12rpx; background: #eee; }
+.g-info { flex: 1; margin-left: 20rpx; }
+.g-title { font-size: 28rpx; }
+.g-price { color: var(--red); font-weight: 700; margin-top: 20rpx; }
+.amount .a-row, .meta .a-row { display: flex; justify-content: space-between; font-size: 26rpx; color: var(--t1); padding: 12rpx 0; }
+.amount .total { border-top: 2rpx solid #F2F3F5; margin-top: 10rpx; padding-top: 20rpx; font-weight: 600; }
+.addr-top { font-size: 26rpx; font-weight: 600; margin-bottom: 12rpx; }
+.addr-detail { font-size: 26rpx; color: var(--t2); }
+.action-bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: flex-end; align-items: center; padding: 16rpx 20rpx; background: #fff; box-shadow: 0 -4rpx 16rpx rgba(0,0,0,.05); }
+.ab { margin-left: 16rpx; }
+.btn-red { background: linear-gradient(135deg,#FF3939,#E52E2E); color: #fff; }
+.mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 10; }
+.panel { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; z-index: 11; border-radius: 24rpx 24rpx 0 0; padding: 30rpx 40rpx 40rpx; }
+.p-title { font-size: 32rpx; font-weight: 700; text-align: center; margin-bottom: 20rpx; }
+.p-field { display: flex; align-items: center; padding: 18rpx 0; border-bottom: 2rpx solid #F2F3F5; }
+.p-label { width: 140rpx; font-size: 26rpx; color: var(--t2); }
+.p-input { flex: 1; font-size: 26rpx; }
+.p-types { display: flex; margin-bottom: 20rpx; }
+.p-type { flex: 1; text-align: center; padding: 20rpx 0; border: 2rpx solid #E5E7EB; margin-right: 16rpx; border-radius: 12rpx; font-size: 26rpx; }
+.p-type.on { border-color: #FFB300; background: var(--xy-light); color: #7A5A00; font-weight: 600; }
+.p-textarea { width: 100%; height: 160rpx; border: 2rpx solid #E5E7EB; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx; margin-bottom: 20rpx; }
+.p-btns { display: flex; }
+.p-btn { flex: 1; margin: 0 10rpx; }

@@ -1,0 +1,15 @@
+<view class="page">
+  <view wx:if="{{list.length === 0 && !loading}}" class="empty">还没有收藏的商品，去首页逛逛吧~</view>
+
+  <view wx:for="{{list}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="goDetail">
+    <image class="cover" src="{{item.cover}}" mode="aspectFill"></image>
+    <view class="info">
+      <view class="title">{{item.title}}</view>
+      <view class="meta">{{item.condition || ''}}<text wx:if="{{item.city}}"> · {{item.city}}</text></view>
+      <view class="price">¥{{item.priceText}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="tip">加载中...</view>
+  <view wx:if="{{finished && list.length > 0}}" class="tip">没有更多了</view>
+</view>

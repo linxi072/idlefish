@@ -1,0 +1,11 @@
+.message { padding: 0 20rpx; }
+.c-item { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 2rpx solid #F2F3F5; }
+.c-avatar { width: 90rpx; height: 90rpx; border-radius: 50%; background: #eee; }
+.c-body { flex: 1; margin-left: 20rpx; }
+.c-top { display: flex; justify-content: space-between; }
+.c-name { font-size: 30rpx; font-weight: 600; color: var(--t1); }
+.c-time { font-size: 22rpx; color: var(--t3); }
+.c-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 10rpx; }
+.c-last { flex: 1; font-size: 26rpx; color: var(--t3); }
+.c-badge { min-width: 32rpx; height: 32rpx; line-height: 32rpx; text-align: center; background: var(--red); color: #fff; border-radius: 16rpx; font-size: 22rpx; padding: 0 8rpx; }
+.loading { text-align: center; color: var(--t3); padding: 24rpx; }

@@ -1,0 +1,42 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/index/index",
+    "pages/category/category",
+    "pages/item-detail/item-detail",
+    "pages/publish/publish",
+    "pages/order/list/list",
+    "pages/order/detail/detail",
+    "pages/message/message",
+    "pages/chat/chat",
+    "pages/mine/mine",
+    "pages/address/address",
+    "pages/favorite/favorite"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#FFCE3D",
+    "navigationBarTitleText": "闲置集",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F4F5F7",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#9A9A9A",
+    "selectedColor": "#FFB300",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "首页" },
+      { "pagePath": "pages/category/category", "text": "分类" },
+      { "pagePath": "pages/message/message", "text": "消息" },
+      { "pagePath": "pages/mine/mine", "text": "我的" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于同城商品推荐与卖家距离展示"
+    }
+  }
+}

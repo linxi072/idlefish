@@ -1,0 +1,14 @@
+.order-list { padding: 0 20rpx 40rpx; }
+.tabs { display: flex; background: #fff; position: sticky; top: 0; z-index: 2; border-bottom: 2rpx solid #F2F3F5; }
+.tab { flex: 1; text-align: center; padding: 28rpx 0; font-size: 28rpx; color: var(--t2); }
+.tab.on { color: var(--t1); font-weight: 700; border-bottom: 4rpx solid #FFB300; }
+.o-item { margin-top: 20rpx; }
+.o-top { display: flex; justify-content: space-between; font-size: 24rpx; color: var(--t3); }
+.o-status { color: #FFB300; font-weight: 600; }
+.o-goods { display: flex; margin-top: 16rpx; }
+.o-img { width: 140rpx; height: 140rpx; border-radius: 12rpx; background: #eee; }
+.o-info { flex: 1; margin-left: 20rpx; }
+.o-title { font-size: 28rpx; color: var(--t1); }
+.o-price { color: var(--red); font-weight: 700; margin-top: 20rpx; }
+.o-bottom { display: flex; justify-content: space-between; margin-top: 16rpx; font-size: 22rpx; color: var(--t3); }
+.loading { text-align: center; color: var(--t3); padding: 24rpx; }

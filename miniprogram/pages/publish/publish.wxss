@@ -1,0 +1,15 @@
+.publish { padding: 20rpx; }
+.card { margin-bottom: 20rpx; }
+.field { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 2rpx solid #F2F3F5; }
+.label { width: 160rpx; font-size: 28rpx; color: var(--t1); }
+.input { flex: 1; font-size: 28rpx; }
+.picker { flex: 1; font-size: 28rpx; color: var(--t1); }
+.ph { color: var(--t3); }
+.sec-title { font-size: 28rpx; font-weight: 600; margin-bottom: 16rpx; }
+.imgs { display: flex; flex-wrap: wrap; }
+.img-box { width: 160rpx; height: 160rpx; margin: 0 16rpx 16rpx 0; border-radius: 12rpx; overflow: hidden; position: relative; background: #eee; }
+.img { width: 100%; height: 100%; }
+.del { position: absolute; top: 0; right: 0; width: 36rpx; height: 36rpx; line-height: 34rpx; text-align: center; background: rgba(0,0,0,.5); color: #fff; font-size: 30rpx; }
+.add { display: flex; align-items: center; justify-content: center; border: 2rpx dashed #C4C4C4; color: var(--t3); font-size: 60rpx; }
+.textarea { width: 100%; height: 180rpx; font-size: 26rpx; color: var(--t1); }
+.submit { margin-top: 10rpx; }

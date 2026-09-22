@@ -1,0 +1,31 @@
+<view class="order-list">
+  <view class="tabs">
+    <view class="tab {{role==='buyer'?'on':''}}" data-role="buyer" bindtap="switchRole">我买的</view>
+    <view class="tab {{role==='seller'?'on':''}}" data-role="seller" bindtap="switchRole">我卖的</view>
+  </view>
+
+  <view class="list">
+    <view class="o-item card" wx:for="{{list}}" wx:key="orderNo" data-no="{{item.orderNo}}" bindtap="goDetail">
+      <view class="o-top">
+        <text class="o-no">订单 {{item.orderNo}}</text>
+        <text class="o-status">{{item.statusT}}</text>
+      </view>
+      <view class="o-goods">
+        <image class="o-img" src="{{item.item.img}}" mode="aspectFill" />
+        <view class="o-info">
+          <view class="o-title ellipsis-2">{{item.item.title}}</view>
+          <view class="o-price">¥{{item.amountText}}</view>
+        </view>
+      </view>
+      <view class="o-bottom">
+        <text class="o-time">{{item.timeT}}</text>
+        <text class="o-role">{{role==='buyer'?'我是买家':'我是卖家'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty" wx:if="{{!loading && list.length===0}}">
+    <view class="icon">📋</view><view class="tip">暂无订单</view>
+  </view>
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+</view>

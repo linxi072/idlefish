@@ -1,0 +1,19 @@
+.addr { padding: 20rpx 20rpx 160rpx; }
+.a-item { margin-bottom: 20rpx; }
+.a-top { display: flex; align-items: center; }
+.a-name { font-size: 28rpx; font-weight: 600; }
+.a-tag { font-size: 20rpx; color: #fff; background: #FFB300; border-radius: 6rpx; padding: 2rpx 10rpx; margin-left: 14rpx; }
+.a-receiver { font-size: 26rpx; color: var(--t1); margin-top: 10rpx; }
+.a-detail { font-size: 24rpx; color: var(--t3); margin-top: 6rpx; }
+.a-ops { display: flex; justify-content: flex-end; margin-top: 16rpx; border-top: 2rpx solid #F2F3F5; padding-top: 16rpx; }
+.op { font-size: 24rpx; color: var(--t2); margin-left: 30rpx; }
+.op.danger { color: var(--red); }
+.add-btn { position: fixed; left: 20rpx; right: 20rpx; bottom: 30rpx; }
+.mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 10; }
+.form-panel { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; z-index: 11; border-radius: 24rpx 24rpx 0 0; padding: 30rpx 40rpx 40rpx; }
+.fp-title { font-size: 32rpx; font-weight: 700; text-align: center; margin-bottom: 20rpx; }
+.fp-field { display: flex; align-items: center; padding: 18rpx 0; border-bottom: 2rpx solid #F2F3F5; }
+.fp-label { width: 120rpx; font-size: 26rpx; color: var(--t2); }
+.fp-input { flex: 1; font-size: 26rpx; }
+.fp-btns { display: flex; margin-top: 30rpx; }
+.fp-btn { flex: 1; margin: 0 10rpx; }

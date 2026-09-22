@@ -1,0 +1,12 @@
+.login { min-height: 100vh; background: linear-gradient(180deg, #FFCE3D 0%, #FFDA71 45%, #F4F5F7 100%); padding: 0 60rpx; display: flex; flex-direction: column; }
+.brand { padding: 180rpx 0 80rpx; text-align: center; }
+.logo { width: 140rpx; height: 140rpx; line-height: 140rpx; margin: 0 auto 30rpx; background: #fff; border-radius: 36rpx; font-size: 80rpx; font-weight: 700; color: #FFB300; box-shadow: 0 10rpx 30rpx rgba(255,179,0,.3); }
+.name { font-size: 52rpx; font-weight: 700; color: #5A4000; }
+.slogan { margin-top: 16rpx; font-size: 28rpx; color: #7A5A00; }
+.form { margin-top: 40rpx; }
+.wx-btn { background: linear-gradient(135deg, #2E9E52, #1F8A45); color: #fff; }
+.phone-btn { margin-top: 28rpx; }
+.wx-icon { font-weight: 700; }
+.agreement { display: flex; align-items: center; margin-top: 60rpx; font-size: 24rpx; }
+.checkbox { width: 32rpx; height: 32rpx; border: 2rpx solid #9A9A9A; border-radius: 50%; margin-right: 14rpx; text-align: center; line-height: 30rpx; color: #fff; font-size: 22rpx; }
+.checkbox.checked { background: #FFB300; border-color: #FFB300; }
