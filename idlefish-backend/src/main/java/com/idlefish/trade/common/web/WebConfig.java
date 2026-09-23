@@ -21,15 +21,18 @@ public class WebConfig implements WebMvcConfigurer {
     private final CurrentUserArgumentResolver currentUserArgumentResolver;
     private final AdminAuthInterceptor adminAuthInterceptor;
     private final CurrentAdminArgumentResolver currentAdminArgumentResolver;
+    private final DeviceContextInterceptor deviceContextInterceptor;
 
     public WebConfig(AuthInterceptor authInterceptor,
                      CurrentUserArgumentResolver currentUserArgumentResolver,
                      AdminAuthInterceptor adminAuthInterceptor,
-                     CurrentAdminArgumentResolver currentAdminArgumentResolver) {
+                     CurrentAdminArgumentResolver currentAdminArgumentResolver,
+                     DeviceContextInterceptor deviceContextInterceptor) {
         this.authInterceptor = authInterceptor;
         this.currentUserArgumentResolver = currentUserArgumentResolver;
         this.adminAuthInterceptor = adminAuthInterceptor;
         this.currentAdminArgumentResolver = currentAdminArgumentResolver;
+        this.deviceContextInterceptor = deviceContextInterceptor;
     }
 
     @Override
@@ -43,6 +46,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/item/buyer/**",
                         "/api/item/detail/**",
                         "/api/pay/notify",
+                        "/api/pay/notify/v3",
+                        "/api/mq/**",
                         "/api/admin/**",
                         "/error",
                         "/actuator/**");
@@ -51,6 +56,10 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(adminAuthInterceptor)
                 .addPathPatterns("/api/admin/**")
                 .excludePathPatterns("/api/admin/auth/**");
+
+        // 设备上下文提取（风控指纹）：对所有 /api/** 生效
+        registry.addInterceptor(deviceContextInterceptor)
+                .addPathPatterns("/api/**");
     }
 
     @Override

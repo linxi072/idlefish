@@ -198,10 +198,14 @@ CREATE TABLE IF NOT EXISTS t_track_event (
     event          VARCHAR(32),
     biz_id         VARCHAR(64),
     ext            VARCHAR(512),
+    device_id      VARCHAR(64),
+    ip             VARCHAR(64),
+    ua             VARCHAR(512),
     created_at     TIMESTAMP,
     updated_at     TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_track_user ON t_track_event (user_id, event);
+CREATE INDEX IF NOT EXISTS idx_track_device ON t_track_event (device_id);
 
 CREATE TABLE IF NOT EXISTS t_risk_event (
     id             BIGINT        PRIMARY KEY,
@@ -302,3 +306,49 @@ CREATE TABLE IF NOT EXISTS t_item_status_log (
     updated_at     TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_item_status_log ON t_item_status_log (item_id);
+
+-- ===== 外部组件集成：设备指纹 / 物流 / 延时队列 =====
+
+-- 设备指纹：同一设备可绑定多个账号，用于群控/接码识别与黑名单。
+CREATE TABLE IF NOT EXISTS t_device_fingerprint (
+    id             BIGINT        PRIMARY KEY,
+    device_id      VARCHAR(64)   NOT NULL,
+    user_id        BIGINT        NOT NULL,
+    fp_hash        VARCHAR(64),
+    first_seen     TIMESTAMP,
+    last_seen      TIMESTAMP,
+    status         VARCHAR(16)   DEFAULT 'normal',  -- normal / blacklisted
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP,
+    UNIQUE KEY uk_device_user (device_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_fp_device ON t_device_fingerprint (device_id);
+CREATE INDEX IF NOT EXISTS idx_fp_user ON t_device_fingerprint (user_id);
+
+-- 物流轨迹：发货后落库物流单与轨迹（mock 与真实实现均写入）。
+CREATE TABLE IF NOT EXISTS t_logistics (
+    id             BIGINT        PRIMARY KEY,
+    order_no       VARCHAR(32),
+    logistics_no   VARCHAR(64),
+    company        VARCHAR(32),
+    status         VARCHAR(16)   DEFAULT 'transport', -- transport / signed / exception
+    detail_json    TEXT,
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_logi_order ON t_logistics (order_no);
+CREATE INDEX IF NOT EXISTS idx_logi_no ON t_logistics (logistics_no);
+
+-- 延时任务：本地延时队列（D6）持久化，定时补偿触发；真实 RocketMQ 模式下作为兜底。
+CREATE TABLE IF NOT EXISTS t_delay_task (
+    id             BIGINT        PRIMARY KEY,
+    task_type      VARCHAR(32)   NOT NULL,
+    biz_id         VARCHAR(64),
+    payload        VARCHAR(1024),
+    status         VARCHAR(16)   DEFAULT 'pending', -- pending / processing / done / failed
+    next_execute_at TIMESTAMP    NOT NULL,
+    retry_count    INT           DEFAULT 0,
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_delay_next ON t_delay_task (status, next_execute_at);

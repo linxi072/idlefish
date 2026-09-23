@@ -1,40 +1,21 @@
 package com.idlefish.trade.trade.service;
 
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * 物流服务（Mock）：生成物流单号与模拟轨迹。
+ * 物流服务抽象（PRD §D5 物流）：
+ * - {@link MockLogisticsServiceImpl}（idlefish.logistics.mock=true 默认）：模拟单号与轨迹，并落库；
+ * - {@link RealLogisticsServiceImpl}（idlefish.logistics.mock=false）：对接真实物流商（快递100），不可用时降级模拟。
  */
-@Service
-public class LogisticService {
+public interface LogisticService {
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    /** 生成物流单号（发货时若用户未提供则由系统生成）。 */
+    String createLogistics(String orderNo);
 
-    /** 下单发货时生成物流单号。 */
-    public String createLogistics(String orderNo) {
-        return "SF" + System.nanoTime();
-    }
+    /** 发货落库初始轨迹（并触发真实推送，若对接）。 */
+    void persistShip(String orderNo, String logisticsNo, String company);
 
-    /** 模拟轨迹查询。 */
-    public List<Map<String, String>> track(String logisticsNo) {
-        List<Map<String, String>> list = new ArrayList<>();
-        list.add(of(LocalDateTime.now(), "【" + logisticsNo + "】已揽收"));
-        list.add(of(LocalDateTime.now().plusHours(6), "运输中，已到达分拣中心"));
-        list.add(of(LocalDateTime.now().plusHours(24), "已签收（模拟）"));
-        return list;
-    }
-
-    private Map<String, String> of(LocalDateTime t, String desc) {
-        Map<String, String> m = new LinkedHashMap<>();
-        m.put("time", t.format(FMT));
-        m.put("desc", desc);
-        return m;
-    }
+    /** 轨迹查询：优先真实物流商，失败降级模拟，并回写 t_logistics。 */
+    List<Map<String, String>> track(String logisticsNo);
 }

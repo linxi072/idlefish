@@ -69,4 +69,10 @@ public class OrderController {
                                       @RequestParam(required = false) String status) {
         return Result.ok(orderService.list(loginUser.getUserId(), role, status));
     }
+
+    /** 物流轨迹查询。 */
+    @GetMapping("/{orderNo}/logistics")
+    public Result<java.util.List<java.util.Map<String, String>>> logistics(@PathVariable String orderNo) {
+        return Result.ok(orderService.logisticsTrack(orderNo));
+    }
 }

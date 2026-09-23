@@ -13,6 +13,8 @@ import com.idlefish.trade.trade.entity.PayOrder;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
+import com.idlefish.trade.trade.service.DelayQueueService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -29,16 +31,19 @@ public class PayService {
     private final FundEscrowService escrow;
     private final ObjectMapper objectMapper;
     private final IdlefishProperties props;
+    private final DelayQueueService delayQueueService;
 
     public PayService(PayOrderMapper payOrderMapper, OrderMapper orderMapper,
                       FundFlowMapper fundFlowMapper, FundEscrowService escrow,
-                      ObjectMapper objectMapper, IdlefishProperties props) {
+                      ObjectMapper objectMapper, IdlefishProperties props,
+                      @Lazy DelayQueueService delayQueueService) {
         this.payOrderMapper = payOrderMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
         this.escrow = escrow;
         this.objectMapper = objectMapper;
         this.props = props;
+        this.delayQueueService = delayQueueService;
     }
 
     /** 预下单：返回渠道支付参数。 */
@@ -54,7 +59,7 @@ public class PayService {
         return escrow.prepay(po.getPayNo(), po.getAmount());
     }
 
-    /** 支付结果通知（幂等 + 防伪造）。 */
+    /** 支付结果通知（幂等 + 防伪造）：遗留表单式回调（演示/兼容）。 */
     public void notify(String payNo, String transactionId, Long amount) {
         PayOrder po = payOrderMapper.selectOne(
                 new LambdaQueryWrapper<PayOrder>().eq(PayOrder::getPayNo, payNo));
@@ -75,6 +80,43 @@ public class PayService {
         if (!verified) {
             throw new BizException(Code.BIZ_ERROR, "支付通知验签失败");
         }
+        applyPaid(payNo, transactionId, amount);
+    }
+
+    /**
+     * 微信支付 v3 JSON 回调（真实模式）：先验证节点签名，再解密 resource，最后幂等落地。
+     * 仅处理 trade_state=SUCCESS；其余状态（如 REFUND/CLOSED）忽略。
+     */
+    public void notifyV3(String body, String timestamp, String nonce, String serial, String signature) {
+        if (!props.isPayMock()) {
+            boolean ok = escrow.verifySignature(timestamp, nonce, body, signature);
+            if (!ok) {
+                throw new BizException(Code.BIZ_ERROR, "支付回调签名验证失败");
+            }
+        }
+        String resourceJson = extractResource(body);
+        java.util.Map<String, Object> decoded = escrow.decryptNotify(resourceJson);
+        if (decoded == null) {
+            throw new BizException(Code.BIZ_ERROR, "支付回调解密失败");
+        }
+        String payNo = (String) decoded.get("out_trade_no");
+        String transactionId = (String) decoded.get("transaction_id");
+        Object amtObj = decoded.get("amount");
+        Long amount = amtObj instanceof Number ? ((Number) amtObj).longValue() : null;
+        String tradeState = (String) decoded.get("trade_state");
+        if (!"SUCCESS".equals(tradeState)) {
+            return; // 非支付成功状态不处理
+        }
+        applyPaid(payNo, transactionId, amount);
+    }
+
+    /** 幂等落地支付成功（供 notify / notifyV3 复用）。 */
+    private void applyPaid(String payNo, String transactionId, Long amount) {
+        PayOrder po = payOrderMapper.selectOne(
+                new LambdaQueryWrapper<PayOrder>().eq(PayOrder::getPayNo, payNo));
+        if (po == null) {
+            throw new BizException(Code.ORDER_NOT_FOUND);
+        }
         if (PayStatus.SUCCESS.getCode().equals(po.getStatus())) {
             return; // 幂等：已处理
         }
@@ -92,6 +134,13 @@ public class PayService {
             ou.setId(order.getId());
             ou.setStatus(OrderStatus.PAID.getCode());
             orderMapper.updateById(ou);
+
+            // D6 延时队列：支付成功后提交 72h 未发货提醒延时任务（精准到点触发；本地/RocketMQ 均走此路径）
+            try {
+                delayQueueService.submit("REMIND_SHIP", order.getOrderNo(), "", 72 * 60 * 60);
+            } catch (Exception ignore) {
+                // 延时任务提交失败不影响支付落地（定时扫描兜底提醒）
+            }
         }
 
         FundFlow ff = new FundFlow();
@@ -102,6 +151,16 @@ public class PayService {
         ff.setType("PAY");
         ff.setBalanceAfter(0L); // 资金托管在平台，买家余额不直接减（演示）
         fundFlowMapper.insert(ff);
+    }
+
+    private String extractResource(String body) {
+        try {
+            com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(body);
+            com.fasterxml.jackson.databind.JsonNode resource = root.path("resource");
+            return resource.isMissingNode() ? body : resource.toString();
+        } catch (Exception e) {
+            return body;
+        }
     }
 
     /** 发起退款（被 RefundService 调用）。 */

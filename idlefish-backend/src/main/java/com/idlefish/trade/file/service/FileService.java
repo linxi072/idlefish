@@ -6,22 +6,25 @@ import com.idlefish.trade.common.IdlefishProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.IOException;
 import java.util.UUID;
 
 /**
- * 文件存储服务：Mock 模式返回 OSS 风格 URL；真实模式落本地 uploads 目录（生产应替换为 OSS/S3 客户端）。
+ * 文件存储门面（业务侧统一入口）：
+ * - idlefish.file.mock=true：返回伪造 URL（不落盘），用于纯前端联调；
+ * - idlefish.file.mock=false：委托 {@link StorageService}：
+ *     · idlefish.oss.mock=true（默认）：本地磁盘落盘，演示可用；
+ *     · idlefish.oss.mock=false：对接真实阿里云 OSS。
  */
 @Service
 public class FileService {
 
     private final IdlefishProperties props;
+    private final StorageService storageService;
 
-    public FileService(IdlefishProperties props) {
+    public FileService(IdlefishProperties props, StorageService storageService) {
         this.props = props;
+        this.storageService = storageService;
     }
 
     public String store(Long userId, MultipartFile file) {
@@ -36,13 +39,9 @@ public class FileService {
         if (f.isMock()) {
             return f.getBaseUrl() + name;
         }
-        try {
-            Path dir = Paths.get(System.getProperty("user.dir"), "uploads");
-            Files.createDirectories(dir);
-            Path target = dir.resolve(name);
-            file.transferTo(target.toFile());
-            return f.getBaseUrl() + name;
-        } catch (Exception e) {
+        try (var in = file.getInputStream()) {
+            return storageService.store(name, in, file.getContentType());
+        } catch (IOException e) {
             throw new BizException(Code.FILE_ERROR, "文件保存失败");
         }
     }

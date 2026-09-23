@@ -35,10 +35,48 @@ idlefish:
   pay:
     # mock=true 走本地 Mock 支付（跑通链路）；生产部署请通过环境变量 IDLEFISH_PAY_MOCK=false 关闭
     mock: ${IDLEFISH_PAY_MOCK:true}          # true=本地 Mock 支付（跑通链路）；false=对接真实微信分账
+    mchid: "${IDLEFISH_PAY_MCHID:}"
+    appid: "${IDLEFISH_PAY_APPID:}"
+    serial-no: "${IDLEFISH_PAY_SERIAL:}"
+    private-key: "${IDLEFISH_PAY_PRIVATE_KEY:}"
+    api-v3-key: "${IDLEFISH_PAY_APIV3_KEY:}"
+    notify-url: "${IDLEFISH_PAY_NOTIFY_URL:}"
+    gateway: "https://api.mch.weixin.qq.com"
   search:
     mock: true          # true=基于数据库的实现（模拟 ES）；false=对接真实 Elasticsearch
+    hosts:              # mock=false 时使用，例如 - http://127.0.0.1:9200
+      - "http://127.0.0.1:9200"
+    index: "idlefish_item"
   mq:
-    mock: true          # true=基于 Spring 事件 + 定时器的本地实现；false=对接真实 RocketMQ
+    mock: true          # true=基于 DB 持久化 + 定时器的本地实现；false=对接真实 RocketMQ
+    endpoint: "${IDLEFISH_MQ_ENDPOINT:}"
+    access-key: "${IDLEFISH_MQ_AK:}"
+    secret-key: "${IDLEFISH_MQ_SK:}"
+    instance-id: "${IDLEFISH_MQ_INSTANCE:}"
+    topic: "idlefish_delay"
+    group: "idlefish_delay_grp"
+  audit:
+    mock: true          # true=本地关键词/正则机审（复用 SensitiveWords）；false=阿里云内容安全（绿网）
+  logistics:
+    mock: true          # true=本地模拟物流轨迹；false=对接真实物流商（快递100/菜鸟）
+    provider: "kuaidi100"
+    customer: "${IDLEFISH_LOGI_CUSTOMER:}"
+    key: "${IDLEFISH_LOGI_KEY:}"
+    url: "https://poll.kuaidi100.com/poll/query.do"
   file:
-    mock: false         # false=真实落盘到本地 uploads 目录，并由后端静态映射 /uploads 提供访问（演示可用）；生产应改为 OSS/S3
+    mock: false         # false=真实落盘到本地 uploads（演示可用）；生产应改为 OSS
     base-url: "/uploads/"
+  oss:
+    endpoint: "${IDLEFISH_OSS_ENDPOINT:}"
+    bucket: "${IDLEFISH_OSS_BUCKET:}"
+    region: "cn-hangzhou"
+    access-key: "${IDLEFISH_OSS_AK:}"
+    secret-key: "${IDLEFISH_OSS_SK:}"
+    base-url: "/uploads/"
+  risk:
+    device-enabled: true
+    high-amount-threshold-fen: 5000000
+    device-account-threshold: 3
+    device-order-rate: 10
+    device-order-window-min: 1
+    blacklist-device-ids: []

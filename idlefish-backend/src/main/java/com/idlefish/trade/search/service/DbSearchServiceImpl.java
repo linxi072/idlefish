@@ -7,6 +7,7 @@ import com.idlefish.trade.item.entity.Item;
 import com.idlefish.trade.item.mapper.ItemMapper;
 import com.idlefish.trade.item.service.ItemService;
 import com.idlefish.trade.item.vo.ItemVO;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,8 +16,10 @@ import java.util.stream.Collectors;
 /**
  * 基于数据库的检索实现（模拟 Elasticsearch）。
  * 关键词对标题做 LIKE 模拟全文检索；无关键词时走兜底（最新在售）。
+ * 仅当 idlefish.search.mock=true（默认）时生效。
  */
 @Service
+@ConditionalOnProperty(name = "idlefish.search.mock", havingValue = "true", matchIfMissing = true)
 public class DbSearchServiceImpl implements SearchService {
 
     private final ItemMapper itemMapper;
@@ -63,5 +66,15 @@ public class DbSearchServiceImpl implements SearchService {
             q = new ItemQueryDTO();
         }
         return itemService.buyerList(q);
+    }
+
+    @Override
+    public void indexItem(Item item) {
+        // DB 实现：商品表即索引，无需额外写入
+    }
+
+    @Override
+    public void removeItem(Long itemId) {
+        // DB 实现：无需移除
     }
 }

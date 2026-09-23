@@ -43,4 +43,18 @@ public class PayController {
         payService.mockComplete(payNo);
         return Result.ok();
     }
+
+    /**
+     * 微信支付 v3 回调（真实模式）：JSON 密文 + 签名头。验签 + 解密 + 幂等落地。
+     * 生产需放行该端点鉴权（WebConfig 已对 /api/pay/** 放行）。
+     */
+    @PostMapping("/notify/v3")
+    public Result<Void> notifyV3(@RequestBody String body,
+                                 @RequestHeader(value = "Wechatpay-Signature", required = false) String signature,
+                                 @RequestHeader(value = "Wechatpay-Timestamp", required = false) String timestamp,
+                                 @RequestHeader(value = "Wechatpay-Nonce", required = false) String nonce,
+                                 @RequestHeader(value = "Wechatpay-Serial", required = false) String serial) {
+        payService.notifyV3(body, timestamp, nonce, serial, signature);
+        return Result.ok();
+    }
 }

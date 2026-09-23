@@ -23,6 +23,8 @@ import com.idlefish.trade.trade.vo.OrderItemVO;
 import com.idlefish.trade.trade.vo.OrderVO;
 import com.idlefish.trade.user.service.AddressService;
 import com.idlefish.trade.risk.service.TrackService;
+import com.idlefish.trade.trade.service.DelayQueueService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -47,13 +49,15 @@ public class OrderService {
     private final SettlementService settlementService;
     private final TrackService trackService;
     private final ObjectMapper objectMapper;
+    private final DelayQueueService delayQueueService;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public OrderService(OrderMapper orderMapper, PayOrderMapper payOrderMapper,
                         ItemService itemService, ItemMapper itemMapper,
                         AddressService addressService, LogisticService logisticService,
-                        SettlementService settlementService, TrackService trackService, ObjectMapper objectMapper) {
+                        SettlementService settlementService, TrackService trackService, ObjectMapper objectMapper,
+                        @Lazy DelayQueueService delayQueueService) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.itemService = itemService;
@@ -63,6 +67,7 @@ public class OrderService {
         this.settlementService = settlementService;
         this.trackService = trackService;
         this.objectMapper = objectMapper;
+        this.delayQueueService = delayQueueService;
     }
 
     /** 创建订单（幂等：同买家同商品存在待支付订单则直接返回）。 */
@@ -118,9 +123,16 @@ public class OrderService {
         po.setStatus(PayStatus.WAIT.getCode());
         payOrderMapper.insert(po);
 
-        // D1 埋点：下单事件（失败不影响主流程）
+        // D6 延时队列：下单后提交 30 分钟关单延时任务（精准到点触发；本地实现或 RocketMQ 均走此路径）
         try {
-            trackService.track(buyerId, "order_create", orderNo, null);
+            delayQueueService.submit("ORDER_CLOSE", orderNo, "", 30 * 60);
+        } catch (Exception ignore) {
+            // 延时任务提交失败不影响下单主流程（定时扫描兜底关单）
+        }
+
+        // D1 埋点：下单事件（携带金额，供设备维度风控 R3 判定；失败不影响主流程）
+        try {
+            trackService.track(buyerId, "order_create", orderNo, "{\"amount\":" + payAmount + "}");
         } catch (Exception ignore) {
             // 埋点异常忽略，避免影响下单
         }
@@ -148,14 +160,23 @@ public class OrderService {
         if (!OrderStatus.PAID.getCode().equals(o.getStatus())) {
             throw new BizException(Code.STATE_NOT_ALLOWED, "仅已支付订单可发货");
         }
+        String no = logisticsNo != null && !logisticsNo.isBlank()
+                ? logisticsNo : logisticService.createLogistics(orderNo);
         Order upd = new Order();
         upd.setId(o.getId());
         upd.setVersion(o.getVersion());
         upd.setStatus(OrderStatus.SHIPPING.getCode());
-        upd.setLogisticsNo(logisticsNo != null && !logisticsNo.isBlank()
-                ? logisticsNo : logisticService.createLogistics(orderNo));
+        upd.setLogisticsNo(no);
         if (orderMapper.updateById(upd) == 0) {
             throw new BizException(Code.STATE_NOT_ALLOWED, "订单状态已变更，请刷新后重试");
+        }
+        logisticService.persistShip(orderNo, no, "SF");
+
+        // D6 延时队列：发货后提交 10 天自动确认收货延时任务（精准到点触发；本地/RocketMQ 均走此路径）
+        try {
+            delayQueueService.submit("ORDER_CONFIRM", orderNo, "", 10 * 24 * 60 * 60);
+        } catch (Exception ignore) {
+            // 延时任务提交失败不影响发货主流程（定时扫描兜底确认）
         }
     }
 
@@ -182,15 +203,26 @@ public class OrderService {
         if (!OrderStatus.PAID.getCode().equals(o.getStatus())) {
             throw new BizException(Code.STATE_NOT_ALLOWED, "仅已支付订单可发货");
         }
+        String no = logisticsNo != null && !logisticsNo.isBlank()
+                ? logisticsNo : logisticService.createLogistics(orderNo);
         Order upd = new Order();
         upd.setId(o.getId());
         upd.setVersion(o.getVersion());
         upd.setStatus(OrderStatus.SHIPPING.getCode());
-        upd.setLogisticsNo(logisticsNo != null && !logisticsNo.isBlank()
-                ? logisticsNo : logisticService.createLogistics(orderNo));
+        upd.setLogisticsNo(no);
         if (orderMapper.updateById(upd) == 0) {
             throw new BizException(Code.STATE_NOT_ALLOWED, "订单状态已变更，请刷新后重试");
         }
+        logisticService.persistShip(orderNo, no, "SF");
+    }
+
+    /** 物流轨迹查询（买家/卖家均可，按订单号取物流单号）。 */
+    public java.util.List<java.util.Map<String, String>> logisticsTrack(String orderNo) {
+        Order o = getByOrderNo(orderNo);
+        if (o.getLogisticsNo() == null || o.getLogisticsNo().isBlank()) {
+            return java.util.List.of();
+        }
+        return logisticService.track(o.getLogisticsNo());
     }
 
     private Order getByOrderNo(String orderNo) {
@@ -234,10 +266,19 @@ public class OrderService {
                 .eq(Order::getStatus, OrderStatus.PENDING_PAY.getCode())
                 .lt(Order::getCreatedAt, threshold));
         for (Order o : expired) {
-            setClosed(o, "timeout");
-            closePay(o.getPayNo());
-            itemService.releaseStock(o.getItemId(), o.getQuantity());
+            closeExpiredSingle(o.getOrderNo());
         }
+    }
+
+    /** 单笔关单（供延时队列处理器调用，幂等）。 */
+    public void closeExpiredSingle(String orderNo) {
+        Order o = getByOrderNo(orderNo);
+        if (!OrderStatus.PENDING_PAY.getCode().equals(o.getStatus())) {
+            return;
+        }
+        setClosed(o, "timeout");
+        closePay(o.getPayNo());
+        itemService.releaseStock(o.getItemId(), o.getQuantity());
     }
 
     /** 定时：运输中订单超过 10 天未确认收货，自动确认并完成结算。 */
@@ -247,13 +288,22 @@ public class OrderService {
                 .eq(Order::getStatus, OrderStatus.SHIPPING.getCode())
                 .lt(Order::getCreatedAt, threshold));
         for (Order o : list) {
-            Order upd = new Order();
-            upd.setId(o.getId());
-            upd.setStatus(OrderStatus.COMPLETED.getCode());
-            orderMapper.updateById(upd);
-            itemService.markSold(o.getItemId());
-            settlementService.onTradeSuccess(o.getOrderNo());
+            confirmReceiveSingle(o.getOrderNo());
         }
+    }
+
+    /** 单笔自动确认收货（供延时队列处理器调用，幂等）。 */
+    public void confirmReceiveSingle(String orderNo) {
+        Order o = getByOrderNo(orderNo);
+        if (!OrderStatus.SHIPPING.getCode().equals(o.getStatus())) {
+            return;
+        }
+        Order upd = new Order();
+        upd.setId(o.getId());
+        upd.setStatus(OrderStatus.COMPLETED.getCode());
+        orderMapper.updateById(upd);
+        itemService.markSold(o.getItemId());
+        settlementService.onTradeSuccess(o.getOrderNo());
     }
 
     /** 定时：已支付超过 72h 未发货，返回需提醒的订单数（提醒由通知中心消费）。 */

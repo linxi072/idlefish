@@ -16,6 +16,9 @@ public class TrackEvent extends BaseEntity implements Serializable {
     private String event;
     private String bizId;
     private String ext;
+    private String deviceId;
+    private String ip;
+    private String ua;
 
     public Long getUserId() {
         return userId;
@@ -47,5 +50,29 @@ public class TrackEvent extends BaseEntity implements Serializable {
 
     public void setExt(String ext) {
         this.ext = ext;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public String getUa() {
+        return ua;
+    }
+
+    public void setUa(String ua) {
+        this.ua = ua;
     }
 }

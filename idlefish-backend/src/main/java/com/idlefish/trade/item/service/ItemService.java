@@ -19,8 +19,12 @@ import com.idlefish.trade.item.mapper.ItemStatusLogMapper;
 import com.idlefish.trade.item.vo.ItemDetailVO;
 import com.idlefish.trade.item.vo.ItemVO;
 import com.idlefish.trade.item.vo.SellerVO;
+import com.idlefish.trade.item.dto.AuditResult;
+import com.idlefish.trade.item.service.ContentAuditService;
+import com.idlefish.trade.search.service.SearchService;
 import com.idlefish.trade.user.entity.User;
 import com.idlefish.trade.user.service.UserService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
@@ -40,6 +44,8 @@ public class ItemService {
     private final ItemStateMachine stateMachine;
     private final ObjectMapper objectMapper;
     private final ItemStatusLogMapper itemStatusLogMapper;
+    private final ContentAuditService contentAuditService;
+    private final SearchService searchService;
 
     /** 单实例应用级库存锁（防超卖）；多实例需改用 Redis 分布式锁。 */
     private final ConcurrentMap<Long, Object> itemLocks = new ConcurrentHashMap<>();
@@ -48,13 +54,16 @@ public class ItemService {
 
     public ItemService(ItemMapper itemMapper, CategoryService categoryService,
                        UserService userService, ItemStateMachine stateMachine, ObjectMapper objectMapper,
-                       ItemStatusLogMapper itemStatusLogMapper) {
+                       ItemStatusLogMapper itemStatusLogMapper, ContentAuditService contentAuditService,
+                       @Lazy SearchService searchService) {
         this.itemMapper = itemMapper;
         this.categoryService = categoryService;
         this.userService = userService;
         this.stateMachine = stateMachine;
         this.objectMapper = objectMapper;
         this.itemStatusLogMapper = itemStatusLogMapper;
+        this.contentAuditService = contentAuditService;
+        this.searchService = searchService;
     }
 
     /** 发布商品：初始为 DRAFT 草稿。 */
@@ -117,6 +126,9 @@ public class ItemService {
             upd.setAuditReason(reason);
         }
         itemMapper.updateById(upd);
+        if (pass) {
+            searchService.indexItem(getById(itemId));
+        }
     }
 
     /** 编辑商品（覆盖非空字段）。 */
@@ -312,16 +324,11 @@ public class ItemService {
         itemStatusLogMapper.insert(log);
     }
 
-    /** 模拟内容审核：含敏感词则驳回。 */
+    /** B3 内容审核：调用 ContentAuditService（本地机审 / 阿里云绿网），命中则驳回。 */
     private boolean auditContent(Item item) {
-        if (item.getTitle() == null) return false;
-        String[] blocked = {"代开发票", "色情", "赌博", "枪支"};
-        for (String w : blocked) {
-            if (item.getTitle().contains(w) || (item.getDescription() != null && item.getDescription().contains(w))) {
-                return false;
-            }
-        }
-        return true;
+        java.util.List<String> images = fromJson(item.getImages());
+        AuditResult result = contentAuditService.audit(item.getTitle(), item.getDescription(), images);
+        return result.isPass();
     }
 
     public ItemVO toVO(Item item) {

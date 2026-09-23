@@ -10,6 +10,8 @@ import com.idlefish.trade.im.vo.ConversationVO;
 import com.idlefish.trade.im.vo.MessageVO;
 import com.idlefish.trade.im.ws.WsSessionManager;
 import com.idlefish.trade.common.util.SensitiveWords;
+import com.idlefish.trade.item.dto.AuditResult;
+import com.idlefish.trade.item.service.ContentAuditService;
 import com.idlefish.trade.user.service.UserService;
 import org.springframework.stereotype.Service;
 
@@ -34,20 +36,29 @@ public class ImService {
     private final WsSessionManager wsSessionManager;
     private final UserService userService;
     private final ObjectMapper objectMapper;
+    private final ContentAuditService contentAuditService;
 
     public ImService(ConversationMapper conversationMapper, MessageMapper messageMapper,
-                     WsSessionManager wsSessionManager, UserService userService, ObjectMapper objectMapper) {
+                     WsSessionManager wsSessionManager, UserService userService, ObjectMapper objectMapper,
+                     ContentAuditService contentAuditService) {
         this.conversationMapper = conversationMapper;
         this.messageMapper = messageMapper;
         this.wsSessionManager = wsSessionManager;
         this.userService = userService;
         this.objectMapper = objectMapper;
+        this.contentAuditService = contentAuditService;
     }
 
     /** 发送消息（sender→receiver，围绕 itemId）。 */
     public MessageVO send(Long senderId, Long receiverId, Long itemId, String content, String type) {
         if (receiverId == null || receiverId.equals(senderId)) {
             throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.PARAM_INVALID, "接收人无效");
+        }
+        // E3 消息内容审核：命中违规/站外联系方式则拦截发送（机审或阿里云绿网）
+        AuditResult audit = contentAuditService.auditText(content);
+        if (!audit.isPass()) {
+            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.BIZ_ERROR,
+                    audit.getReason() != null ? audit.getReason() : "消息内容未通过审核");
         }
         String convId = convIdOf(senderId, receiverId, itemId);
         Conversation conv = conversationMapper.selectOne(

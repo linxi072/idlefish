@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.util.IdGenerator;
+import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.risk.entity.RiskEvent;
 import com.idlefish.trade.risk.mapper.RiskEventMapper;
 import com.idlefish.trade.trade.entity.FundFlow;
@@ -13,6 +14,8 @@ import com.idlefish.trade.trade.entity.Settlement;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.SettlementMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,20 +29,27 @@ import java.util.List;
 @Service
 public class SettlementService {
 
+    private static final Logger log = LoggerFactory.getLogger(SettlementService.class);
+
     private final SettlementMapper settlementMapper;
     private final OrderMapper orderMapper;
     private final FundFlowMapper fundFlowMapper;
     private final RiskEventMapper riskEventMapper;
+    private final FundEscrowService escrow;
+    private final IdlefishProperties props;
 
     /** 平台佣金比例（PRD §4.3）。 */
     private static final double PLATFORM_RATE = 0.05;
 
     public SettlementService(SettlementMapper settlementMapper, OrderMapper orderMapper,
-                             FundFlowMapper fundFlowMapper, RiskEventMapper riskEventMapper) {
+                             FundFlowMapper fundFlowMapper, RiskEventMapper riskEventMapper,
+                             FundEscrowService escrow, IdlefishProperties props) {
         this.settlementMapper = settlementMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
         this.riskEventMapper = riskEventMapper;
+        this.escrow = escrow;
+        this.props = props;
     }
 
     /** 交易成功：生成待结算单（T+1）。幂等：同一订单仅生成一次，防并发双重结算资损。 */
@@ -68,6 +78,16 @@ public class SettlementService {
             settlementMapper.insert(s);
         } catch (DuplicateKeyException e) {
             // 并发场景由 t_settlement.order_no 唯一约束兜底，安全忽略
+        }
+        // 真实微信分账：交易成功后即时将卖家应得款项分账至接收方（生产为卖家子商户号）；
+        // 演示（pay.mock=true）跳过；异常不阻断结算单生成（结算仍按 T+1 放款兜底）。
+        if (!props.isPayMock()) {
+            try {
+                escrow.profitShare(o.getPayNo(), o.getPayAmount(),
+                        props.getPay().getMchid(), sellerAmount);
+            } catch (Exception e) {
+                log.warn("微信分账发起失败（不影响结算单）orderNo={}: {}", orderNo, e.getMessage());
+            }
         }
     }
 

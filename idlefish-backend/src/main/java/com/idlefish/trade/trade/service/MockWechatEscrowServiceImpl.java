@@ -33,8 +33,23 @@ public class MockWechatEscrowServiceImpl implements FundEscrowService {
     }
 
     @Override
+    public String profitShare(String payNo, Long amount, String receiverMchId, Long shareAmount) {
+        return "MOCK_PROFIT_" + payNo + "_" + System.nanoTime();
+    }
+
+    @Override
     public boolean verifyNotify(java.util.Map<String, String> params) {
         // 演示环境直接信任回调；生产必须将 idlefish.pay.mock=false 并接入真实验签
+        return true;
+    }
+
+    @Override
+    public java.util.Map<String, Object> decryptNotify(String resourceJson) {
+        return null;
+    }
+
+    @Override
+    public boolean verifySignature(String timestamp, String nonce, String body, String signature) {
         return true;
     }
 }
