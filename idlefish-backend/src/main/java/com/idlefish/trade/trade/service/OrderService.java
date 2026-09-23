@@ -22,6 +22,7 @@ import com.idlefish.trade.trade.vo.OrderCreateVO;
 import com.idlefish.trade.trade.vo.OrderItemVO;
 import com.idlefish.trade.trade.vo.OrderVO;
 import com.idlefish.trade.user.service.AddressService;
+import com.idlefish.trade.risk.service.TrackService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -44,6 +45,7 @@ public class OrderService {
     private final AddressService addressService;
     private final LogisticService logisticService;
     private final SettlementService settlementService;
+    private final TrackService trackService;
     private final ObjectMapper objectMapper;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -51,7 +53,7 @@ public class OrderService {
     public OrderService(OrderMapper orderMapper, PayOrderMapper payOrderMapper,
                         ItemService itemService, ItemMapper itemMapper,
                         AddressService addressService, LogisticService logisticService,
-                        SettlementService settlementService, ObjectMapper objectMapper) {
+                        SettlementService settlementService, TrackService trackService, ObjectMapper objectMapper) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.itemService = itemService;
@@ -59,6 +61,7 @@ public class OrderService {
         this.addressService = addressService;
         this.logisticService = logisticService;
         this.settlementService = settlementService;
+        this.trackService = trackService;
         this.objectMapper = objectMapper;
     }
 
@@ -114,6 +117,13 @@ public class OrderService {
         po.setChannel("wechat");
         po.setStatus(PayStatus.WAIT.getCode());
         payOrderMapper.insert(po);
+
+        // D1 埋点：下单事件（失败不影响主流程）
+        try {
+            trackService.track(buyerId, "order_create", orderNo, null);
+        } catch (Exception ignore) {
+            // 埋点异常忽略，避免影响下单
+        }
 
         OrderCreateVO vo = new OrderCreateVO();
         vo.setOrderNo(orderNo);

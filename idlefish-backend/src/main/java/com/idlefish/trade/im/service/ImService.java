@@ -9,6 +9,7 @@ import com.idlefish.trade.im.mapper.MessageMapper;
 import com.idlefish.trade.im.vo.ConversationVO;
 import com.idlefish.trade.im.vo.MessageVO;
 import com.idlefish.trade.im.ws.WsSessionManager;
+import com.idlefish.trade.common.util.SensitiveWords;
 import com.idlefish.trade.user.service.UserService;
 import org.springframework.stereotype.Service;
 
@@ -67,7 +68,8 @@ public class ImService {
         msg.setSenderId(senderId);
         msg.setReceiverId(receiverId);
         msg.setType(type == null ? "text" : type);
-        msg.setContent(content);
+        msg.setContent(SensitiveWords.fold(content));
+        msg.setSeq(messageMapper.maxSeqByConv(convId) + 1);
         msg.setReadFlag(0);
         messageMapper.insert(msg);
 
@@ -87,6 +89,25 @@ public class ImService {
         push(receiverId, msg);
 
         return toVO(msg);
+    }
+
+    /** 平台客服会话入口：返回（或创建）用户与平台客服的会话 ID。 */
+    public String csConversation(Long userId, Long csId, Long itemId) {
+        Long ref = itemId == null ? 0L : itemId;
+        String convId = convIdOf(userId, csId, ref);
+        Conversation conv = conversationMapper.selectOne(
+                new LambdaQueryWrapper<Conversation>().eq(Conversation::getConvId, convId));
+        if (conv == null) {
+            conv = new Conversation();
+            conv.setConvId(convId);
+            conv.setBuyerId(Math.min(userId, csId));
+            conv.setSellerId(Math.max(userId, csId));
+            conv.setItemId(itemId);
+            conv.setBuyerUnread(0);
+            conv.setSellerUnread(0);
+            conversationMapper.insert(conv);
+        }
+        return convId;
     }
 
     /** 当前用户会话列表（含未读）。 */
@@ -176,6 +197,7 @@ public class ImService {
         vo.setType(m.getType());
         vo.setContent(m.getContent());
         vo.setReadFlag(m.getReadFlag());
+        vo.setSeq(m.getSeq());
         vo.setCreatedAt(m.getCreatedAt() == null ? null : m.getCreatedAt().format(FMT));
         return vo;
     }

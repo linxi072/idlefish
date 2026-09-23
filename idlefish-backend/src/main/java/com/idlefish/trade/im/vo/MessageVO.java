@@ -11,6 +11,7 @@ public class MessageVO {
     private String type;
     private String content;
     private Integer readFlag;
+    private Long seq;
     private String createdAt;
 
     public String getConvId() {
@@ -59,6 +60,14 @@ public class MessageVO {
 
     public void setReadFlag(Integer readFlag) {
         this.readFlag = readFlag;
+    }
+
+    public Long getSeq() {
+        return seq;
+    }
+
+    public void setSeq(Long seq) {
+        this.seq = seq;
     }
 
     public String getCreatedAt() {

@@ -2,8 +2,12 @@
   "description": "闲置集 C2C 二手交易小程序 · 前端工程",
   "packOptions": {
     "ignore": [
-      { "type": "folder", "value": "utils/mock.js" }
-    ]
+      {
+        "value": "utils/mock.js",
+        "type": "folder"
+      }
+    ],
+    "include": []
   },
   "setting": {
     "urlCheck": false,
@@ -11,11 +15,29 @@
     "enhance": true,
     "postcss": true,
     "minified": true,
-    "newFeature": true
+    "newFeature": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
   },
   "compileType": "miniprogram",
   "libVersion": "3.4.0",
-  "appid": "touristappid",
+  "appid": "wxcc344ad7f4f849d4",
   "projectname": "idlefish-miniprogram",
-  "condition": {}
+  "condition": {},
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
 }

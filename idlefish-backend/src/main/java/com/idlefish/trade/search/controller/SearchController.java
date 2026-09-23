@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.idlefish.trade.common.Result;
 import com.idlefish.trade.item.dto.ItemQueryDTO;
 import com.idlefish.trade.item.vo.ItemVO;
+import com.idlefish.trade.search.service.RecommendService;
 import com.idlefish.trade.search.service.SearchService;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,9 +19,11 @@ import java.util.List;
 public class SearchController {
 
     private final SearchService searchService;
+    private final RecommendService recommendService;
 
-    public SearchController(SearchService searchService) {
+    public SearchController(SearchService searchService, RecommendService recommendService) {
         this.searchService = searchService;
+        this.recommendService = recommendService;
     }
 
     /** 商品检索。 */
@@ -39,5 +42,13 @@ public class SearchController {
     @GetMapping("/fallback")
     public Result<IPage<ItemVO>> fallback(ItemQueryDTO q) {
         return Result.ok(searchService.fallback(q));
+    }
+
+    /** 首页推荐流（同城优先 + 热度加权，PRD §C2）。 */
+    @GetMapping("/recommend")
+    public Result<IPage<ItemVO>> recommend(@RequestParam(required = false) String city,
+                                           @RequestParam(defaultValue = "1") int page,
+                                           @RequestParam(defaultValue = "10") int size) {
+        return Result.ok(recommendService.feed(city, page, size));
     }
 }

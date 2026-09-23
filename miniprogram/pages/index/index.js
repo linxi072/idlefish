@@ -21,8 +21,15 @@ Page({
     if (this.data.loading) return;
     const page = reset ? 1 : this.data.page;
     this.setData({ loading: true });
-    api.search({ keyword: this.data.keyword, page, size: this.data.size }).then((r) => {
-      const list = (r.items || []).map(i => Object.assign({}, i, {
+    const city = (store.getUserInfo() && store.getUserInfo().city) || '';
+    const useKeyword = this.data.keyword && this.data.keyword.trim();
+    const fn = useKeyword ? api.search : api.recommend;
+    const params = useKeyword
+      ? { keyword: this.data.keyword.trim(), page, size: this.data.size }
+      : { city, page, size: this.data.size };
+    fn(params).then((r) => {
+      const items = r.items || r.records || [];
+      const list = items.map(i => Object.assign({}, i, {
         priceText: formatPrice(i.price),
         statusT: statusText('item', i.status)
       }));

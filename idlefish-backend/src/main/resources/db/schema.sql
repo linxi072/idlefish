@@ -185,6 +185,7 @@ CREATE TABLE IF NOT EXISTS t_message (
     receiver_id    BIGINT,
     type           VARCHAR(16),
     content        VARCHAR(1024),
+    seq            BIGINT        DEFAULT 0,
     read_flag      INT           DEFAULT 0,
     created_at     TIMESTAMP,
     updated_at     TIMESTAMP
@@ -247,3 +248,57 @@ CREATE TABLE IF NOT EXISTS t_favorite (
     UNIQUE KEY uk_user_item (user_id, item_id)
 );
 CREATE INDEX IF NOT EXISTS idx_favorite_user ON t_favorite (user_id);
+
+-- ===== P0 二次补齐：属性模板 / 议价 / 提现 / 商品状态日志 =====
+
+CREATE TABLE IF NOT EXISTS t_attr_template (
+    id             BIGINT        PRIMARY KEY,
+    category_id    BIGINT,
+    name           VARCHAR(64),
+    options        VARCHAR(512),
+    required       INT           DEFAULT 0,
+    sort           INT           DEFAULT 0,
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_attr_cat ON t_attr_template (category_id);
+
+CREATE TABLE IF NOT EXISTS t_bargain (
+    id             BIGINT        PRIMARY KEY,
+    conv_id        VARCHAR(64),
+    item_id        BIGINT,
+    buyer_id       BIGINT,
+    seller_id      BIGINT,
+    origin_price   BIGINT,
+    offer_price    BIGINT,
+    status         VARCHAR(16),
+    expire_at      TIMESTAMP,
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_bargain_conv ON t_bargain (conv_id);
+CREATE INDEX IF NOT EXISTS idx_bargain_seller ON t_bargain (seller_id, status);
+
+CREATE TABLE IF NOT EXISTS t_withdrawal (
+    id             BIGINT        PRIMARY KEY,
+    user_id        BIGINT,
+    amount         BIGINT,
+    account        VARCHAR(128),
+    status         VARCHAR(16),
+    done_at        TIMESTAMP,
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_withdrawal_user ON t_withdrawal (user_id, status);
+
+CREATE TABLE IF NOT EXISTS t_item_status_log (
+    id             BIGINT        PRIMARY KEY,
+    item_id        BIGINT,
+    from_status    VARCHAR(32),
+    to_status      VARCHAR(32),
+    operator_id    BIGINT,
+    remark         VARCHAR(255),
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_item_status_log ON t_item_status_log (item_id);

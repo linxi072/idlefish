@@ -10,7 +10,15 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * 按领域分包：common / user / item / trade / search / im / risk / admin。
  */
 @SpringBootApplication
-@MapperScan("com.idlefish.trade")
+@MapperScan(basePackages = {
+        "com.idlefish.trade.trade.mapper",
+        "com.idlefish.trade.admin.mapper",
+        "com.idlefish.trade.favorite.mapper",
+        "com.idlefish.trade.user.mapper",
+        "com.idlefish.trade.item.mapper",
+        "com.idlefish.trade.im.mapper",
+        "com.idlefish.trade.risk.mapper"
+})
 @EnableScheduling
 public class TradeApplication {
 

@@ -32,3 +32,13 @@ INSERT INTO t_category (id, parent_id, name, icon, level, sort, is_leaf) VALUES
 -- 格式：PBKDF2HMACSHA256:ITER:SALT:BASE64HASH
 INSERT INTO t_admin_user (id, username, password, role, nickname, status) VALUES
 (1, 'admin', 'PBKDF2HMACSHA256:10000:WCOPC+zTuZwdFFKwzNFvRg==:YvUqk84K3PVy/SfzHiZqOnpmvI1fklcxTnB9jk3jzG8=', 'SUPER', '超级管理员', 1);
+
+-- ===== 平台客服（IM 客服入口固定主体，PRD §D4） =====
+INSERT INTO t_user (id, wx_openid, nickname, credit_score, status, real_name_verified) VALUES
+(10000, 'cs_platform', '平台客服', 100, 1, 1);
+
+-- ===== 类目属性模板（PRD §B1，示例：智能手机叶子类目） =====
+INSERT INTO t_attr_template (id, category_id, name, options, required, sort) VALUES
+(1, 1011, '成色', '["99新","95新","9成新","8成新"]', 1, 1),
+(2, 1011, '内存', '["128G","256G","512G","1T"]', 0, 2),
+(3, 1011, '保修', '["在保","过保"]', 0, 3);

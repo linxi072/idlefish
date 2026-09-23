@@ -12,17 +12,24 @@ import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.Result;
 import com.idlefish.trade.common.util.JwtUtil;
 import com.idlefish.trade.item.entity.Item;
+import com.idlefish.trade.item.service.AttrTemplateService;
 import com.idlefish.trade.item.service.CategoryService;
 import com.idlefish.trade.item.vo.CategoryVO;
 import com.idlefish.trade.risk.entity.AuditLog;
 import com.idlefish.trade.risk.entity.RiskEvent;
 import com.idlefish.trade.trade.entity.Order;
+import com.idlefish.trade.trade.entity.Withdrawal;
 import com.idlefish.trade.trade.service.OrderService;
+import com.idlefish.trade.trade.service.ReconciliationService;
 import com.idlefish.trade.trade.service.RefundService;
+import com.idlefish.trade.trade.service.SettlementService;
+import com.idlefish.trade.trade.service.WithdrawalService;
 import com.idlefish.trade.user.entity.User;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 运营后台接口（PRD §7）。
@@ -39,15 +46,25 @@ public class AdminController {
     private final OrderService orderService;
     private final RefundService refundService;
     private final CategoryService categoryService;
+    private final AttrTemplateService attrTemplateService;
+    private final WithdrawalService withdrawalService;
+    private final ReconciliationService reconciliationService;
+    private final SettlementService settlementService;
 
     public AdminController(AdminService adminService, AdminUserMapper adminUserMapper, JwtUtil jwtUtil,
-                           OrderService orderService, RefundService refundService, CategoryService categoryService) {
+                           OrderService orderService, RefundService refundService, CategoryService categoryService,
+                           AttrTemplateService attrTemplateService, WithdrawalService withdrawalService,
+                           ReconciliationService reconciliationService, SettlementService settlementService) {
         this.adminService = adminService;
         this.adminUserMapper = adminUserMapper;
         this.jwtUtil = jwtUtil;
         this.orderService = orderService;
         this.refundService = refundService;
         this.categoryService = categoryService;
+        this.attrTemplateService = attrTemplateService;
+        this.withdrawalService = withdrawalService;
+        this.reconciliationService = reconciliationService;
+        this.settlementService = settlementService;
     }
 
     /** 后台登录：校验账号密码，签发管理员 JWT（角色由服务端决定）。 */
@@ -173,6 +190,72 @@ public class AdminController {
     @PostMapping("/orders/{orderNo}/refund")
     public Result<Void> refund(@CurrentAdmin AdminUser admin, @PathVariable String orderNo) {
         refundService.adminAgree(orderNo);
+        return Result.ok();
+    }
+
+    // ===== 类目属性模板（PRD §B1） =====
+
+    /** 类目属性模板列表。 */
+    @GetMapping("/attr-templates")
+    public Result<List<com.idlefish.trade.item.entity.AttrTemplate>> attrTemplates(@CurrentAdmin AdminUser admin,
+                                                                                @RequestParam Long categoryId) {
+        return Result.ok(attrTemplateService.listByCategory(categoryId));
+    }
+
+    /** 新增类目属性模板。 */
+    @PostMapping("/attr-template")
+    public Result<Long> attrTemplate(@CurrentAdmin AdminUser admin,
+                                    @RequestParam Long categoryId,
+                                    @RequestParam String name,
+                                    @RequestParam(required = false) String options,
+                                    @RequestParam(required = false) Integer required,
+                                    @RequestParam(required = false) Integer sort) {
+        return Result.ok(attrTemplateService.create(categoryId, name, options, required, sort));
+    }
+
+    // ===== 提现与对账（PRD §F4） =====
+
+    /** 提现申请列表。 */
+    @GetMapping("/withdrawals")
+    public Result<List<Withdrawal>> withdrawals(@CurrentAdmin AdminUser admin) {
+        return Result.ok(withdrawalService.list());
+    }
+
+    /** 审批通过提现（实际出账）。 */
+    @PostMapping("/withdrawals/{id}/approve")
+    public Result<Void> approveWithdrawal(@CurrentAdmin AdminUser admin, @PathVariable Long id) {
+        withdrawalService.approve(id);
+        return Result.ok();
+    }
+
+    /** 驳回提现（解冻）。 */
+    @PostMapping("/withdrawals/{id}/reject")
+    public Result<Void> rejectWithdrawal(@CurrentAdmin AdminUser admin, @PathVariable Long id) {
+        withdrawalService.reject(id);
+        return Result.ok();
+    }
+
+    /** 资金对账报告（默认昨日）。 */
+    @GetMapping("/reconciliation")
+    public Result<Map<String, Object>> reconciliation(@CurrentAdmin AdminUser admin,
+                                                     @RequestParam(required = false) String day) {
+        LocalDate d = null;
+        if (day != null && !day.isBlank()) {
+            try {
+                d = LocalDate.parse(day);
+            } catch (Exception ignored) {
+                d = null;
+            }
+        }
+        return Result.ok(reconciliationService.reconcile(d));
+    }
+
+    // ===== 结算风控解冻（PRD §D7） =====
+
+    /** 解冻被风控冻结的结算单。 */
+    @PostMapping("/settlements/{id}/unfreeze")
+    public Result<Void> unfreezeSettlement(@CurrentAdmin AdminUser admin, @PathVariable Long id) {
+        settlementService.unfreeze(id);
         return Result.ok();
     }
 }

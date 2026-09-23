@@ -3,10 +3,13 @@ package com.idlefish.trade.trade.schedule;
 import com.idlefish.trade.trade.service.OrderService;
 import com.idlefish.trade.trade.service.RefundService;
 import com.idlefish.trade.trade.service.SettlementService;
+import com.idlefish.trade.trade.service.ReconciliationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 /**
  * 交易域定时任务（PRD §4.4 超时与结算规则）：
@@ -27,11 +30,14 @@ public class TradeScheduler {
     private final OrderService orderService;
     private final RefundService refundService;
     private final SettlementService settlementService;
+    private final ReconciliationService reconciliationService;
 
-    public TradeScheduler(OrderService orderService, RefundService refundService, SettlementService settlementService) {
+    public TradeScheduler(OrderService orderService, RefundService refundService, SettlementService settlementService,
+                          ReconciliationService reconciliationService) {
         this.orderService = orderService;
         this.refundService = refundService;
         this.settlementService = settlementService;
+        this.reconciliationService = reconciliationService;
     }
 
     /** 每 60 秒扫描：关闭超时未支付订单。 */
@@ -85,6 +91,21 @@ public class TradeScheduler {
             settlementService.processDue();
         } catch (Exception e) {
             log.error("[scheduler] settleDue failed", e);
+        }
+    }
+
+    /** 每日 02:00：资金对账（PRD §F4），差异写入日志告警。 */
+    @Scheduled(cron = "0 0 2 * * *")
+    public void reconcileDaily() {
+        try {
+            Map<String, Object> report = reconciliationService.reconcile(null);
+            if (Boolean.FALSE.equals(report.get("matched"))) {
+                log.warn("[scheduler] 资金对账存在差异: {}", report);
+            } else {
+                log.info("[scheduler] 资金对账完成: {}", report);
+            }
+        } catch (Exception e) {
+            log.error("[scheduler] reconcileDaily failed", e);
         }
     }
 }

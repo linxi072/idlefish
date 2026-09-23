@@ -13,7 +13,9 @@ import com.idlefish.trade.item.dto.ItemEditDTO;
 import com.idlefish.trade.item.dto.ItemPublishDTO;
 import com.idlefish.trade.item.dto.ItemQueryDTO;
 import com.idlefish.trade.item.entity.Item;
+import com.idlefish.trade.item.entity.ItemStatusLog;
 import com.idlefish.trade.item.mapper.ItemMapper;
+import com.idlefish.trade.item.mapper.ItemStatusLogMapper;
 import com.idlefish.trade.item.vo.ItemDetailVO;
 import com.idlefish.trade.item.vo.ItemVO;
 import com.idlefish.trade.item.vo.SellerVO;
@@ -37,6 +39,7 @@ public class ItemService {
     private final UserService userService;
     private final ItemStateMachine stateMachine;
     private final ObjectMapper objectMapper;
+    private final ItemStatusLogMapper itemStatusLogMapper;
 
     /** 单实例应用级库存锁（防超卖）；多实例需改用 Redis 分布式锁。 */
     private final ConcurrentMap<Long, Object> itemLocks = new ConcurrentHashMap<>();
@@ -44,12 +47,14 @@ public class ItemService {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public ItemService(ItemMapper itemMapper, CategoryService categoryService,
-                       UserService userService, ItemStateMachine stateMachine, ObjectMapper objectMapper) {
+                       UserService userService, ItemStateMachine stateMachine, ObjectMapper objectMapper,
+                       ItemStatusLogMapper itemStatusLogMapper) {
         this.itemMapper = itemMapper;
         this.categoryService = categoryService;
         this.userService = userService;
         this.stateMachine = stateMachine;
         this.objectMapper = objectMapper;
+        this.itemStatusLogMapper = itemStatusLogMapper;
     }
 
     /** 发布商品：初始为 DRAFT 草稿。 */
@@ -284,10 +289,27 @@ public class ItemService {
     }
 
     private void setStatus(Long itemId, ItemStatus status) {
+        String from = null;
+        Item before = itemMapper.selectById(itemId);
+        if (before != null) {
+            from = before.getStatus();
+        }
         Item upd = new Item();
         upd.setId(itemId);
         upd.setStatus(status.getCode());
         itemMapper.updateById(upd);
+        logStatus(itemId, from, status.getCode(), null, null);
+    }
+
+    /** B4 状态流转留痕。 */
+    private void logStatus(Long itemId, String fromStatus, String toStatus, Long operatorId, String remark) {
+        ItemStatusLog log = new ItemStatusLog();
+        log.setItemId(itemId);
+        log.setFromStatus(fromStatus);
+        log.setToStatus(toStatus);
+        log.setOperatorId(operatorId);
+        log.setRemark(remark);
+        itemStatusLogMapper.insert(log);
     }
 
     /** 模拟内容审核：含敏感词则驳回。 */
@@ -302,7 +324,7 @@ public class ItemService {
         return true;
     }
 
-    private ItemVO toVO(Item item) {
+    public ItemVO toVO(Item item) {
         ItemVO vo = new ItemVO();
         vo.setId(item.getId());
         vo.setSellerId(item.getSellerId());

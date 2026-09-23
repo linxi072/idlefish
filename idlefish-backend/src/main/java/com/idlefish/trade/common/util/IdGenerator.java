@@ -31,4 +31,8 @@ public class IdGenerator {
     public static String settleNo() {
         return next("ST");
     }
+
+    public static String fundNo() {
+        return next("FD");
+    }
 }

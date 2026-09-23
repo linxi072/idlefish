@@ -8,7 +8,9 @@ import com.idlefish.trade.im.vo.ConversationVO;
 import com.idlefish.trade.im.vo.MessageVO;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * IM 接口（需登录）。发送消息支持文本/图片；会话列表、消息列表、未读数、已读。
@@ -31,6 +33,18 @@ public class ImController {
                                   @RequestParam String content,
                                   @RequestParam(defaultValue = "text") String type) {
         return Result.ok(imService.send(loginUser.getUserId(), receiverId, itemId, content, type));
+    }
+
+    /** 平台客服会话入口（PRD §D4）：返回（或创建）用户与平台客服的会话。 */
+    @PostMapping("/cs-entry")
+    public Result<Map<String, Object>> csEntry(@CurrentUser LoginUser loginUser,
+                                              @RequestParam(required = false) Long itemId) {
+        String convId = imService.csConversation(loginUser.getUserId(), 10000L, itemId);
+        Map<String, Object> data = new HashMap<>();
+        data.put("convId", convId);
+        data.put("peerId", 10000L);
+        data.put("itemId", itemId);
+        return Result.ok(data);
     }
 
     /** 会话列表。 */

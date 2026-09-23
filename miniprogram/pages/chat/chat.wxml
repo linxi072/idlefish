@@ -27,6 +27,9 @@
         <view class="card-msg bargain">
           <text class="card-tag">议价</text>
           <view class="card-title">出价 ¥{{item.card.offer}}</view>
+          <view class="accept-btn" wx:if="{{item.card.bargainId && item.card.sellerId === meId && item.card.status !== 'accepted'}}"
+                data-bid="{{item.card.bargainId}}" bindtap="acceptBargain">接受</view>
+          <view class="accepted-tag" wx:if="{{item.card.status === 'accepted'}}">已接受</view>
         </view>
       </view>
     </view>

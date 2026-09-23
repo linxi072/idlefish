@@ -28,6 +28,7 @@ const api = {
 
   // ===== 商品 / 搜索 =====
   search(params) { return route(() => mock.search(params), () => http.get('/api/search', params, false)); },
+  recommend(params) { return route(() => mock.search(params), () => http.get('/api/search/recommend', params, false)); },
   getItemDetail(id) { return route(() => mock.getItemDetail(id), () => http.get('/api/item/detail/' + id, null, false)); },
   publish(data) { return route(() => mock.publish(data), () => http.post('/api/item/publish', data)); },
   myItems() { return route(() => mock.myItems(), () => http.get('/api/item/mine')); },

@@ -17,6 +17,8 @@ public class Message extends BaseEntity implements Serializable {
     /** text / image。 */
     private String type = "text";
     private String content;
+    /** 会话内自增序号（断线补拉、排序、已读回执锚点，PRD §E1）。 */
+    private Long seq;
     /** 0 未读 / 1 已读。 */
     private Integer readFlag = 0;
 
@@ -58,6 +60,14 @@ public class Message extends BaseEntity implements Serializable {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public Long getSeq() {
+        return seq;
+    }
+
+    public void setSeq(Long seq) {
+        this.seq = seq;
     }
 
     public Integer getReadFlag() {

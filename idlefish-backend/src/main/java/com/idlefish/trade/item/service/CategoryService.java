@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 类目服务：三级类目树构建。
@@ -22,12 +23,33 @@ public class CategoryService {
 
     private final CategoryMapper categoryMapper;
 
+    /** 类目树本地缓存（TTL 60s）；生产应换为 Redis / Caffeine。 */
+    private volatile List<CategoryVO> treeCache;
+    private final AtomicLong treeCacheTs = new AtomicLong(0);
+    private static final long CACHE_TTL_MS = 60_000;
+
     public CategoryService(CategoryMapper categoryMapper) {
         this.categoryMapper = categoryMapper;
     }
 
-    /** 构建完整类目树（根为 parentId = 0）。 */
+    /** 构建完整类目树（根为 parentId = 0）。带 60s 本地缓存。 */
     public List<CategoryVO> tree() {
+        long now = System.currentTimeMillis();
+        if (treeCache != null && now - treeCacheTs.get() < CACHE_TTL_MS) {
+            return treeCache;
+        }
+        synchronized (this) {
+            long ts = treeCacheTs.get();
+            if (treeCache != null && now - ts < CACHE_TTL_MS) {
+                return treeCache;
+            }
+            treeCache = buildTree();
+            treeCacheTs.set(now);
+        }
+        return treeCache;
+    }
+
+    private List<CategoryVO> buildTree() {
         List<Category> all = categoryMapper.selectList(
                 new LambdaQueryWrapper<Category>().orderByAsc(Category::getSort));
         Map<Long, CategoryVO> nodeMap = new HashMap<>();
@@ -57,6 +79,12 @@ public class CategoryService {
             }
         }
         return roots;
+    }
+
+    /** 失效本地缓存（新增类目后调用）。 */
+    public void clearCache() {
+        treeCache = null;
+        treeCacheTs.set(0);
     }
 
     public Category getById(Long id) {
@@ -90,6 +118,7 @@ public class CategoryService {
         c.setSort(sort == null ? 0 : sort);
         c.setIsLeaf(isLeaf == null ? 1 : isLeaf);
         categoryMapper.insert(c);
+        clearCache();
         return c.getId();
     }
 }
