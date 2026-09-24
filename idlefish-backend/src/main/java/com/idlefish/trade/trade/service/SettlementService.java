@@ -14,6 +14,8 @@ import com.idlefish.trade.trade.entity.Settlement;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.SettlementMapper;
+import com.idlefish.trade.notify.enums.NotificationType;
+import com.idlefish.trade.notify.service.NotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
@@ -37,19 +39,22 @@ public class SettlementService {
     private final RiskEventMapper riskEventMapper;
     private final FundEscrowService escrow;
     private final IdlefishProperties props;
+    private final NotificationService notificationService;
 
     /** 平台佣金比例（PRD §4.3）。 */
     private static final double PLATFORM_RATE = 0.05;
 
     public SettlementService(SettlementMapper settlementMapper, OrderMapper orderMapper,
                              FundFlowMapper fundFlowMapper, RiskEventMapper riskEventMapper,
-                             FundEscrowService escrow, IdlefishProperties props) {
+                             FundEscrowService escrow, IdlefishProperties props,
+                             NotificationService notificationService) {
         this.settlementMapper = settlementMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
         this.riskEventMapper = riskEventMapper;
         this.escrow = escrow;
         this.props = props;
+        this.notificationService = notificationService;
     }
 
     /** 交易成功：生成待结算单（T+1）。幂等：同一订单仅生成一次，防并发双重结算资损。 */
@@ -125,6 +130,11 @@ public class SettlementService {
             if (claimed == 0) {
                 continue;
             }
+
+            // F-05 闭环：结算放款成功后触达卖家（资金变动通知），best-effort 不阻断主流程
+            notificationService.notify(s.getSellerId(), NotificationType.SETTLEMENT_SUCCESS, s.getSettleNo(),
+                    "订单已结算", "订单 " + s.getOrderNo() + " 已结算，金额 "
+                    + (s.getAmount() == null ? 0 : s.getAmount() / 100.0) + " 元已打入可提现");
 
             FundFlow ff = new FundFlow();
             ff.setBizNo(s.getSettleNo());

@@ -22,6 +22,7 @@ import com.idlefish.trade.trade.vo.OrderCreateVO;
 import com.idlefish.trade.trade.vo.OrderItemVO;
 import com.idlefish.trade.trade.vo.OrderVO;
 import com.idlefish.trade.user.service.AddressService;
+import com.idlefish.trade.user.service.CreditService;
 import com.idlefish.trade.risk.service.TrackService;
 import com.idlefish.trade.trade.service.DelayQueueService;
 import com.idlefish.trade.notify.enums.NotificationType;
@@ -53,6 +54,7 @@ public class OrderService {
     private final ObjectMapper objectMapper;
     private final DelayQueueService delayQueueService;
     private final NotificationService notificationService;
+    private final CreditService creditService;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -60,7 +62,8 @@ public class OrderService {
                         ItemService itemService, ItemMapper itemMapper,
                         AddressService addressService, LogisticService logisticService,
                         SettlementService settlementService, TrackService trackService, ObjectMapper objectMapper,
-                        @Lazy DelayQueueService delayQueueService, NotificationService notificationService) {
+                        @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
+                        CreditService creditService) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.itemService = itemService;
@@ -72,6 +75,7 @@ public class OrderService {
         this.objectMapper = objectMapper;
         this.delayQueueService = delayQueueService;
         this.notificationService = notificationService;
+        this.creditService = creditService;
     }
 
     /** 创建订单（幂等：同买家同商品存在待支付订单则直接返回）。 */
@@ -207,6 +211,12 @@ public class OrderService {
         // F-02 通知中心：确认收货触达卖家（best-effort）
         notificationService.notify(o.getSellerId(), NotificationType.ORDER_CONFIRMED, orderNo, "买家已确认收货",
                 "订单 " + orderNo + " 已确认收货，款项已结算");
+        // F-05 闭环：同步触达买家（订单已完成）
+        notificationService.notify(o.getBuyerId(), NotificationType.ORDER_CONFIRMED, orderNo, "订单已完成",
+                "订单 " + orderNo + " 已确认收货，款项已结算");
+        // F-06 信用：交易完成，重算买卖家信用分
+        creditService.recompute(o.getBuyerId());
+        creditService.recompute(o.getSellerId());
     }
     public void adminShip(String orderNo, String logisticsNo, Long operatorId) {
         Order o = getByOrderNo(orderNo);
@@ -321,6 +331,9 @@ public class OrderService {
 
         // F-02 通知中心：自动确认收货触达卖家（best-effort）
         notificationService.notify(o.getSellerId(), NotificationType.ORDER_CONFIRMED, o.getOrderNo(), "买家已确认收货",
+                "订单 " + o.getOrderNo() + " 已确认收货，款项已结算");
+        // F-05 闭环：同步触达买家（订单已完成）
+        notificationService.notify(o.getBuyerId(), NotificationType.ORDER_CONFIRMED, o.getOrderNo(), "订单已完成",
                 "订单 " + o.getOrderNo() + " 已确认收货，款项已结算");
     }
 

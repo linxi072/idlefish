@@ -159,6 +159,9 @@ public class PayService {
         // F-02 通知中心：支付成功触达买家（best-effort，不影响支付主流程）
         notificationService.notify(po.getBuyerId(), NotificationType.ORDER_PAID, po.getOrderNo(),
                 "支付成功", "您的订单 " + po.getOrderNo() + " 已支付成功，等待卖家发货");
+        // F-05 闭环：同步触达卖家（您有新订单），买卖双向不漏
+        notificationService.notify(order.getSellerId(), NotificationType.ORDER_PAID, po.getOrderNo(),
+                "你有新订单", "订单 " + po.getOrderNo() + " 已支付成功，请尽快发货");
     }
 
     private String extractResource(String body) {
