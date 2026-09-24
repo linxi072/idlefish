@@ -19,7 +19,11 @@ public enum NotificationType {
     REFUND_PLATFORM("refund_platform", "平台介入"),
     ITEM_APPROVED("item_approved", "商品过审"),
     ITEM_REJECTED("item_rejected", "商品驳回"),
-    REMIND_SHIP("remind_ship", "发货提醒");
+    REMIND_SHIP("remind_ship", "发货提醒"),
+    SETTLEMENT_SUCCESS("settlement_success", "结算到账"),
+    WITHDRAW_APPLY("withdraw_apply", "提现申请"),
+    WITHDRAW_APPROVE("withdraw_approve", "提现通过"),
+    WITHDRAW_REJECT("withdraw_reject", "提现驳回");
 
     private final String code;
     private final String desc;

@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * 3. 退款状态机（apply→agree→refunded）与状态守卫（rejected 后不可 agree/cancel）
  * 4. 乐观锁 CAS（过期版本号更新被拦截，杜绝并发双重结算/状态篡改）
  *
- * 运行环境：H2 内存库（schema.sql + data.sql 自动初始化），默认 Mock 外部依赖。
+ * 运行环境：MySQL（schema-mysql.sql + data-mysql.sql 自动初始化），默认 Mock 外部依赖。
  */
 @SpringBootTest
 class CoreDomainTest {

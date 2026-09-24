@@ -1,5 +1,5 @@
--- 闲置集 C2C 二手交易小程序后端 —— MySQL 初始化数据（生产，对应 H2 data.sql）
--- 使用 INSERT IGNORE 保证 sql.init.mode=always 下重复启动幂等（库为持久化，不似 H2 内存每次重建）。
+-- 闲置集 C2C 二手交易小程序后端 —— MySQL 初始化数据（生产数据源）
+-- 使用 INSERT IGNORE 保证 sql.init.mode=always 下重复启动幂等（库为持久化，重启不会清空）。
 
 -- ===== 一级类目 =====
 INSERT IGNORE INTO t_category (id, parent_id, name, icon, level, sort, is_leaf) VALUES
@@ -40,6 +40,11 @@ INSERT IGNORE INTO t_attr_template (id, category_id, name, options, required, so
 (1, 1011, '成色', '["99新","95新","9成新","8成新"]', 1, 1),
 (2, 1011, '内存', '["128G","256G","512G","1T"]', 0, 2),
 (3, 1011, '保修', '["在保","过保"]', 0, 3);
+
+-- ===== 演示评价（F-06，买家↔卖家互评；无外键依赖，仅用于展示） =====
+INSERT IGNORE INTO t_review (id, order_no, item_id, reviewer_id, target_id, role, rating, content, status, anonymous) VALUES
+(1, 'DEMO-ORDER-0001', 3001, 1001, 2001, 'BUYER_SELLER', 5, '商品与描述一致，发货很快，卖家很诚信！', 1, 0),
+(2, 'DEMO-ORDER-0001', 3001, 2001, 1001, 'SELLER_BUYER', 5, '买家沟通顺畅，确认收货及时。', 1, 0);
 
 -- ===== PC 系统管理种子（RBAC + 数据字典，F-05） =====
 INSERT IGNORE INTO t_sys_organization (id, parent_id, name, code, level, sort, status) VALUES

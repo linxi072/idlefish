@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 关键链路集成测试（真实 H2，回滚）：
+ * 关键链路集成测试（真实 MySQL，回滚）：
  * - R-02 / RK-8 后台独立鉴权：错误密码拒绝；无 token 拒绝；普通用户令牌不得提权（403）。
  * - R-06 收藏：增/查/列表/取消闭环。
  * - R-01 金额单位：发布价以"分"入参，详情价以"元"展示（priceYuan = price/100）。
@@ -261,7 +261,7 @@ class ApiIntegrationTest {
 
     @Test
     void adminLoginPasswordHashMatches() throws Exception {
-        // data.sql 中密码为 PBKDF2 加盐哈希（R-20 零外部依赖方案），明文 admin123 仍应登录成功（T-4）
+        // data-mysql.sql 中密码为 PBKDF2 加盐哈希（R-20 零外部依赖方案），明文 admin123 仍应登录成功（T-4）
         mvc.perform(post("/api/admin/auth/login")
                         .param("username", "admin").param("password", "admin123"))
                 .andExpect(status().isOk())

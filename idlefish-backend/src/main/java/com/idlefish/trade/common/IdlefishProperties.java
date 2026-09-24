@@ -34,6 +34,8 @@ public class IdlefishProperties {
     private RateLimit ratelimit = new RateLimit();
     private Cache cache = new Cache();
     private Redis redis = new Redis();
+    private Notify notify = new Notify();
+    private Credit credit = new Credit();
 
     @Data
     public static class Jwt {
@@ -176,5 +178,48 @@ public class IdlefishProperties {
         private String password;
         /** 连接/读取超时（毫秒） */
         private long timeoutMs = 3000L;
+    }
+
+    @Data
+    public static class Notify {
+        /** 短信模式：mock（默认，仅日志）/ real（真实外发，需 sms.* 凭据，F-13 接入）。 */
+        private String smsMode = "mock";
+        /** 实时 WebSocket 推送是否启用（本地 WS 即真实通道，无需外部凭据）。 */
+        private boolean pushEnabled = true;
+        /** 真实短信网关配置（smsMode=real 时生效）。 */
+        private Sms sms = new Sms();
+
+        @Data
+        public static class Sms {
+            /** 是否真正外发（smsMode=real 且 enabled=true 才外发；否则回落日志）。 */
+            private boolean enabled = false;
+            private String signName;
+            private String templateCode;
+            private String accessKey;
+            private String secretKey;
+            private String endpoint;
+        }
+    }
+
+    @Data
+    public static class Credit {
+        /** 实名认证加分 */
+        private int realName = 10;
+        /** 每满 30 天注册时长加分 */
+        private int agePer30d = 2;
+        /** 注册时长加分封顶 */
+        private int ageCap = 20;
+        /** 履约率权重（完成订单 / 总订单） */
+        private int fulfillment = 40;
+        /** 好评率权重（好评数 / 总评价数） */
+        private int review = 30;
+        /** 无评价时的好评基线分 */
+        private int reviewBaseline = 15;
+        /** 封禁扣分 */
+        private int banPenalty = 30;
+        /** 单条高风险事件扣分 */
+        private int riskPerEvent = 5;
+        /** 风控扣分封顶 */
+        private int riskCap = 30;
     }
 }

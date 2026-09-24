@@ -1,6 +1,6 @@
--- 闲置集 C2C 二手交易小程序后端 —— MySQL 初始化 DDL（生产，对应 H2 schema.sql）
+-- 闲置集 C2C 二手交易小程序后端 —— MySQL 初始化 DDL（生产数据源）
 -- 引擎 InnoDB，字符集 utf8mb4；索引以内联 KEY 形式定义，保证 sql.init.mode=always 可重复执行。
--- 字段类型尽量与 H2 版本一致；created_at/updated_at 用 DATETIME（不限 2038）。
+-- created_at/updated_at 用 DATETIME（不限 2038）。
 
 CREATE TABLE IF NOT EXISTS t_user (
     id               BIGINT       PRIMARY KEY,
@@ -465,4 +465,35 @@ CREATE TABLE IF NOT EXISTS t_role_menu (
     updated_at       DATETIME,
     UNIQUE KEY uk_rm (role_id, menu_id),
     KEY idx_rm_menu (menu_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===== 评价与信用（F-06） =====
+
+CREATE TABLE IF NOT EXISTS t_review (
+    id               BIGINT       PRIMARY KEY,
+    order_no         VARCHAR(32),
+    item_id          BIGINT,
+    reviewer_id      BIGINT,
+    target_id        BIGINT,
+    role             VARCHAR(16),   -- BUYER_SELLER / SELLER_BUYER
+    rating           INT,
+    content          VARCHAR(512),
+    status           INT           DEFAULT 1,  -- 0 待审 / 1 通过 / 2 驳回
+    anonymous        INT           DEFAULT 0,
+    reject_reason    VARCHAR(255),
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_review_item (item_id, status),
+    KEY idx_review_target (target_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_credit_log (
+    id               BIGINT       PRIMARY KEY,
+    user_id          BIGINT,
+    delta            INT,
+    reason           VARCHAR(32),
+    snapshot         INT,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_credit_user (user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

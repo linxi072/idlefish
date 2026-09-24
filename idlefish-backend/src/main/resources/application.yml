@@ -1,21 +1,25 @@
 server:
-  port: ${PORT:8080}
+  port: 8080
   servlet:
     context-path: /
 
 spring:
-  application:
-    name: idlefish-backend
   datasource:
-    url: jdbc:h2:mem:idlefish;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: ""
+    url: jdbc:mysql://127.0.0.1:3306/idlefish?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: root
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   sql:
     init:
       mode: always
-      schema-locations: classpath:db/schema.sql
-      data-locations: classpath:db/data.sql
+      schema-locations: classpath:db/schema-mysql.sql
+      data-locations: classpath:db/data-mysql.sql
   jackson:
     default-property-inclusion: non_null
     time-zone: GMT+8
@@ -40,13 +44,13 @@ idlefish:
     enabled: ${IDLEFISH_RATELIMIT_ENABLED:false}
     permits-per-minute: 200
   cache:
-    # 缓存实现：local（默认，内存，离线可用）/ redis（生产，需 idlefish.redis 配置）
-    type: ${IDLEFISH_CACHE_TYPE:local}
+    # 缓存实现：local（默认，内存，离线可用，与 local profile 一致）/ redis（生产，需 idlefish.redis 配置，prod profile 构建）
+    type: local
   redis:
-    host: ${IDLEFISH_REDIS_HOST:127.0.0.1}
-    port: ${IDLEFISH_REDIS_PORT:6379}
-    database: ${IDLEFISH_REDIS_DB:0}
-    password: ${IDLEFISH_REDIS_PASSWORD:}
+    host: 127.0.0.1
+    port: 6379
+    database: 0
+    password:
     timeout-ms: 3000
   login:
     # mock=true 走本地 Mock 登录（code 直接当 openid，离线可跑通）；生产部署请通过 IDLEFISH_LOGIN_MOCK=false 对接真实微信
@@ -101,3 +105,26 @@ idlefish:
     device-order-rate: 10
     device-order-window-min: 1
     blacklist-device-ids: []
+  notify:
+    # 短信模式：mock（默认，仅日志）/ real（真实外发，需 sms.* 凭据，F-13 接入）
+    sms-mode: ${IDLEFISH_NOTIFY_SMS_MODE:mock}
+    # 实时 WebSocket 推送是否启用（本地 WS 即真实通道，无需外部凭据）
+    push-enabled: ${IDLEFISH_NOTIFY_PUSH_ENABLED:true}
+    sms:
+      enabled: ${IDLEFISH_NOTIFY_SMS_ENABLED:false}
+      sign-name: "${IDLEFISH_NOTIFY_SMS_SIGN:}"
+      template-code: "${IDLEFISH_NOTIFY_SMS_TEMPLATE:}"
+      access-key: "${IDLEFISH_NOTIFY_SMS_AK:}"
+      secret-key: "${IDLEFISH_NOTIFY_SMS_SK:}"
+      endpoint: "${IDLEFISH_NOTIFY_SMS_ENDPOINT:}"
+  credit:
+    # F-06 信用评分权重（与 CreditCalculator 默认值一致，可在此覆盖）
+    real-name: 10          # 实名认证加分
+    age-per-30d: 2         # 每满 30 天注册时长加分
+    age-cap: 20            # 注册时长加分封顶
+    fulfillment: 40        # 履约率权重（完成订单 / 总订单）
+    review: 30             # 好评率权重（好评数 / 总评价数）
+    review-baseline: 15    # 无评价时的好评基线分
+    ban-penalty: 30        # 封禁扣分
+    risk-per-event: 5      # 单条高风险事件扣分
+    risk-cap: 30           # 风控扣分封顶

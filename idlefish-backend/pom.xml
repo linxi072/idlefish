@@ -19,8 +19,12 @@
     <properties>
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <!-- 离线沙箱 ~/.m2 已缓存 8.1.0；联网构建可自由升级到 8.4.0 -->
+        <mysql.version>8.1.0</mysql.version>
     </properties>
 
     <dependencies>
@@ -44,11 +48,11 @@
             <version>${mybatis-plus.version}</version>
         </dependency>
 
-        <!-- H2 内存库（本地可运行；生产替换为 MySQL） -->
+        <!-- MySQL 驱动（生产数据源；local/prod 共用，离线缓存 8.1.0 即可编译） -->
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>${mysql.version}</version>
         </dependency>
 
         <!-- JWT -->
@@ -101,11 +105,12 @@
     </build>
 
     <!--
-      构建 Profile 化说明：
-      - local（默认激活）：排除 Redis 实现源文件（不依赖 spring-data-redis），保留 H2 + 本地内存缓存，
-        沙箱离线可编译/运行/测试，不回归。
-      - prod：引入 MySQL 驱动与 spring-boot-starter-data-redis，并放开 Redis 实现源文件编译，
-        配合 application-prod.yml 指向真实 MySQL / Redis。需在本机联网执行 mvn -Pprod 拉取依赖。
+      构建 Profile 化说明（离线安全 + 生产就绪）：
+      - local（默认激活）：排除 Redis 实现源文件（不依赖 spring-data-redis），配合 idlefish.cache.type=local
+        使用内存缓存；MySQL 驱动为离线已缓存版本。沙箱离线可 mvn -o 编译/运行/测试，不回归。
+      - prod：引入 spring-boot-starter-data-redis（联网下载），配合 application-prod.yml 的
+        idlefish.cache.type=redis 启用 Redis 缓存。需在本机联网执行 mvn -Pprod 拉取依赖。
+      说明：H2 内存库已彻底移除，本地运行需自备 MySQL 实例（application.yml 已指向 127.0.0.1:3306/idlefish）。
     -->
     <profiles>
         <profile>
@@ -133,13 +138,7 @@
         <profile>
             <id>prod</id>
             <dependencies>
-                <!-- MySQL 驱动（生产数据源） -->
-                <dependency>
-                    <groupId>com.mysql</groupId>
-                    <artifactId>mysql-connector-j</artifactId>
-                    <version>8.4.0</version>
-                </dependency>
-                <!-- Redis（生产缓存） -->
+                <!-- Redis（生产缓存，需联网下载） -->
                 <dependency>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-starter-data-redis</artifactId>

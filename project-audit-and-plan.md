@@ -37,9 +37,9 @@
 | 编号 | 问题 | 类型 | 影响范围 | 责任归属 | 证据 |
 |---|---|---|---|---|---|
 | D-05 | **ItemDetailVO 契约不一致**：前端读 `seller.{id,creditScore,avatar}`，后端仅 `sellerName/sellerAvatar`；且 `User` 实体缺 `realNameVerified` 字段 | 契约缺陷 | 商品详情页 | 后端·item + 小程序 | `ItemDetailVO.java:13-19`、`User.java:14-34`、`item-detail.wxml:27/29/30/32` |
-| D-06 | **收藏功能缺失**：无 `/favorite` 端点、无 `t_favorite` 表 | 功能缺失 | 商品详情收藏 | 后端·item + 小程序 | grep 全工程无 favorite 端点；`schema.sql` 无表 |
+| D-06 | **收藏功能缺失**：无 `/favorite` 端点、无 `t_favorite` 表 | 功能缺失 | 商品详情收藏 | 后端·item + 小程序 | grep 全工程无 favorite 端点；`schema-mysql.sql` 无表 |
 | D-07 | **Mock 支付完成端点不存在**：`MockWechatEscrowServiceImpl` 提示调 `/api/pay/mock/{payNo}`，但无对应 Controller | 开发堵塞 | 小程序 mock 支付 | 后端·pay | 仅字符串出现，无 Controller |
-| D-08 | **`t_item` 缺 `version` 列**：实体声明 `@Version` 但 DDL 无列，启用乐观锁即运行时报错 | 技术债务 | 商品状态流转 | 后端·schema | `Item.java:37-38`、`schema.sql:46-69` |
+| D-08 | **`t_item` 缺 `version` 列**：实体声明 `@Version` 但 DDL 无列，启用乐观锁即运行时报错 | 技术债务 | 商品状态流转 | 后端·schema | `Item.java:37-38`、`schema-mysql.sql:46-69` |
 | D-09 | **订单详情字段/运费不一致**：`order/detail` 依赖 `order.item.seller`/`buyerId`，运费恒写 0 未用 `order.freight` | 契约缺陷 | 订单详情页 | 小程序 + 后端·trade | `order/detail.js:86-87/26`、`detail.wxml:16/18/26` |
 | D-10 | **小程序 Token 无自动续期**：`refreshToken` 已定义却零调用，过期仅强跳登录且不清理 token | 体验缺陷 | 全小程序登录态 | 小程序·utils | `request.js:24-27`、`api.js:20`、`store.js` |
 | D-11 | **小程序图片发布失效**：`publish` 直接 POST 本地临时路径，未 `wx.uploadFile` | 功能缺陷 | 发布闲置 | 小程序·publish | `publish.js:36-44/62` |
@@ -57,7 +57,7 @@
 |---|---|---|---|---|---|
 | D-19 | **零测试**：`src/test` 无任何文件 | 技术债务 | 质量保障 | 后端 | 目录为空 |
 | D-20 | **校验/异常覆盖不全**：`@RequestBody` 缺 `@Valid`；`GlobalExceptionHandler` 漏 `HttpMessageNotReadable`/`ConstraintViolation`/`NoResourceFound` | 健壮性 | 全后端 | 后端·common | `ItemController.publish:30`、`GlobalExceptionHandler.java:19-40` |
-| D-21 | **配置/安全债务**：端口硬编码 8080、JWT secret 明文、`data.sql` 管理员明文 `admin123`、`idlefish.pay.mock` 缺省 true（误部署即全量 mock）、未配逻辑删除（`delete` 实置 `OFF_SHELF` 无 `deleted` 列） | 安全/配置 | 部署安全 | 后端·config | `application.yml:2/32`、`data.sql:33` |
+| D-21 | **配置/安全债务**：端口硬编码 8080、JWT secret 明文、`data-mysql.sql` 管理员明文 `admin123`、`idlefish.pay.mock` 缺省 true（误部署即全量 mock）、未配逻辑删除（`delete` 实置 `OFF_SHELF` 无 `deleted` 列） | 安全/配置 | 部署安全 | 后端·config | `application.yml:2/32`、`data-mysql.sql:33` |
 | D-22 | **`@CurrentUser` 未判空**：公开接口误用会 NPE | 健壮性 | 公共接口 | 后端·common | `CurrentUserArgumentResolver.java:31-34` |
 | D-23 | **小程序静默吞错 + 无下拉刷新**：大量 `.catch(()=>{})`，无重试态 | 体验 | 全小程序 | 小程序 | `index.js:17/37` 等 |
 | D-24 | **小程序 mine 死链 / tabBar 图标风险**：菜单 `url:''` 仅 toast；tabBar 无图标（现可编译，补图标忘放 PNG 会失败） | 体验 | 我的页 | 小程序·mine/app.json | `mine.js:8-14`、`app.json:27-32` |
@@ -203,7 +203,7 @@
 
 | 风险 | 加固点 | 落地证据 |
 |---|---|---|
-| RK-2 双重结算资损 | `t_fund_flow.biz_no` 补 UNIQUE 约束（原仅普通索引，存在并发重复放款）；`SettlementService.processDue` 改为「`WHERE id AND status='pending'` CAS 认领 + `@Transactional` + 唯一约束兜底」，彻底杜绝双重放款 | `schema.sql:153` `biz_no VARCHAR(32) UNIQUE`；`SettlementService.java` `processDue` CAS `update(...).eq(Id).eq(Status,"pending")`，影响行数 0 即跳过 |
+| RK-2 双重结算资损 | `t_fund_flow.biz_no` 补 UNIQUE 约束（原仅普通索引，存在并发重复放款）；`SettlementService.processDue` 改为「`WHERE id AND status='pending'` CAS 认领 + `@Transactional` + 唯一约束兜底」，彻底杜绝双重放款 | `schema-mysql.sql:153` `biz_no VARCHAR(32) UNIQUE`；`SettlementService.java` `processDue` CAS `update(...).eq(Id).eq(Status,"pending")`，影响行数 0 即跳过 |
 | RK-1 金额单位资损 | 补齐聊天场景价格口径：会话列表 `message.js` 原先传原始「分」值导致聊天卡 `¥{{itemPrice}}` 显示 100 倍；统一改为 `formatPrice` 元字符串（`item-detail.js` 已合规） | `miniprogram/pages/message/message.js:19` 改为 `formatPrice(c.item.price)` 并 `encodeURIComponent`；`chat.wxml:7` 直接展示元值 |
 | RK-6 PC CDN 生产故障 | `index.html` 兜底由仅检测 Vue/ElementPlus 扩展为逐一检测 Vue/ElementPlus/axios/echarts，任一缺失即渲染友好面板并列出缺失项（含提示生产改本地打包 + SRI/离线） | `pc-admin/index.html` 底部兜底脚本重写为 `required[]` 遍历检测并渲染缺失清单 |
 | RK-7 支付回调伪造 | `PayService.notify` 向 `escrow.verifyNotify` 传入完整回调上下文（payNo/transactionId/amount），为证书接入后的真实验签提供参数；真实路径仍 `RealWechatEscrowServiceImpl.verifyNotify` 显式失败关闭（fail-closed，伪造回调不可绕过） | `PayService.java` 构建 `notifyParams` Map 传入；`RealWechatEscrowServiceImpl.java:33` 仍抛 `UnsupportedOperationException` |
@@ -218,11 +218,11 @@
 
 | 需求 | 边界梳理结论 | 落地内容 | 验收状态 |
 |---|---|---|---|
-| R-05 seller 契约 | `ItemVO` 仅有扁平 `sellerName/sellerAvatar`，`item-detail.js`/`order-detail.js` 却用 `item.seller.*`，真实后端返回 `seller` 为 null 会崩溃 | 新增 `item/vo/SellerVO.java`；`ItemService.toVO` 在回填 `sellerName/sellerAvatar` 的同时构建并填充 `seller` 子对象（含 `realNameVerified`）；`User` 实体补 `realNameVerified` 字段；`schema.sql` 补 `t_user.real_name_verified` | ✅ 代码 + 编译 |
-| R-06 收藏功能 | 无任何收藏模块/表 | 新增 `favorite` 包（entity/mapper/vo/service/controller）；`schema.sql` 新增 `t_favorite` 表 + `user_id` 索引；`FavoriteController` 提供 add/remove/check/list；小程序 `api.js` 接真实端点、`mock.js` 本地集合、`item-detail` 收藏态联动、新增 `pages/favorite` 收藏列表页并接入"我的"菜单 | ✅ 代码 + 编译 |
+| R-05 seller 契约 | `ItemVO` 仅有扁平 `sellerName/sellerAvatar`，`item-detail.js`/`order-detail.js` 却用 `item.seller.*`，真实后端返回 `seller` 为 null 会崩溃 | 新增 `item/vo/SellerVO.java`；`ItemService.toVO` 在回填 `sellerName/sellerAvatar` 的同时构建并填充 `seller` 子对象（含 `realNameVerified`）；`User` 实体补 `realNameVerified` 字段；`schema-mysql.sql` 补 `t_user.real_name_verified` | ✅ 代码 + 编译 |
+| R-06 收藏功能 | 无任何收藏模块/表 | 新增 `favorite` 包（entity/mapper/vo/service/controller）；`schema-mysql.sql` 新增 `t_favorite` 表 + `user_id` 索引；`FavoriteController` 提供 add/remove/check/list；小程序 `api.js` 接真实端点、`mock.js` 本地集合、`item-detail` 收藏态联动、新增 `pages/favorite` 收藏列表页并接入"我的"菜单 | ✅ 代码 + 编译 |
 | R-07 Mock 支付完成 | 无 mock 完成端点，小程序 mock 支付无法走通 | `PayService.mockComplete`（仅 `idlefish.pay.mock=true` 可用，复用 `notify` 幂等/验签）；`PayController` 暴露 `POST /api/pay/mock/{payNo}`；`PayController.notify` 的 `transactionId` 改为可选以兼容演示；小程序 `order/detail.pay()` mock 分支改走 `payMockComplete` | ✅ 代码 + 编译 |
 | R-09 图片上传 | `publish` 直接把本地临时路径当 URL 提交，图片不可显示 | 新增 `file` 包（`FileService` 落本地磁盘 + `FileController` 暴露 `POST /api/file/upload` 返回可访问 URL，仅登录用户）；小程序 `request.js` 封装 `http.upload`（`wx.uploadFile`）；`publish.js` 改为先逐张上传取 URL 再发布 | ✅ 代码 + 编译 |
-| R-17 t_item version | `Item` 声明 `@Version` 但 `t_item` 无 `version` 列，且乐观锁拦截器已注册 → 每次商品更新运行时必失败 | `schema.sql` 补 `t_item.version INT DEFAULT 0`；`ItemService` 全量更新操作（发布审核/编辑/上下架/删除/锁库存/释放库存/状态转移）统一携带 `version` 做 CAS，冲突抛 `STATE_NOT_ALLOWED`（与订单状态机一致） | ✅ 代码 + 编译 |
+| R-17 t_item version | `Item` 声明 `@Version` 但 `t_item` 无 `version` 列，且乐观锁拦截器已注册 → 每次商品更新运行时必失败 | `schema-mysql.sql` 补 `t_item.version INT DEFAULT 0`；`ItemService` 全量更新操作（发布审核/编辑/上下架/删除/锁库存/释放库存/状态转移）统一携带 `version` 做 CAS，冲突抛 `STATE_NOT_ALLOWED`（与订单状态机一致） | ✅ 代码 + 编译 |
 
 > **一致性说明**：新增模块沿用既有约定——`Result<T>` / `Code` 统一响应、`@CurrentUser LoginUser` 取登录态、`BaseEntity` 审计字段、`fenToYuan` 分→元、包名 `com.idlefish.trade.*` 按业务垂直划分（favorite/file 与 item/trade/user 平级）。
 >

@@ -4,7 +4,7 @@
 
 | 工程 | 目录 | 技术栈 | 说明 |
 | --- | --- | --- | --- |
-| 后端 | `idlefish-backend/` | Spring Boot 3.3 + Java 17 + MyBatis-Plus + H2 + WebSocket | 已可运行，核心交易闭环（登录→发布→搜索→下单→支付→发货→确认收货→结算）+ IM + 风控埋点 + 运营后台接口 |
+| 后端 | `idlefish-backend/` | Spring Boot 3.3 + Java 17 + MyBatis-Plus + MySQL + Redis + WebSocket | 已可运行，核心交易闭环（登录→发布→搜索→下单→支付→发货→确认收货→结算）+ IM + 风控埋点 + 运营后台接口 + 评价信用 + 退款钱包 |
 | 微信小程序 | `miniprogram/` | 原生小程序（WXML/WXSS/JS） | 消费者端：首页/分类/详情/发布/订单/消息/聊天/我的/地址/登录 |
 | PC 运营后台 | `pc-admin/` | Vue 3 + Element Plus（CDN 免构建） | 运营侧：控制台/商品审核/订单管理/用户管理/类目管理/风控审计 |
 

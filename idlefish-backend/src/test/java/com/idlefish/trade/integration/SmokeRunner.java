@@ -24,6 +24,8 @@ import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.mapper.RefundMapper;
 import com.idlefish.trade.trade.mapper.SettlementMapper;
+import com.idlefish.trade.notify.entity.Notification;
+import com.idlefish.trade.notify.mapper.NotificationMapper;
 import com.idlefish.trade.trade.service.RefundService;
 import com.idlefish.trade.trade.service.SettlementService;
 import com.idlefish.trade.user.entity.User;
@@ -72,6 +74,7 @@ public class SmokeRunner {
     private static RefundMapper refundMapper;
     private static SettlementMapper settlementMapper;
     private static FundFlowMapper fundFlowMapper;
+    private static NotificationMapper notificationMapper;
 
     public static void main(String[] args) throws Exception {
         ConfigurableApplicationContext ctx = SpringApplication.run(
@@ -90,6 +93,7 @@ public class SmokeRunner {
             refundMapper = ctx.getBean(RefundMapper.class);
             settlementMapper = ctx.getBean(SettlementMapper.class);
             fundFlowMapper = ctx.getBean(FundFlowMapper.class);
+            notificationMapper = ctx.getBean(NotificationMapper.class);
 
             check("contextLoads", true);
 
@@ -99,6 +103,7 @@ public class SmokeRunner {
             fileUpload();
             wechatLoginCheck();
             coreDomainCheck();
+            notifyCloseLoopCheck();
             rateLimiterCheck();
             systemManageCheck();
 
@@ -286,6 +291,26 @@ public class SmokeRunner {
                 .andExpect(status().isOk()).andReturn();
         long after = MAPPER.readTree(u2.getResponse().getContentAsString()).get("data").asLong();
         check("notify all-read -> unread 0", after == 0);
+    }
+
+    /**
+     * F-05 事件通知闭环校验：交易链路触发了支付/确认收货/结算三类通知（买卖双向 + 结算触达）。
+     * 当前冒烟用户同时是买卖双方，故按通知 type 计数断言（fresh MySQL，仅冒烟数据）。
+     */
+    private static void notifyCloseLoopCheck() {
+        System.out.println("[notifyCloseLoopCheck]");
+        long paid = notificationMapper.selectCount(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Notification>()
+                        .eq(Notification::getType, "order_paid"));
+        check("notify order_paid emitted", paid > 0);
+        long confirmed = notificationMapper.selectCount(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Notification>()
+                        .eq(Notification::getType, "order_confirmed"));
+        check("notify order_confirmed emitted", confirmed > 0);
+        long settled = notificationMapper.selectCount(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Notification>()
+                        .eq(Notification::getType, "settlement_success"));
+        check("notify settlement_success emitted", settled > 0);
     }
 
     private static void contentAudit() throws Exception {
