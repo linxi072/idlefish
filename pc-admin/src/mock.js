@@ -64,4 +64,67 @@ export function stats() {
   };
 }
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats };
+export const adminUsers = [
+  { id: 1, username: 'admin', nickname: '超级管理员', orgId: 1, orgName: '总部', roleIds: [1], roleNames: ['超级管理员'], status: 0, createdAt: '2026-08-01' },
+  { id: 2, username: 'operator', nickname: '运营小美', orgId: 2, orgName: '华东运营中心', roleIds: [2], roleNames: ['运营'], status: 0, createdAt: '2026-08-10' },
+  { id: 3, username: 'finance', nickname: '财务老张', orgId: 1, orgName: '总部', roleIds: [3], roleNames: ['财务'], status: 0, createdAt: '2026-08-12' },
+  { id: 4, username: 'zhangsan', nickname: '张三', orgId: 3, orgName: '华南运营中心', roleIds: [2], roleNames: ['运营'], status: 1, createdAt: '2026-09-01' }
+];
+
+export const roles = [
+  { id: 1, name: '超级管理员', code: 'SUPER', remark: '系统最高权限', menuIds: [1, 11, 12, 13, 14, 15, 16, 17, 21, 22, 23, 24, 25], createdAt: '2026-08-01' },
+  { id: 2, name: '运营', code: 'OPERATOR', remark: '日常运营操作', menuIds: [11, 12, 13, 14, 15, 16], createdAt: '2026-08-02' },
+  { id: 3, name: '财务', code: 'FINANCE', remark: '财务结算查看', menuIds: [13], createdAt: '2026-08-03' }
+];
+
+export const orgTree = [
+  { id: 1, name: '总部', parentId: 0, leader: 'CEO', phone: '010-88888888', status: 0, children: [
+    { id: 2, name: '华东运营中心', parentId: 1, leader: '李华东', phone: '021-66666666', status: 0, children: [] },
+    { id: 3, name: '华南运营中心', parentId: 1, leader: '王华南', phone: '020-55555555', status: 0, children: [
+      { id: 4, name: '深圳分部', parentId: 3, leader: '赵深圳', phone: '0755-44444444', status: 1, children: [] }
+    ] }
+  ] }
+];
+
+export const menuTree = [
+  { id: 1, name: '运营后台', parentId: 0, type: 0, path: '/', component: 'Layout', perms: '', icon: 'Menu', sort: 1, children: [
+    { id: 11, name: '控制台', parentId: 1, type: 1, path: '/dashboard', component: 'dashboard', perms: '', icon: 'Home', sort: 1, children: [] },
+    { id: 12, name: '商品审核', parentId: 1, type: 1, path: '/items', component: 'items', perms: '', icon: 'Goods', sort: 2, children: [] },
+    { id: 13, name: '订单管理', parentId: 1, type: 1, path: '/orders', component: 'orders', perms: '', icon: 'List', sort: 3, children: [] },
+    { id: 14, name: '用户管理', parentId: 1, type: 1, path: '/users', component: 'users', perms: '', icon: 'User', sort: 4, children: [] },
+    { id: 15, name: '类目管理', parentId: 1, type: 1, path: '/categories', component: 'categories', perms: '', icon: 'Folder', sort: 5, children: [] },
+    { id: 16, name: '风控审计', parentId: 1, type: 1, path: '/risk', component: 'risk', perms: '', icon: 'Warning', sort: 6, children: [] },
+    { id: 17, name: '系统管理', parentId: 1, type: 0, path: '/system', component: '', perms: '', icon: 'Setting', sort: 7, children: [
+      { id: 21, name: '管理员', parentId: 17, type: 1, path: '/system/user', component: 'sysuser', perms: 'system:user:list', icon: 'User', sort: 1, children: [
+        { id: 211, name: '新增管理员', parentId: 21, type: 2, path: '', component: '', perms: 'system:user:add', icon: '', sort: 1, children: [] },
+        { id: 212, name: '编辑管理员', parentId: 21, type: 2, path: '', component: '', perms: 'system:user:edit', icon: '', sort: 2, children: [] },
+        { id: 213, name: '删除管理员', parentId: 21, type: 2, path: '', component: '', perms: 'system:user:delete', icon: '', sort: 3, children: [] }
+      ] },
+      { id: 22, name: '角色管理', parentId: 17, type: 1, path: '/system/role', component: 'role', perms: 'system:role:list', icon: 'Role', sort: 2, children: [] },
+      { id: 23, name: '机构管理', parentId: 17, type: 1, path: '/system/organization', component: 'organization', perms: 'system:org:edit', icon: 'Office', sort: 3, children: [] },
+      { id: 24, name: '菜单管理', parentId: 17, type: 1, path: '/system/menu', component: 'menu', perms: 'system:menu:edit', icon: 'Menu', sort: 4, children: [] },
+      { id: 25, name: '数据字典', parentId: 17, type: 1, path: '/system/dict', component: 'dict', perms: 'system:dict:list', icon: 'Dict', sort: 5, children: [] }
+    ] }
+  ] }
+];
+
+export const dictTypes = [
+  { id:1, type:'order_status', name:'订单状态', remark:'交易订单状态枚举', status:0 },
+  { id:2, type:'item_condition', name:'商品成色', remark:'二手商品成色等级', status:0 },
+  { id:3, type:'audit_status', name:'审核状态', remark:'内容审核状态', status:0 }
+];
+
+export const dictData = [
+  { id:1, type:'order_status', label:'待支付', value:'pending_pay', sort:1, status:0, remark:'' },
+  { id:2, type:'order_status', label:'已支付', value:'paid', sort:2, status:0, remark:'' },
+  { id:3, type:'order_status', label:'待发货', value:'pending_ship', sort:3, status:0, remark:'' },
+  { id:4, type:'order_status', label:'已完成', value:'completed', sort:4, status:0, remark:'' },
+  { id:5, type:'item_condition', label:'全新', value:'new', sort:1, status:0, remark:'' },
+  { id:6, type:'item_condition', label:'95新', value:'ninety_five', sort:2, status:0, remark:'' },
+  { id:7, type:'item_condition', label:'9成新', value:'nine', sort:3, status:0, remark:'' },
+  { id:8, type:'audit_status', label:'待审核', value:'pending', sort:1, status:0, remark:'' },
+  { id:9, type:'audit_status', label:'已通过', value:'passed', sort:2, status:0, remark:'' },
+  { id:10, type:'audit_status', label:'已驳回', value:'rejected', sort:3, status:0, remark:'' }
+];
+
+export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData };

@@ -29,7 +29,7 @@ export default {
         }
       } finally { this.loading = false; }
     },
-    onTab(v) { this.tab = v.name; this.load(); },
+    onTab(name) { this.tab = name; this.load(); },
     actionTag(a) {
       return { '放行': 'success', '人工复核': 'warning', '拦截': 'danger', '通过审核': 'success', '封禁账号': 'danger' }[a] || 'info';
     }

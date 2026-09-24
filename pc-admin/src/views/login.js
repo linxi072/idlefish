@@ -1,40 +1,53 @@
-// pc-admin/src/views/login.js
+// pc-admin/src/views/login.js —— 登录页（含表单校验）
 import { adminApi, setToken } from '../api.js';
 
 export default {
   name: 'Login',
-  emits: ['logged-in'],
   data() {
-    return { form: { username: 'admin', password: 'admin123' }, loading: false, error: '' };
+    return {
+      form: { username: 'admin', password: 'admin123' },
+      loading: false,
+      rules: {
+        username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+        password: [
+          { required: true, message: '请输入密码', trigger: 'blur' },
+          { min: 6, max: 20, message: '密码长度 6-20 位', trigger: 'blur' }
+        ]
+      }
+    };
   },
   methods: {
     async submit() {
-      this.loading = true; this.error = '';
+      const ok = await this.$refs.form.validate().catch(() => false);
+      if (!ok) return;
+      this.loading = true;
       try {
         const r = await adminApi.login(this.form.username, this.form.password);
         setToken(r.token);
+        this.$message.success('登录成功');
         this.$emit('logged-in', r.user);
       } catch (e) {
-        this.error = '登录失败，请检查账号或后端连接';
-      } finally { this.loading = false; }
+        this.$message.error((e && e.msg) || '登录失败');
+      } finally {
+        this.loading = false;
+      }
     }
   },
   template: `
   <div class="login-wrap">
     <div class="login-card">
-      <div class="login-brand"><span class="logo">闲</span><span>闲置集 · 运营后台</span></div>
-      <div class="login-sub">C2C 二手交易平台 · 管理控制台</div>
-      <el-form @submit.prevent="submit" label-position="top">
-        <el-form-item label="管理员账号">
-          <el-input v-model="form.username" placeholder="请输入账号" size="large"></el-input>
+      <div class="login-brand"><span class="logo">闲</span> 闲置集 · 运营后台</div>
+      <div class="login-sub">二手交易运营管理平台</div>
+      <el-form ref="form" :model="form" :rules="rules" label-position="top" @submit.prevent>
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="form.username" placeholder="请输入用户名" prefix-icon="User" clearable></el-input>
         </el-form-item>
-        <el-form-item label="密码">
-          <el-input v-model="form.password" type="password" placeholder="请输入密码" size="large" show-password @keyup.enter="submit"></el-input>
+        <el-form-item label="密码" prop="password">
+          <el-input v-model="form.password" type="password" show-password placeholder="请输入密码" prefix-icon="Lock" @keyup.enter="submit"></el-input>
         </el-form-item>
-        <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" style="margin-bottom:16px"></el-alert>
-        <el-button type="primary" size="large" style="width:100%" :loading="loading" @click="submit">登 录</el-button>
+        <el-button type="primary" style="width:100%" :loading="loading" @click="submit">登 录</el-button>
       </el-form>
-      <div class="login-tip">演示账号已预填（admin / admin123），当前为 Mock 模式，无需后端即可体验。</div>
+      <div class="login-tip">演示账号：admin / admin123（默认本地 Mock 模式）</div>
     </div>
   </div>`
 };
