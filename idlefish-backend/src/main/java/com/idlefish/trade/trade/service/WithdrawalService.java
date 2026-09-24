@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.util.IdGenerator;
+import com.idlefish.trade.notify.enums.NotificationType;
+import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.trade.entity.FundFlow;
 import com.idlefish.trade.trade.entity.Withdrawal;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
@@ -16,8 +18,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 提现服务（PRD §F4）：申请即冻结（FREEZE），审批通过即实际出账（WITHDRAW）。
- * 资金冻结/出账均写入 t_fund_flow，保证资金变动可追溯。
+ * 提现服务（F-07/F-08）：申请即冻结（FREEZE），审批通过即实际出账（状态 done），驳回解冻（UNFREEZE）。
+ *
+ * 钱包余额口径（与退款严格隔离）：
+ *   累计结算入账(SETTLE IN) − 已提现(待审 pending + 已办 done)
+ * 退款(REFUND)流水不计入钱包，避免买家原路退款污染卖家可提现余额。
+ * 余额以 Withdrawal 表为权威来源，FundFlow 仅作流水展示与审计。
  */
 @Service
 public class WithdrawalService {
@@ -25,22 +31,44 @@ public class WithdrawalService {
     private final WithdrawalMapper withdrawalMapper;
     private final FundFlowMapper fundFlowMapper;
     private final UserMapper userMapper;
+    private final NotificationService notificationService;
 
-    public WithdrawalService(WithdrawalMapper withdrawalMapper, FundFlowMapper fundFlowMapper, UserMapper userMapper) {
+    public WithdrawalService(WithdrawalMapper withdrawalMapper, FundFlowMapper fundFlowMapper,
+                             UserMapper userMapper, NotificationService notificationService) {
         this.withdrawalMapper = withdrawalMapper;
         this.fundFlowMapper = fundFlowMapper;
         this.userMapper = userMapper;
+        this.notificationService = notificationService;
     }
 
-    /** 当前用户可提现余额（累计 SETTLE 入账 - 累计 FREEZE/WITHDRAW 出账）。 */
-    public long balanceOf(Long userId) {
-        long in = fundFlowMapper.selectList(new LambdaQueryWrapper<FundFlow>()
-                        .eq(FundFlow::getUserId, userId).eq(FundFlow::getDirection, "IN"))
+    /** 累计结算入账（SETTLE IN 流水）。 */
+    public long settledTotal(Long userId) {
+        return fundFlowMapper.selectList(new LambdaQueryWrapper<FundFlow>()
+                        .eq(FundFlow::getUserId, userId)
+                        .eq(FundFlow::getDirection, "IN")
+                        .eq(FundFlow::getType, "SETTLE"))
                 .stream().mapToLong(FundFlow::getAmount).sum();
-        long out = fundFlowMapper.selectList(new LambdaQueryWrapper<FundFlow>()
-                        .eq(FundFlow::getUserId, userId).eq(FundFlow::getDirection, "OUT"))
-                .stream().mapToLong(FundFlow::getAmount).sum();
-        return in - out;
+    }
+
+    /** 已提现（待审 + 已办）金额，从 Withdrawal 表权威计算。 */
+    private long reservedTotal(Long userId) {
+        return withdrawalMapper.selectList(new LambdaQueryWrapper<Withdrawal>()
+                        .eq(Withdrawal::getUserId, userId)
+                        .in(Withdrawal::getStatus, List.of("pending", "done")))
+                .stream().mapToLong(Withdrawal::getAmount).sum();
+    }
+
+    /** 可提现余额 = 累计结算入账 − 已提现（待审 + 已办）。 */
+    public long withdrawableBalance(Long userId) {
+        return settledTotal(userId) - reservedTotal(userId);
+    }
+
+    /** 冻结中金额（待审核提现）。 */
+    public long frozenBalance(Long userId) {
+        return withdrawalMapper.selectList(new LambdaQueryWrapper<Withdrawal>()
+                        .eq(Withdrawal::getUserId, userId)
+                        .eq(Withdrawal::getStatus, "pending"))
+                .stream().mapToLong(Withdrawal::getAmount).sum();
     }
 
     /** 申请提现（先冻结）。 */
@@ -52,7 +80,7 @@ public class WithdrawalService {
         if (amount == null || amount <= 0) {
             throw new BizException(Code.PARAM_INVALID, "提现金额无效");
         }
-        long balance = balanceOf(userId);
+        long balance = withdrawableBalance(userId);
         if (balance < amount) {
             throw new BizException(Code.BALANCE_NOT_ENOUGH, "可提现余额不足");
         }
@@ -71,10 +99,14 @@ public class WithdrawalService {
         ff.setType("FREEZE");
         ff.setBalanceAfter(balance - amount);
         fundFlowMapper.insert(ff);
+
+        // F-07 提现通知：申请提交（best-effort）
+        notificationService.notify(userId, NotificationType.WITHDRAW_APPLY, ff.getBizNo(), "提现申请已提交",
+                "您的提现申请 " + (amount / 100.0) + " 元已提交，等待审核");
         return w;
     }
 
-    /** 审批通过（实际出账）。 */
+    /** 审批通过（实际出账）。钱包余额随 Withdrawal 状态(done)自动从可提现中扣除。 */
     @Transactional
     public Withdrawal approve(Long id) {
         Withdrawal w = withdrawalMapper.selectById(id);
@@ -84,25 +116,30 @@ public class WithdrawalService {
         if (!"pending".equals(w.getStatus())) {
             throw new BizException(Code.STATE_NOT_ALLOWED, "该提现单不可审批");
         }
-        long balance = balanceOf(w.getUserId());
         Withdrawal upd = new Withdrawal();
         upd.setId(id);
         upd.setStatus("done");
         upd.setDoneAt(LocalDateTime.now());
         withdrawalMapper.updateById(upd);
 
-        FundFlow ff = new FundFlow();
-        ff.setBizNo("WD" + IdGenerator.fundNo());
-        ff.setUserId(w.getUserId());
-        ff.setDirection("OUT");
-        ff.setAmount(w.getAmount());
-        ff.setType("WITHDRAW");
-        ff.setBalanceAfter(balance - w.getAmount());
-        fundFlowMapper.insert(ff);
+        // 实际出账流水：余额随 Withdrawal 状态(done)自动从可提现中扣除
+        long balance = withdrawableBalance(w.getUserId());
+        FundFlow out = new FundFlow();
+        out.setBizNo("WD" + IdGenerator.fundNo());
+        out.setUserId(w.getUserId());
+        out.setDirection("OUT");
+        out.setAmount(w.getAmount());
+        out.setType("WITHDRAW");
+        out.setBalanceAfter(balance);
+        fundFlowMapper.insert(out);
+
+        // F-07 提现通知：审批通过（best-effort）
+        notificationService.notify(w.getUserId(), NotificationType.WITHDRAW_APPROVE, "WD" + w.getId(), "提现已通过",
+                "您的提现 " + (w.getAmount() / 100.0) + " 元已审核通过，正在出账");
         return withdrawalMapper.selectById(id);
     }
 
-    /** 驳回（解冻：以负向 FREEZE 冲回不可用，演示中以状态标记）。 */
+    /** 驳回（解冻：以 UNFREEZE 入金流水冲回冻结金额，余额恢复）。 */
     @Transactional
     public Withdrawal reject(Long id) {
         Withdrawal w = withdrawalMapper.selectById(id);
@@ -116,6 +153,20 @@ public class WithdrawalService {
         upd.setId(id);
         upd.setStatus("rejected");
         withdrawalMapper.updateById(upd);
+
+        long balance = withdrawableBalance(w.getUserId());
+        FundFlow ff = new FundFlow();
+        ff.setBizNo("WD" + IdGenerator.fundNo());
+        ff.setUserId(w.getUserId());
+        ff.setDirection("IN");
+        ff.setAmount(w.getAmount());
+        ff.setType("UNFREEZE");
+        ff.setBalanceAfter(balance);
+        fundFlowMapper.insert(ff);
+
+        // F-07 提现通知：驳回（best-effort）
+        notificationService.notify(w.getUserId(), NotificationType.WITHDRAW_REJECT, "WD" + w.getId(), "提现被驳回",
+                "您的提现 " + (w.getAmount() / 100.0) + " 元未通过审核，金额已解冻");
         return w;
     }
 

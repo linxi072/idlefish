@@ -273,7 +273,7 @@ public class RefundService {
         ff.setDirection("IN");
         ff.setAmount(r.getAmount());
         ff.setType("REFUND");
-        ff.setBalanceAfter(r.getAmount());
+        ff.setBalanceAfter(0L); // 退款为原路退回，不计入钱包余额口径
         fundFlowMapper.insert(ff);
 
         // F-02 通知中心：退款成功触达买家（best-effort）
