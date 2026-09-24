@@ -220,3 +220,48 @@ export const systemApi = {
     ? Promise.resolve(mock.dictData.filter(d => d.type === type && d.status === 0).map(d => ({ label: d.label, value: d.value })))
     : req('GET', '/api/admin/system/dict/dropdown', null, { type })
 };
+
+// 钱包 / 提现与对账（F-PC-02，对齐 AdminController /api/admin/withdrawals、/reconciliation）
+export const walletApi = {
+  withdrawals: () => USE_MOCK ? Promise.resolve(mock.withdrawals.slice())
+    : req('GET', '/api/admin/withdrawals'),
+  approveWithdrawal: (id) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', `/api/admin/withdrawals/${id}/approve`),
+  rejectWithdrawal: (id) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', `/api/admin/withdrawals/${id}/reject`),
+  reconciliation: (day) => USE_MOCK ? Promise.resolve({
+      date: day || '2026-09-20',
+      orderCount: 342, paySuccess: 318, payFail: 6, refundCount: 9,
+      platformFeeFen: 642000, netFen: 12158000,
+      details: [
+        { bizNo: 'NO20260920002', type: 'pay', amountFen: 420000, feeFen: 21000, status: 'success', time: '2026-09-20 09:00' },
+        { bizNo: 'NO20260919003', type: 'pay', amountFen: 520000, feeFen: 26000, status: 'success', time: '2026-09-19 12:00' },
+        { bizNo: 'NO20260918004', type: 'refund', amountFen: 19900, feeFen: 0, status: 'success', time: '2026-09-18 15:30' }
+      ]
+    }) : req('GET', '/api/admin/reconciliation', null, { day })
+};
+
+// 类目属性模板（F-PC-02，对齐 AdminController /api/admin/attr-templates、/attr-template）
+export const attributeApi = {
+  attrTemplates: (categoryId) => USE_MOCK
+    ? Promise.resolve(mock.attrTemplates.filter(t => t.categoryId === categoryId))
+    : req('GET', '/api/admin/attr-templates', null, { categoryId }),
+  saveAttrTemplate: (categoryId, d) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', '/api/admin/attr-template', null,
+        { categoryId, name: d.name, options: d.options, required: d.required ? 1 : 0, sort: d.sort || 0 })
+};
+
+// 消息中心 / 站内信（F-PC-02，F-02/F-05 前端闭环；对齐 NotificationController /api/notify/*）
+// 注：真实模式按当前登录用户隔离查询个人站内信；如生产需查看全站通知，需后端补充管理员通知查询端点。
+export const notifyApi = {
+  list: (page, size) => USE_MOCK
+    ? Promise.resolve({ list: mock.notifications.slice(), total: mock.notifications.length })
+    : req('GET', '/api/notify/list', null, { page: page || 1, size: size || 20 }),
+  unreadCount: () => USE_MOCK
+    ? Promise.resolve(mock.notifications.filter(n => !n.read).length)
+    : req('GET', '/api/notify/unread-count'),
+  markRead: (id) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', '/api/notify/read', { id }),
+  markAllRead: () => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', '/api/notify/read-all')
+};

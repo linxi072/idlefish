@@ -11,6 +11,10 @@ import Role from './views/role.js';
 import Organization from './views/organization.js';
 import Menu from './views/menu.js';
 import Dict from './views/dict.js';
+import Wallet from './views/wallet.js';
+import Attributes from './views/attributes.js';
+import Notify from './views/notify.js';
+import { notifyApi } from './api.js';
 
 const { createApp } = window.Vue;
 
@@ -20,6 +24,7 @@ const App = {
       loggedIn: !!window.localStorage.getItem('idlefish_admin_token'),
       user: null,
       active: 'dashboard',
+      bellUnread: 0,
       menus: [
         { key: 'dashboard', label: '控制台', icon: '📊' },
         { key: 'items', label: '商品审核', icon: '🛍️' },
@@ -27,6 +32,11 @@ const App = {
         { key: 'users', label: '用户管理', icon: '👤' },
         { key: 'categories', label: '类目管理', icon: '🗂️' },
         { key: 'risk', label: '风控审计', icon: '🛡️' },
+        { group: '财务与运营', icon: '💰', children: [
+          { key: 'wallet', label: '钱包/提现', icon: '💳' },
+          { key: 'attributes', label: '属性模板', icon: '🏷️' }
+        ] },
+        { key: 'notify', label: '消息中心', icon: '🔔' },
         { group: '系统管理', icon: '⚙️', children: [
           { key: 'sysuser', label: '管理员', icon: '👨‍💼' },
           { key: 'role', label: '角色管理', icon: '🔑' },
@@ -42,7 +52,8 @@ const App = {
       return {
         dashboard: Dashboard, items: Items, orders: Orders,
         users: Users, categories: Categories, risk: Risk,
-        sysuser: SysUser, role: Role, organization: Organization, menu: Menu, dict: Dict
+        sysuser: SysUser, role: Role, organization: Organization, menu: Menu, dict: Dict,
+        wallet: Wallet, attributes: Attributes, notify: Notify
       }[this.active];
     },
     activeTitle() {
@@ -58,12 +69,22 @@ const App = {
     }
   },
   methods: {
-    onLoggedIn(u) { this.user = u; this.loggedIn = true; },
+    onLoggedIn(u) { this.user = u; this.loggedIn = true; this.refreshBell(); },
     logout() {
       window.localStorage.removeItem('idlefish_admin_token');
-      this.loggedIn = false; this.user = null; this.active = 'dashboard';
+      this.loggedIn = false; this.user = null; this.active = 'dashboard'; this.bellUnread = 0;
     },
-    go(key) { this.active = key; }
+    go(key) { this.active = key; },
+    async refreshBell() {
+      try { this.bellUnread = await notifyApi.unreadCount(); } catch (e) { this.bellUnread = 0; }
+    }
+  },
+  mounted() {
+    if (this.loggedIn) this.refreshBell();
+    // 消息中心标记已读后，由 notify 视图派发事件刷新铃铛角标
+    window.addEventListener('notify-unread', (e) => {
+      this.bellUnread = (e.detail && e.detail.unread) || 0;
+    });
   },
   template: `
   <Login v-if="!loggedIn" @logged-in="onLoggedIn"></Login>
@@ -88,6 +109,9 @@ const App = {
       <header class="topbar">
         <div class="tb-title">{{ activeTitle }}</div>
         <div class="tb-right">
+          <el-badge :value="bellUnread" :hidden="!bellUnread" :max="99" class="bell">
+            <el-button text @click="go('notify')"><span style="font-size:18px">🔔</span></el-button>
+          </el-badge>
           <span class="tb-user">{{ user ? user.username : '' }}</span>
           <el-button size="small" @click="logout">退出</el-button>
         </div>

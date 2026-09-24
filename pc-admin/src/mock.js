@@ -127,4 +127,31 @@ export const dictData = [
   { id:10, type:'audit_status', label:'已驳回', value:'rejected', sort:3, status:0, remark:'' }
 ];
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData };
+// ===== 提现申请（F-PC-02 钱包） =====
+export const withdrawals = [
+  { id: 5001, userId: 1001, amount: 860000, account: '微信零钱 139****1234', status: 'pending', createdAt: '2026-09-21 10:20', doneAt: null },
+  { id: 5002, userId: 1002, amount: 420000, account: '招商银行 6214****8888', status: 'pending', createdAt: '2026-09-21 09:05', doneAt: null },
+  { id: 5003, userId: 2001, amount: 128600, account: '微信零钱 138****6027', status: 'approved', createdAt: '2026-09-20 18:30', doneAt: '2026-09-20 19:10' },
+  { id: 5004, userId: 1003, amount: 5000, account: '支付宝 135****0000', status: 'rejected', createdAt: '2026-09-20 14:00', doneAt: '2026-09-20 14:30' },
+  { id: 5005, userId: 1001, amount: 200000, account: '微信零钱 139****1234', status: 'done', createdAt: '2026-09-19 11:00', doneAt: '2026-09-19 15:00' }
+];
+
+// ===== 类目属性模板（F-PC-02 属性） =====
+export const attrTemplates = [
+  { id: 1, categoryId: 111, name: '成色', options: '["99新","95新","9成新","充新"]', required: 1, sort: 1, createdAt: '2026-08-05' },
+  { id: 2, categoryId: 111, name: '内存', options: '["128G","256G","512G","1T"]', required: 1, sort: 2, createdAt: '2026-08-05' },
+  { id: 3, categoryId: 111, name: '保修', options: '["在保","过保","无保修"]', required: 0, sort: 3, createdAt: '2026-08-05' },
+  { id: 4, categoryId: 21, name: '尺码', options: '["S","M","L","XL","XXL"]', required: 1, sort: 1, createdAt: '2026-08-06' },
+  { id: 5, categoryId: 21, name: '颜色', options: '["黑色","白色","红色","蓝色"]', required: 0, sort: 2, createdAt: '2026-08-06' }
+];
+
+// ===== 站内信 / 通知（F-PC-02 消息中心，F-02/F-05 前端闭环） =====
+export const notifications = [
+  { id: 1, title: '有新的提现申请待审核', content: '用户「数码小哥」发起提现 ¥8600.00，请尽快处理。', type: 'finance', read: 0, createdAt: '2026-09-21 10:20' },
+  { id: 2, title: '商品审核预警', content: '商品「疑似违规：全新虫草低价」触发风控关键词，需人工重点复核。', type: 'risk', read: 0, createdAt: '2026-09-21 07:55' },
+  { id: 3, title: '新订单通知', content: '订单 NO20260921001 已支付成功，等待卖家发货。', type: 'order', read: 1, createdAt: '2026-09-21 11:00' },
+  { id: 4, title: '系统公告', content: '闲置集运营后台 v1.0.3 已上线，新增系统管理与钱包对账能力。', type: 'system', read: 1, createdAt: '2026-09-20 20:00' },
+  { id: 5, title: '账号风控处置', content: '用户「新注册用户」因命中高危规则已被封禁。', type: 'risk', read: 0, createdAt: '2026-09-21 07:56' }
+];
+
+export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications };

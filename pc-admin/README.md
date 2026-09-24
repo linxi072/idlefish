@@ -25,7 +25,10 @@ pc-admin/
         ├── orders.js       订单管理（详情 / 发货 / 退款处理）
         ├── users.js        用户管理（封禁 / 解封）
         ├── categories.js   类目管理（树 + 新增）
-        └── risk.js         风控事件 + 审计日志
+        ├── risk.js         风控事件 + 审计日志
+        ├── wallet.js       钱包 / 提现管理与资金对账（F-PC-02）
+        ├── attributes.js   类目属性模板（F-PC-02）
+        └── notify.js       消息中心 / 站内信（F-PC-02）
 ```
 
 ## 联调真实后端
@@ -47,6 +50,21 @@ pc-admin/
 | 数据字典 | `views/dict.js` | `/api/admin/system/dict`（types/data/dropdown） |
 
 所有增删改弹窗均使用 `el-form :rules` 规范化表单校验；树形模块（机构/菜单）支持新增子节点与递归删除保护；角色-菜单授权复用 `el-tree` 勾选。
+
+## 运营模块（F-PC-02）
+在「财务与运营」分组与顶栏铃铛补齐后端已落地但尚未接入的运营能力：
+
+| 入口 | 前端视图 | 后端接口 | 说明 |
+| --- | --- | --- | --- |
+| 钱包/提现 | `views/wallet.js` | `/api/admin/withdrawals` + `/withdrawals/{id}/approve`、`/reject`、`/reconciliation` | 提现申请列表 + 通过/驳回（二次确认、已处理禁重复）+ 资金对账报表（按日期汇总 + 明细） |
+| 属性模板 | `views/attributes.js` | `/api/admin/attr-templates?categoryId=`、`/attr-template` | 级联选择叶子类目 → 查看属性模板（名称/可选值/必填/排序）+ 新增（逗号分隔选项转 JSON） |
+| 消息中心 | `views/notify.js` | `/api/notify/list`、`/unread-count`、`/read`、`/read-all` | 站内信列表（分页）+ 未读角标 + 标记已读/全部已读；顶栏🔔铃铛显示未读数，标记已读后实时刷新 |
+
+**边界与异常处理**：
+- 提现已处理（`approved`/`rejected`/`done`）的申请，通过/驳回按钮自动禁用，杜绝重复审批；
+- 对账日期留空默认查昨日；真实模式按后端 `Map` 返回展示，字段缺失时均有安全兜底；
+- 属性模板必须选择叶子类目方可新增；名称必填、排序须为数字（`el-form :rules`）；
+- 消息中心真实模式按当前登录用户隔离查询个人站内信（若生产需查看全站通知，需后端补充管理员通知查询端点）。
 
 ## 启动
 ```bash
