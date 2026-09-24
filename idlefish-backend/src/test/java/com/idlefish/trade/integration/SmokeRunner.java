@@ -9,6 +9,8 @@ import com.idlefish.trade.trade.entity.DelayTask;
 import com.idlefish.trade.trade.entity.PayOrder;
 import com.idlefish.trade.trade.mapper.DelayTaskMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
+import com.idlefish.trade.user.entity.User;
+import com.idlefish.trade.user.mapper.UserMapper;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.MediaType;
@@ -45,6 +47,7 @@ public class SmokeRunner {
     private static DelayTaskMapper delayTaskMapper;
     private static DeviceFingerprintMapper deviceFingerprintMapper;
     private static PayOrderMapper payOrderMapper;
+    private static UserMapper userMapper;
 
     public static void main(String[] args) throws Exception {
         ConfigurableApplicationContext ctx = SpringApplication.run(
@@ -56,6 +59,7 @@ public class SmokeRunner {
             delayTaskMapper = ctx.getBean(DelayTaskMapper.class);
             deviceFingerprintMapper = ctx.getBean(DeviceFingerprintMapper.class);
             payOrderMapper = ctx.getBean(PayOrderMapper.class);
+            userMapper = ctx.getBean(UserMapper.class);
 
             check("contextLoads", true);
 
@@ -63,6 +67,7 @@ public class SmokeRunner {
             notificationCheck();
             contentAudit();
             fileUpload();
+            wechatLoginCheck();
 
             System.out.println("\n==== SMOKE RESULT: " + (failures == 0 ? "ALL PASS" : failures + " FAILURE(S)") + " ====");
         } catch (Throwable t) {
@@ -277,5 +282,25 @@ public class SmokeRunner {
         Path target = Paths.get(System.getProperty("user.dir"), "uploads", name);
         check("file on disk", Files.exists(target));
         try { Files.deleteIfExists(target); } catch (Exception ignored) { }
+    }
+
+    private static void wechatLoginCheck() throws Exception {
+        System.out.println("[wechatLoginCheck]");
+        // 验证登录经由新的 WechatLoginService 抽象（Mock 模式：openid == code）且用户落库、幂等复用
+        String code = "wx_login_check_" + System.nanoTime();
+        String token = login(code);
+        check("wx login returns token", token != null && !token.isBlank());
+
+        User u = userMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<User>()
+                        .eq(User::getWxOpenid, code));
+        check("mock openid == code persisted", u != null && code.equals(u.getWxOpenid()));
+
+        // 相同 code 二次登录应复用同一用户（loadOrCreateByOpenid 幂等）
+        login(code);
+        User again = userMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<User>()
+                        .eq(User::getWxOpenid, code));
+        check("login idempotent (same user)", again != null && again.getId().equals(u.getId()));
     }
 }

@@ -32,6 +32,11 @@ idlefish:
     secret: "${JWT_SECRET:ZzVNhe08kvOb3DHdclHpMsMKXZsoPty-dOWYNiqxhNTxpmhKf7sb1wlx2FcYYG7P}"
     expire-seconds: 86400
     refresh-seconds: 2592000
+  login:
+    # mock=true 走本地 Mock 登录（code 直接当 openid，离线可跑通）；生产部署请通过 IDLEFISH_LOGIN_MOCK=false 对接真实微信
+    mock: ${IDLEFISH_LOGIN_MOCK:true}        # true=本地 Mock 登录；false=真实 jscode2session
+    appid: "${IDLEFISH_LOGIN_APPID:}"        # 微信小程序 AppID
+    secret: "${IDLEFISH_LOGIN_SECRET:}"      # 微信小程序 AppSecret（生产务必走环境变量，切勿明文提交）
   pay:
     # mock=true 走本地 Mock 支付（跑通链路）；生产部署请通过环境变量 IDLEFISH_PAY_MOCK=false 关闭
     mock: ${IDLEFISH_PAY_MOCK:true}          # true=本地 Mock 支付（跑通链路）；false=对接真实微信分账

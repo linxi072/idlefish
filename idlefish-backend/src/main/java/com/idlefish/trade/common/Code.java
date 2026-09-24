@@ -41,6 +41,7 @@ public enum Code {
     SEARCH_ERROR(50002, "搜索服务异常"),
     MQ_ERROR(50003, "消息队列异常"),
     FILE_ERROR(50004, "文件上传异常"),
+    WX_LOGIN_ERROR(50005, "微信登录校验失败"),
     SYSTEM_ERROR(50000, "系统繁忙，请稍后再试");
 
     private final int code;

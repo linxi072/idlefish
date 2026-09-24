@@ -29,6 +29,7 @@ public class IdlefishProperties {
     private Mq mq = new Mq();
     private Pay pay = new Pay();
     private Risk risk = new Risk();
+    private Login login = new Login();
 
     @Data
     public static class Jwt {
@@ -129,5 +130,17 @@ public class IdlefishProperties {
         private int deviceOrderWindowMin = 1;
         /** 设备黑名单（命中直接冻结） */
         private List<String> blacklistDeviceIds = new ArrayList<>();
+    }
+
+    @Data
+    public static class Login {
+        /** 是否使用本地 Mock 登录（code 直接当 openid）；生产置 false 走真实 jscode2session */
+        private boolean mock = true;
+        /** 微信小程序 AppID */
+        private String appid;
+        /** 微信小程序 AppSecret（生产通过环境变量注入，切勿明文提交） */
+        private String secret;
+        /** 微信 jscode2session 接口地址 */
+        private String jscode2sessionUrl = "https://api.weixin.qq.com/sns/jscode2session";
     }
 }

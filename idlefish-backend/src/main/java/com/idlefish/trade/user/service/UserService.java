@@ -7,6 +7,7 @@ import com.idlefish.trade.common.util.CryptoUtil;
 import com.idlefish.trade.common.util.JwtUtil;
 import com.idlefish.trade.user.dto.LoginResult;
 import com.idlefish.trade.user.dto.TokenPair;
+import com.idlefish.trade.user.dto.WxSession;
 import com.idlefish.trade.user.entity.User;
 import com.idlefish.trade.user.mapper.UserMapper;
 import com.idlefish.trade.user.vo.UserInfoVO;
@@ -16,7 +17,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 用户与鉴权服务：微信登录（Mock 以 code 当 openid）、令牌签发、手机号绑定（限频 + 加密）。
+ * 用户与鉴权服务：微信登录（code→openid，Mock/真实可切换）、令牌签发、手机号绑定（限频 + 加密）。
  */
 @Service
 public class UserService {
@@ -24,20 +25,32 @@ public class UserService {
     private final UserMapper userMapper;
     private final CryptoUtil cryptoUtil;
     private final JwtUtil jwtUtil;
+    private final WechatLoginService wechatLoginService;
 
     /** 手机号绑定限频（单体单实例内存实现，生产用 Redis）：userId -> 上次绑定时间 */
     private final Map<Long, Long> bindLimit = new ConcurrentHashMap<>();
 
-    public UserService(UserMapper userMapper, CryptoUtil cryptoUtil, JwtUtil jwtUtil) {
+    public UserService(UserMapper userMapper, CryptoUtil cryptoUtil, JwtUtil jwtUtil,
+                       WechatLoginService wechatLoginService) {
         this.userMapper = userMapper;
         this.cryptoUtil = cryptoUtil;
         this.jwtUtil = jwtUtil;
+        this.wechatLoginService = wechatLoginService;
     }
 
-    /** 微信登录：本地 Mock 直接以 code 作为 openid；生产应 code→微信换 openid。 */
-    public LoginResult login(String code) {
-        String openid = code;
-        User user = loadOrCreateByOpenid(openid);
+    /** 微信登录：通过 WechatLoginService（Mock/真实可切换）将 js_code 换成 openid 并签发双令牌。 */
+    public LoginResult login(String jsCode) {
+        WxSession session = wechatLoginService.code2Session(jsCode);
+        User user = loadOrCreateByOpenid(session.getOpenid());
+        // 真实模式下回填 unionid（同一微信开放平台账号下跨端一致），仅首次写入避免覆盖
+        if (session.getUnionid() != null
+                && (user.getWxUnionid() == null || user.getWxUnionid().isBlank())) {
+            User upd = new User();
+            upd.setId(user.getId());
+            upd.setWxUnionid(session.getUnionid());
+            userMapper.updateById(upd);
+            user.setWxUnionid(session.getUnionid());
+        }
         TokenPair pair = issueToken(user);
         LoginResult result = new LoginResult();
         result.setUser(user);
