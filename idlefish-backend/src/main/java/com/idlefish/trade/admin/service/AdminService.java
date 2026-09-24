@@ -15,6 +15,7 @@ import com.idlefish.trade.trade.entity.Order;
 import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.user.entity.User;
 import com.idlefish.trade.user.mapper.UserMapper;
+import com.idlefish.trade.user.service.CreditService;
 import org.springframework.stereotype.Service;
 
 /**
@@ -32,11 +33,12 @@ public class AdminService {
     private final RiskEventMapper riskEventMapper;
     private final AuditLogMapper auditLogMapper;
     private final AdminAuthService adminAuthService;
+    private final CreditService creditService;
 
     public AdminService(ItemService itemService, CategoryService categoryService,
                         ItemMapper itemMapper, OrderMapper orderMapper, UserMapper userMapper,
                         RiskEventMapper riskEventMapper, AuditLogMapper auditLogMapper,
-                        AdminAuthService adminAuthService) {
+                        AdminAuthService adminAuthService, CreditService creditService) {
         this.itemService = itemService;
         this.categoryService = categoryService;
         this.itemMapper = itemMapper;
@@ -45,6 +47,7 @@ public class AdminService {
         this.riskEventMapper = riskEventMapper;
         this.auditLogMapper = auditLogMapper;
         this.adminAuthService = adminAuthService;
+        this.creditService = creditService;
     }
 
     /** 审核列表：按商品状态过滤（pending_review / on_sale / rejected），支持关键字（标题）模糊搜索。 */
@@ -119,6 +122,8 @@ public class AdminService {
         upd.setStatus(status);
         userMapper.updateById(upd);
         record(operatorId, "user:ban", "user", String.valueOf(userId), "设置状态:" + status);
+        // F-06 信用：封禁/解封后重算该用户信用分（封禁触发扣分）
+        creditService.recompute(userId);
     }
 
     /** 新增类目。 */

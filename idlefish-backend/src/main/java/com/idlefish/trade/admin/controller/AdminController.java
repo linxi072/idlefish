@@ -22,6 +22,7 @@ import com.idlefish.trade.trade.entity.Withdrawal;
 import com.idlefish.trade.trade.service.OrderService;
 import com.idlefish.trade.trade.service.ReconciliationService;
 import com.idlefish.trade.trade.service.RefundService;
+import com.idlefish.trade.trade.service.ReviewService;
 import com.idlefish.trade.trade.service.SettlementService;
 import com.idlefish.trade.trade.service.WithdrawalService;
 import com.idlefish.trade.user.entity.User;
@@ -50,11 +51,13 @@ public class AdminController {
     private final WithdrawalService withdrawalService;
     private final ReconciliationService reconciliationService;
     private final SettlementService settlementService;
+    private final ReviewService reviewService;
 
     public AdminController(AdminService adminService, AdminUserMapper adminUserMapper, JwtUtil jwtUtil,
                            OrderService orderService, RefundService refundService, CategoryService categoryService,
                            AttrTemplateService attrTemplateService, WithdrawalService withdrawalService,
-                           ReconciliationService reconciliationService, SettlementService settlementService) {
+                           ReconciliationService reconciliationService, SettlementService settlementService,
+                           ReviewService reviewService) {
         this.adminService = adminService;
         this.adminUserMapper = adminUserMapper;
         this.jwtUtil = jwtUtil;
@@ -65,6 +68,7 @@ public class AdminController {
         this.withdrawalService = withdrawalService;
         this.reconciliationService = reconciliationService;
         this.settlementService = settlementService;
+        this.reviewService = reviewService;
     }
 
     /** 后台登录：校验账号密码，签发管理员 JWT（角色由服务端决定）。 */
@@ -256,6 +260,29 @@ public class AdminController {
     @PostMapping("/settlements/{id}/unfreeze")
     public Result<Void> unfreezeSettlement(@CurrentAdmin AdminUser admin, @PathVariable Long id) {
         settlementService.unfreeze(id);
+        return Result.ok();
+    }
+
+    // ===== 评价管理（F-06） =====
+
+    /** 待审核评价列表。 */
+    @GetMapping("/reviews")
+    public Result<List<com.idlefish.trade.trade.vo.ReviewVO>> reviews(@CurrentAdmin AdminUser admin) {
+        return Result.ok(reviewService.pendingList());
+    }
+
+    /** 审核通过评价（触发被评价方信用重算）。 */
+    @PostMapping("/reviews/{id}/approve")
+    public Result<Void> approveReview(@CurrentAdmin AdminUser admin, @PathVariable Long id) {
+        reviewService.approve(id);
+        return Result.ok();
+    }
+
+    /** 审核驳回评价。 */
+    @PostMapping("/reviews/{id}/reject")
+    public Result<Void> rejectReview(@CurrentAdmin AdminUser admin, @PathVariable Long id,
+                                     @RequestParam(required = false) String reason) {
+        reviewService.reject(id, reason);
         return Result.ok();
     }
 }
