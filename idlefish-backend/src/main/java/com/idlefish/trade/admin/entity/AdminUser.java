@@ -13,8 +13,9 @@ public class AdminUser extends BaseEntity implements Serializable {
 
     private String username;
     private String password;   // 演示用明文；生产须加盐哈希
-    private String role;       // SUPER / OPERATOR / FINANCE
+    private String role;       // SUPER / OPERATOR / FINANCE（遗留主角色，展示用；权限以角色-菜单为准）
     private String nickname;
+    private Long orgId;         // 所属机构/部门（F-05 系统管理）
     private Integer status = 1; // 1 启用 / 0 禁用
 
     public String getUsername() {
@@ -39,6 +40,14 @@ public class AdminUser extends BaseEntity implements Serializable {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public Long getOrgId() {
+        return orgId;
+    }
+
+    public void setOrgId(Long orgId) {
+        this.orgId = orgId;
     }
 
     public String getNickname() {

@@ -30,6 +30,10 @@ public class IdlefishProperties {
     private Pay pay = new Pay();
     private Risk risk = new Risk();
     private Login login = new Login();
+    private Cookie cookie = new Cookie();
+    private RateLimit ratelimit = new RateLimit();
+    private Cache cache = new Cache();
+    private Redis redis = new Redis();
 
     @Data
     public static class Jwt {
@@ -142,5 +146,35 @@ public class IdlefishProperties {
         private String secret;
         /** 微信 jscode2session 接口地址 */
         private String jscode2sessionUrl = "https://api.weixin.qq.com/sns/jscode2session";
+    }
+
+    @Data
+    public static class Cookie {
+        /** 是否启用 Secure 属性（HTTPS 环境置 true，经 IDLEFISH_COOKIE_SECURE 注入）。 */
+        private boolean secure = false;
+    }
+
+    @Data
+    public static class RateLimit {
+        /** 是否启用请求限流；默认关闭，生产经 IDLEFISH_RATELIMIT_ENABLED=true 开启。 */
+        private boolean enabled = false;
+        /** 单 (客户端IP, 接口路径) 每分钟允许的最大请求数。 */
+        private long permitsPerMinute = 200L;
+    }
+
+    @Data
+    public static class Cache {
+        /** 缓存实现：local（默认，内存）/ redis（生产，需 idlefish.redis 配置）。 */
+        private String type = "local";
+    }
+
+    @Data
+    public static class Redis {
+        private String host = "127.0.0.1";
+        private int port = 6379;
+        private int database = 0;
+        private String password;
+        /** 连接/读取超时（毫秒） */
+        private long timeoutMs = 3000L;
     }
 }

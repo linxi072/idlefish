@@ -1,0 +1,32 @@
+name: CI
+
+# F-03 测试与 CI：H2 内存库 + 默认 Mock 外部依赖，跑通编译与全量测试（含核心域不变量 + 限流单测）。
+# 说明：当前 git 仓库根为会话目录，业务模块位于 idlefish-backend/ 子目录；
+# 若后续将 idlefish-backend 作为独立仓库推送，请将本文件迁移至 idlefish-backend/.github/workflows/ci.yml
+# 并将下方 working-directory 改为 . 或删除。
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: idlefish-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build and test (offline-friendly, H2 + Mock)
+        run: mvn -B -ntp test

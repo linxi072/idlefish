@@ -1,5 +1,6 @@
 package com.idlefish.trade.item.entity;
 
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import com.idlefish.trade.common.BaseEntity;
@@ -13,6 +14,10 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @TableName("t_item")
 public class Item extends BaseEntity {
+
+    /** 逻辑删除标记：0 未删 / 1 已删（F-04 逻辑删除；查询自动过滤，删除自动转软删）。 */
+    @TableLogic
+    private Integer deleted;
 
     private Long sellerId;
     private Long categoryId;

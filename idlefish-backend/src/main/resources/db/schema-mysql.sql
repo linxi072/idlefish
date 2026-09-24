@@ -1,0 +1,468 @@
+-- 闲置集 C2C 二手交易小程序后端 —— MySQL 初始化 DDL（生产，对应 H2 schema.sql）
+-- 引擎 InnoDB，字符集 utf8mb4；索引以内联 KEY 形式定义，保证 sql.init.mode=always 可重复执行。
+-- 字段类型尽量与 H2 版本一致；created_at/updated_at 用 DATETIME（不限 2038）。
+
+CREATE TABLE IF NOT EXISTS t_user (
+    id               BIGINT       PRIMARY KEY,
+    wx_openid        VARCHAR(64),
+    wx_unionid       VARCHAR(64),
+    phone            VARCHAR(128),
+    nickname         VARCHAR(64),
+    avatar           VARCHAR(255),
+    credit_score     INT,
+    status           INT          DEFAULT 0,
+    real_name_verified INT        DEFAULT 0,
+    created_at       DATETIME,
+    updated_at       DATETIME
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_address (
+    id               BIGINT       PRIMARY KEY,
+    user_id          BIGINT,
+    receiver_name    VARCHAR(64),
+    phone            VARCHAR(128),
+    province         VARCHAR(64),
+    city             VARCHAR(64),
+    district         VARCHAR(64),
+    detail           VARCHAR(255),
+    is_default       INT          DEFAULT 0,
+    deleted          INT          DEFAULT 0,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_address_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_category (
+    id               BIGINT       PRIMARY KEY,
+    parent_id        BIGINT       DEFAULT 0,
+    name             VARCHAR(64),
+    icon             VARCHAR(255),
+    level            INT          DEFAULT 1,
+    sort             INT          DEFAULT 0,
+    is_leaf          INT          DEFAULT 1,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_category_parent (parent_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_item (
+    id               BIGINT       PRIMARY KEY,
+    seller_id        BIGINT,
+    category_id      BIGINT,
+    title            VARCHAR(128),
+    description      TEXT,
+    price            BIGINT,
+    original_price   BIGINT,
+    images           TEXT,
+    video_url        VARCHAR(255),
+    condition_level  INT,
+    stock            INT          DEFAULT 1,
+    province         VARCHAR(64),
+    city             VARCHAR(64),
+    freight          BIGINT       DEFAULT 0,
+    status           VARCHAR(32),
+    audit_status     VARCHAR(32),
+    audit_reason     VARCHAR(255),
+    view_count       INT          DEFAULT 0,
+    like_count       INT          DEFAULT 0,
+    fav_count        INT          DEFAULT 0,
+    version          INT          DEFAULT 0,
+    deleted          INT          DEFAULT 0,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_item_status (status, category_id, created_at),
+    KEY idx_item_seller (seller_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_order (
+    id               BIGINT       PRIMARY KEY,
+    order_no         VARCHAR(32)  NOT NULL,
+    buyer_id         BIGINT,
+    seller_id        BIGINT,
+    item_id          BIGINT,
+    sku_snapshot     TEXT,
+    quantity         INT          DEFAULT 1,
+    unit_price       BIGINT,
+    total_amount     BIGINT,
+    freight          BIGINT,
+    pay_amount       BIGINT,
+    status           VARCHAR(32),
+    version          INT          DEFAULT 0,
+    address_snapshot TEXT,
+    remark           VARCHAR(255),
+    pay_no           VARCHAR(32),
+    logistics_no     VARCHAR(64),
+    close_type       VARCHAR(32),
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_order_no (order_no),
+    UNIQUE KEY uk_order_pay_no (pay_no),
+    KEY idx_order_buyer (buyer_id, status),
+    KEY idx_order_seller (seller_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_pay_order (
+    id               BIGINT       PRIMARY KEY,
+    pay_no           VARCHAR(32)  NOT NULL,
+    order_no         VARCHAR(32),
+    buyer_id         BIGINT,
+    amount           BIGINT,
+    channel          VARCHAR(32),
+    transaction_id   VARCHAR(64),
+    status           VARCHAR(32),
+    paid_at          DATETIME,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_pay_no (pay_no),
+    KEY idx_pay_order_no (order_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_refund (
+    id               BIGINT       PRIMARY KEY,
+    refund_no        VARCHAR(32)  NOT NULL,
+    order_no         VARCHAR(32),
+    pay_no           VARCHAR(32),
+    buyer_id         BIGINT,
+    seller_id        BIGINT,
+    item_id          BIGINT,
+    type             VARCHAR(32),
+    amount           BIGINT,
+    reason           VARCHAR(255),
+    status           VARCHAR(32),
+    logistics_no     VARCHAR(64),
+    auto_agree_at    DATETIME,
+    platform_at      DATETIME,
+    refund_at        DATETIME,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_refund_no (refund_no),
+    KEY idx_refund_order (order_no),
+    KEY idx_refund_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_settlement (
+    id               BIGINT       PRIMARY KEY,
+    settle_no        VARCHAR(32)  NOT NULL,
+    seller_id        BIGINT,
+    order_no         VARCHAR(32)  NOT NULL,
+    amount           BIGINT,
+    platform_fee     BIGINT,
+    status           VARCHAR(32),
+    settle_at        DATETIME,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_settle_no (settle_no),
+    UNIQUE KEY uk_settle_order (order_no),
+    KEY idx_settle_seller (seller_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_fund_flow (
+    id               BIGINT       PRIMARY KEY,
+    biz_no           VARCHAR(32)  NOT NULL,
+    user_id          BIGINT,
+    direction        VARCHAR(16),
+    amount           BIGINT,
+    type             VARCHAR(32),
+    balance_after    BIGINT,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_fund_biz (biz_no),
+    KEY idx_fund_user (user_id, direction)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_conversation (
+    id               BIGINT       PRIMARY KEY,
+    conv_id          VARCHAR(64)  NOT NULL,
+    buyer_id         BIGINT,
+    seller_id        BIGINT,
+    item_id          BIGINT,
+    last_message     VARCHAR(255),
+    last_sender_id   BIGINT,
+    buyer_unread     INT          DEFAULT 0,
+    seller_unread    INT          DEFAULT 0,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_conv_id (conv_id),
+    KEY idx_conv_buyer (buyer_id),
+    KEY idx_conv_seller (seller_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_message (
+    id               BIGINT       PRIMARY KEY,
+    conv_id          VARCHAR(64),
+    sender_id        BIGINT,
+    receiver_id      BIGINT,
+    type             VARCHAR(16),
+    content          VARCHAR(1024),
+    seq              BIGINT       DEFAULT 0,
+    read_flag        INT          DEFAULT 0,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_msg_conv (conv_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_track_event (
+    id               BIGINT       PRIMARY KEY,
+    user_id          BIGINT,
+    event            VARCHAR(32),
+    biz_id           VARCHAR(64),
+    ext              VARCHAR(512),
+    device_id        VARCHAR(64),
+    ip               VARCHAR(64),
+    ua               VARCHAR(512),
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_track_user (user_id, event),
+    KEY idx_track_device (device_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_risk_event (
+    id               BIGINT       PRIMARY KEY,
+    user_id          BIGINT,
+    rule_code        VARCHAR(32),
+    rule_name        VARCHAR(64),
+    level            VARCHAR(16),
+    biz_type         VARCHAR(32),
+    biz_id           VARCHAR(64),
+    status           VARCHAR(16),
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_risk_user (user_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_audit_log (
+    id               BIGINT       PRIMARY KEY,
+    operator_id      BIGINT,
+    action           VARCHAR(64),
+    target_type      VARCHAR(32),
+    target_id        VARCHAR(64),
+    detail           VARCHAR(512),
+    created_at       DATETIME,
+    updated_at       DATETIME
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_admin_user (
+    id               BIGINT       PRIMARY KEY,
+    username         VARCHAR(64),
+    password         VARCHAR(128),
+    role             VARCHAR(32)  COMMENT '遗留主角色字段（展示用）；权限以 t_admin_user_role + t_role_menu 为准',
+    nickname         VARCHAR(64),
+    org_id           BIGINT       COMMENT '所属机构/部门',
+    status           INT          DEFAULT 1,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_admin_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_favorite (
+    id               BIGINT       PRIMARY KEY,
+    user_id          BIGINT,
+    item_id          BIGINT,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_user_item (user_id, item_id),
+    KEY idx_favorite_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_attr_template (
+    id               BIGINT       PRIMARY KEY,
+    category_id      BIGINT,
+    name             VARCHAR(64),
+    options          VARCHAR(512),
+    required         INT          DEFAULT 0,
+    sort             INT          DEFAULT 0,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_attr_cat (category_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_bargain (
+    id               BIGINT       PRIMARY KEY,
+    conv_id          VARCHAR(64),
+    item_id          BIGINT,
+    buyer_id         BIGINT,
+    seller_id        BIGINT,
+    origin_price     BIGINT,
+    offer_price      BIGINT,
+    status           VARCHAR(16),
+    expire_at        DATETIME,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_bargain_conv (conv_id),
+    KEY idx_bargain_seller (seller_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_withdrawal (
+    id               BIGINT       PRIMARY KEY,
+    user_id          BIGINT,
+    amount           BIGINT,
+    account          VARCHAR(128),
+    status           VARCHAR(16),
+    done_at          DATETIME,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_withdrawal_user (user_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_item_status_log (
+    id               BIGINT       PRIMARY KEY,
+    item_id          BIGINT,
+    from_status      VARCHAR(32),
+    to_status        VARCHAR(32),
+    operator_id      BIGINT,
+    remark           VARCHAR(255),
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_item_status_log (item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_device_fingerprint (
+    id               BIGINT       PRIMARY KEY,
+    device_id        VARCHAR(64)  NOT NULL,
+    user_id          BIGINT       NOT NULL,
+    fp_hash          VARCHAR(64),
+    first_seen       DATETIME,
+    last_seen        DATETIME,
+    status           VARCHAR(16)  DEFAULT 'normal',
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_device_user (device_id, user_id),
+    KEY idx_fp_device (device_id),
+    KEY idx_fp_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_logistics (
+    id               BIGINT       PRIMARY KEY,
+    order_no         VARCHAR(32),
+    logistics_no     VARCHAR(64),
+    company          VARCHAR(32),
+    status           VARCHAR(16)  DEFAULT 'transport',
+    detail_json      TEXT,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_logi_order (order_no),
+    KEY idx_logi_no (logistics_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_delay_task (
+    id               BIGINT       PRIMARY KEY,
+    task_type        VARCHAR(32)  NOT NULL,
+    biz_id           VARCHAR(64),
+    payload          VARCHAR(1024),
+    status           VARCHAR(16)  DEFAULT 'pending',
+    next_execute_at  DATETIME     NOT NULL,
+    retry_count      INT          DEFAULT 0,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_delay_next (status, next_execute_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS t_notification (
+    id               BIGINT       PRIMARY KEY,
+    user_id          BIGINT       NOT NULL,
+    type             VARCHAR(32)  NOT NULL,
+    biz_id           VARCHAR(64),
+    title            VARCHAR(128) NOT NULL,
+    content          VARCHAR(512),
+    is_read          INT          DEFAULT 0,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_notice_user (user_id, is_read),
+    KEY idx_notice_created (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===== PC 系统管理（RBAC + 数据字典，F-05） =====
+
+-- 机构/部门树
+CREATE TABLE IF NOT EXISTS t_sys_organization (
+    id               BIGINT       PRIMARY KEY,
+    parent_id        BIGINT       DEFAULT 0,
+    name             VARCHAR(64)  NOT NULL,
+    code             VARCHAR(64),
+    level            INT          DEFAULT 1,
+    sort             INT          DEFAULT 0,
+    leader           VARCHAR(64),
+    phone            VARCHAR(128),
+    status           INT          DEFAULT 1,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_org_parent (parent_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 角色
+CREATE TABLE IF NOT EXISTS t_sys_role (
+    id               BIGINT       PRIMARY KEY,
+    name             VARCHAR(64)  NOT NULL,
+    code             VARCHAR(64)  NOT NULL,
+    status           INT          DEFAULT 1,
+    sort             INT          DEFAULT 0,
+    remark           VARCHAR(255),
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_role_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 菜单/权限（type: 0 目录 / 1 菜单 / 2 按钮；perms 为权限标识，如 system:user:list）
+CREATE TABLE IF NOT EXISTS t_sys_menu (
+    id               BIGINT       PRIMARY KEY,
+    parent_id        BIGINT       DEFAULT 0,
+    name             VARCHAR(64)  NOT NULL,
+    type             INT          DEFAULT 1,
+    path             VARCHAR(128),
+    component        VARCHAR(128),
+    icon             VARCHAR(64),
+    perms            VARCHAR(128),
+    sort             INT          DEFAULT 0,
+    status           INT          DEFAULT 1,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_menu_parent (parent_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 数据字典类型
+CREATE TABLE IF NOT EXISTS t_sys_dict_type (
+    id               BIGINT       PRIMARY KEY,
+    dict_type        VARCHAR(64)  NOT NULL,
+    dict_name        VARCHAR(64)  NOT NULL,
+    status           INT          DEFAULT 1,
+    remark           VARCHAR(255),
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_dict_type (dict_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 数据字典明细
+CREATE TABLE IF NOT EXISTS t_sys_dict_data (
+    id               BIGINT       PRIMARY KEY,
+    dict_type        VARCHAR(64)  NOT NULL,
+    dict_label       VARCHAR(64)  NOT NULL,
+    dict_value       VARCHAR(64)  NOT NULL,
+    dict_sort        INT          DEFAULT 0,
+    status           INT          DEFAULT 1,
+    remark           VARCHAR(255),
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_dict_type (dict_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 管理员 <-> 角色
+CREATE TABLE IF NOT EXISTS t_admin_user_role (
+    id               BIGINT       PRIMARY KEY,
+    admin_user_id    BIGINT       NOT NULL,
+    role_id          BIGINT       NOT NULL,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_aur (admin_user_id, role_id),
+    KEY idx_aur_role (role_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 角色 <-> 菜单（权限）
+CREATE TABLE IF NOT EXISTS t_role_menu (
+    id               BIGINT       PRIMARY KEY,
+    role_id          BIGINT       NOT NULL,
+    menu_id          BIGINT       NOT NULL,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_rm (role_id, menu_id),
+    KEY idx_rm_menu (menu_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

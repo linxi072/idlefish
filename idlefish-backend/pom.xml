@@ -99,4 +99,52 @@
             </plugin>
         </plugins>
     </build>
+
+    <!--
+      构建 Profile 化说明：
+      - local（默认激活）：排除 Redis 实现源文件（不依赖 spring-data-redis），保留 H2 + 本地内存缓存，
+        沙箱离线可编译/运行/测试，不回归。
+      - prod：引入 MySQL 驱动与 spring-boot-starter-data-redis，并放开 Redis 实现源文件编译，
+        配合 application-prod.yml 指向真实 MySQL / Redis。需在本机联网执行 mvn -Pprod 拉取依赖。
+    -->
+    <profiles>
+        <profile>
+            <id>local</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <!-- 默认（离线）不编译 Redis 实现，避免缺少 spring-data-redis 依赖导致构建失败 -->
+                            <excludes>
+                                <exclude>com/idlefish/trade/common/cache/RedisCacheServiceImpl.java</exclude>
+                                <exclude>com/idlefish/trade/common/cache/RedisCacheAutoConfig.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>prod</id>
+            <dependencies>
+                <!-- MySQL 驱动（生产数据源） -->
+                <dependency>
+                    <groupId>com.mysql</groupId>
+                    <artifactId>mysql-connector-j</artifactId>
+                    <version>8.4.0</version>
+                </dependency>
+                <!-- Redis（生产缓存） -->
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-data-redis</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

@@ -7,6 +7,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -15,9 +17,18 @@ import java.util.Date;
 
 /**
  * JWT 工具：签发与解析登录令牌。令牌载荷携带 uid 与 openid。
+ *
+ * 安全约定（F-04 密钥外置）：生产环境必须通过环境变量 {@code JWT_SECRET} 注入高强度密钥（>= 32 字节），
+ * 切勿使用内置 DEV 默认密钥。若仍使用默认密钥，将在启动时输出 SECURITY 告警。
  */
 @Component
 public class JwtUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtUtil.class);
+
+    /** 内置 DEV 默认密钥（仅本地演示用）。与 application.yml 中 idlefish.jwt.secret 默认值保持一致。 */
+    private static final String DEV_DEFAULT_SECRET =
+            "ZzVNhe08kvOb3DHdclHpMsMKXZsoPty-dOWYNiqxhNTxpmhKf7sb1wlx2FcYYG7P";
 
     private final SecretKey key;
     private final long expireSeconds;
@@ -25,6 +36,10 @@ public class JwtUtil {
 
     public JwtUtil(IdlefishProperties props) {
         String secret = props.getJwt().getSecret();
+        if (DEV_DEFAULT_SECRET.equals(secret)) {
+            log.warn("[SECURITY] 当前使用内置 DEV 默认 JWT 密钥，存在被伪造令牌的风险！"
+                    + " 生产环境务必通过环境变量 JWT_SECRET 注入高强度密钥（>= 32 字节）。");
+        }
         // 保证 HS256 所需 >= 256 bits 的密钥长度
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS t_address (
     district       VARCHAR(64),
     detail         VARCHAR(255),
     is_default     INT           DEFAULT 0,
+    deleted        INT           DEFAULT 0,   -- F-04 逻辑删除：0 未删 / 1 已删
     created_at     TIMESTAMP,
     updated_at     TIMESTAMP
 );
@@ -66,6 +67,7 @@ CREATE TABLE IF NOT EXISTS t_item (
     like_count     INT           DEFAULT 0,
     fav_count      INT           DEFAULT 0,
     version        INT           DEFAULT 0,
+    deleted        INT           DEFAULT 0,   -- F-04 逻辑删除：0 未删 / 1 已删
     created_at     TIMESTAMP,
     updated_at     TIMESTAMP
 );
@@ -238,6 +240,7 @@ CREATE TABLE IF NOT EXISTS t_admin_user (
     password       VARCHAR(128),
     role           VARCHAR(32),
     nickname       VARCHAR(64),
+    org_id         BIGINT,        -- 所属机构/部门（F-05 系统管理）
     status         INT           DEFAULT 1,
     created_at     TIMESTAMP,
     updated_at     TIMESTAMP
@@ -367,3 +370,92 @@ CREATE TABLE IF NOT EXISTS t_notification (
 );
 CREATE INDEX IF NOT EXISTS idx_notice_user ON t_notification (user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_notice_created ON t_notification (user_id, created_at);
+
+-- ===== PC 系统管理（RBAC + 数据字典，F-05） =====
+
+CREATE TABLE IF NOT EXISTS t_sys_organization (
+    id             BIGINT        PRIMARY KEY,
+    parent_id      BIGINT        DEFAULT 0,
+    name           VARCHAR(64),
+    code           VARCHAR(64),
+    level          INT           DEFAULT 1,
+    sort           INT           DEFAULT 0,
+    leader         VARCHAR(64),
+    phone          VARCHAR(128),
+    status         INT           DEFAULT 1,
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_org_parent ON t_sys_organization (parent_id);
+
+CREATE TABLE IF NOT EXISTS t_sys_role (
+    id             BIGINT        PRIMARY KEY,
+    name           VARCHAR(64),
+    code           VARCHAR(64),
+    status         INT           DEFAULT 1,
+    sort           INT           DEFAULT 0,
+    remark         VARCHAR(255),
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP,
+    UNIQUE KEY uk_role_code (code)
+);
+
+CREATE TABLE IF NOT EXISTS t_sys_menu (
+    id             BIGINT        PRIMARY KEY,
+    parent_id      BIGINT        DEFAULT 0,
+    name           VARCHAR(64),
+    type           INT           DEFAULT 1,  -- 0 目录 / 1 菜单 / 2 按钮
+    path           VARCHAR(128),
+    component      VARCHAR(128),
+    icon           VARCHAR(64),
+    perms          VARCHAR(128),
+    sort           INT           DEFAULT 0,
+    status         INT           DEFAULT 1,
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_menu_parent ON t_sys_menu (parent_id);
+
+CREATE TABLE IF NOT EXISTS t_sys_dict_type (
+    id             BIGINT        PRIMARY KEY,
+    dict_type      VARCHAR(64),
+    dict_name      VARCHAR(64),
+    status         INT           DEFAULT 1,
+    remark         VARCHAR(255),
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP,
+    UNIQUE KEY uk_dict_type (dict_type)
+);
+
+CREATE TABLE IF NOT EXISTS t_sys_dict_data (
+    id             BIGINT        PRIMARY KEY,
+    dict_type      VARCHAR(64),
+    dict_label     VARCHAR(64),
+    dict_value     VARCHAR(64),
+    dict_sort      INT           DEFAULT 0,
+    status         INT           DEFAULT 1,
+    remark         VARCHAR(255),
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_dict_type ON t_sys_dict_data (dict_type);
+
+CREATE TABLE IF NOT EXISTS t_admin_user_role (
+    id             BIGINT        PRIMARY KEY,
+    admin_user_id  BIGINT,
+    role_id        BIGINT,
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP,
+    UNIQUE KEY uk_aur (admin_user_id, role_id),
+    KEY idx_aur_role (role_id)
+);
+
+CREATE TABLE IF NOT EXISTS t_role_menu (
+    id             BIGINT        PRIMARY KEY,
+    role_id        BIGINT,
+    menu_id        BIGINT,
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP,
+    UNIQUE KEY uk_rm (role_id, menu_id),
+    KEY idx_rm_menu (menu_id)
+);

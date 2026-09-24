@@ -22,17 +22,20 @@ public class WebConfig implements WebMvcConfigurer {
     private final AdminAuthInterceptor adminAuthInterceptor;
     private final CurrentAdminArgumentResolver currentAdminArgumentResolver;
     private final DeviceContextInterceptor deviceContextInterceptor;
+    private final RateLimitInterceptor rateLimitInterceptor;
 
     public WebConfig(AuthInterceptor authInterceptor,
                      CurrentUserArgumentResolver currentUserArgumentResolver,
                      AdminAuthInterceptor adminAuthInterceptor,
                      CurrentAdminArgumentResolver currentAdminArgumentResolver,
-                     DeviceContextInterceptor deviceContextInterceptor) {
+                     DeviceContextInterceptor deviceContextInterceptor,
+                     RateLimitInterceptor rateLimitInterceptor) {
         this.authInterceptor = authInterceptor;
         this.currentUserArgumentResolver = currentUserArgumentResolver;
         this.adminAuthInterceptor = adminAuthInterceptor;
         this.currentAdminArgumentResolver = currentAdminArgumentResolver;
         this.deviceContextInterceptor = deviceContextInterceptor;
+        this.rateLimitInterceptor = rateLimitInterceptor;
     }
 
     @Override
@@ -59,6 +62,10 @@ public class WebConfig implements WebMvcConfigurer {
 
         // 设备上下文提取（风控指纹）：对所有 /api/** 生效
         registry.addInterceptor(deviceContextInterceptor)
+                .addPathPatterns("/api/**");
+
+        // 请求限流骨架（F-04）：默认关闭，生产经 IDLEFISH_RATELIMIT_ENABLED=true 开启
+        registry.addInterceptor(rateLimitInterceptor)
                 .addPathPatterns("/api/**");
     }
 
