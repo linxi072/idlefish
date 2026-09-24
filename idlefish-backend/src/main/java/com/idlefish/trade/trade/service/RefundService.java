@@ -16,6 +16,8 @@ import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.mapper.RefundMapper;
 import com.idlefish.trade.trade.vo.RefundVO;
+import com.idlefish.trade.notify.enums.NotificationType;
+import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -34,18 +36,21 @@ public class RefundService {
     private final PayService payService;
     private final ItemService itemService;
     private final FundFlowMapper fundFlowMapper;
+    private final NotificationService notificationService;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public RefundService(RefundMapper refundMapper, OrderMapper orderMapper,
                          PayOrderMapper payOrderMapper, PayService payService,
-                         ItemService itemService, FundFlowMapper fundFlowMapper) {
+                         ItemService itemService, FundFlowMapper fundFlowMapper,
+                         NotificationService notificationService) {
         this.refundMapper = refundMapper;
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.payService = payService;
         this.itemService = itemService;
         this.fundFlowMapper = fundFlowMapper;
+        this.notificationService = notificationService;
     }
 
     /** 申请退款（幂等：同订单进行中退款单则直接返回）。 */
@@ -84,6 +89,9 @@ public class RefundService {
         r.setAutoAgreeAt(LocalDateTime.now().plusHours(48));
         r.setPlatformAt(LocalDateTime.now().plusDays(5));
         refundMapper.insert(r);
+        // F-02 通知中心：退款申请触达卖家（best-effort）
+        notificationService.notify(r.getSellerId(), NotificationType.REFUND_APPLY, r.getRefundNo(), "退款申请",
+                "买家对订单 " + dto.getOrderNo() + " 发起退款申请");
         return r.getRefundNo();
     }
 
@@ -107,6 +115,9 @@ public class RefundService {
         upd.setStatus(RefundStatus.REJECTED.getCode());
         upd.setReason(reason);
         refundMapper.updateById(upd);
+        // F-02 通知中心：拒绝退款触达买家（best-effort）
+        notificationService.notify(r.getBuyerId(), NotificationType.REFUND_REJECTED, refundNo, "退款被拒绝",
+                "卖家拒绝了您的退款申请" + (reason != null ? ("：" + reason) : ""));
     }
 
     /** 买家填写退货物流（退货退款）。 */
@@ -142,9 +153,12 @@ public class RefundService {
         upd.setId(r.getId());
         upd.setStatus(RefundStatus.PLATFORM.getCode());
         refundMapper.updateById(upd);
+        // F-02 通知中心：平台介入触达买卖双方（best-effort）
+        notificationService.notify(r.getBuyerId(), NotificationType.REFUND_PLATFORM, refundNo, "平台介入",
+                "您的退款单 " + refundNo + " 已由平台介入处理");
+        notificationService.notify(r.getSellerId(), NotificationType.REFUND_PLATFORM, refundNo, "平台介入",
+                "退款单 " + refundNo + " 已由平台介入处理");
     }
-
-    /** 后台代处理退款同意（运营操作，跳过卖家归属校验，按订单号定位最新退款单）。 */
     public void adminAgree(String orderNo) {
         Refund r = refundMapper.selectOne(new LambdaQueryWrapper<Refund>()
                 .eq(Refund::getOrderNo, orderNo)
@@ -170,6 +184,9 @@ public class RefundService {
         upd.setId(r.getId());
         upd.setStatus(RefundStatus.CANCELED.getCode());
         refundMapper.updateById(upd);
+        // F-02 通知中心：撤销退款触达卖家（best-effort）
+        notificationService.notify(r.getSellerId(), NotificationType.REFUND_CANCELED, refundNo, "退款撤销",
+                "买家撤销了对订单 " + r.getOrderNo() + " 的退款申请");
     }
 
     public RefundVO detail(String refundNo) {
@@ -222,11 +239,16 @@ public class RefundService {
                 .eq(Refund::getStatus, RefundStatus.WAIT_SELLER.getCode())
                 .le(Refund::getPlatformAt, LocalDateTime.now()));
         for (Refund r : list) {
-            Refund upd = new Refund();
-            upd.setId(r.getId());
-            upd.setStatus(RefundStatus.PLATFORM.getCode());
-            refundMapper.updateById(upd);
-        }
+        Refund upd = new Refund();
+        upd.setId(r.getId());
+        upd.setStatus(RefundStatus.PLATFORM.getCode());
+        refundMapper.updateById(upd);
+        // F-02 通知中心：超时平台介入触达买卖双方（best-effort）
+        notificationService.notify(r.getBuyerId(), NotificationType.REFUND_PLATFORM, r.getRefundNo(), "平台介入",
+                "退款单 " + r.getRefundNo() + " 超时未处理，已由平台介入");
+        notificationService.notify(r.getSellerId(), NotificationType.REFUND_PLATFORM, r.getRefundNo(), "平台介入",
+                "退款单 " + r.getRefundNo() + " 超时未处理，已由平台介入");
+    }
     }
 
     // ---------- 内部工具 ----------
@@ -253,6 +275,10 @@ public class RefundService {
         ff.setType("REFUND");
         ff.setBalanceAfter(r.getAmount());
         fundFlowMapper.insert(ff);
+
+        // F-02 通知中心：退款成功触达买家（best-effort）
+        notificationService.notify(r.getBuyerId(), NotificationType.REFUND_SUCCESS, r.getRefundNo(), "退款成功",
+                "订单 " + r.getOrderNo() + " 的退款已原路退回 " + (r.getAmount() == null ? "" : (r.getAmount() / 100.0)) + " 元");
 
         Order o = orderMapper.selectOne(new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, r.getOrderNo()));
         if (o != null) {

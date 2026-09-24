@@ -352,3 +352,18 @@ CREATE TABLE IF NOT EXISTS t_delay_task (
     updated_at     TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_delay_next ON t_delay_task (status, next_execute_at);
+
+-- 站内通知：订单/支付/退款/审核等事件触达用户（F-02 通知中心）。
+CREATE TABLE IF NOT EXISTS t_notification (
+    id             BIGINT        PRIMARY KEY,
+    user_id        BIGINT        NOT NULL,
+    type           VARCHAR(32)   NOT NULL,   -- 通知类型 code，见 NotificationType
+    biz_id         VARCHAR(64),                -- 业务主键：订单号/退款单号/商品ID
+    title          VARCHAR(128)  NOT NULL,
+    content        VARCHAR(512),
+    is_read        INT           DEFAULT 0,   -- 0 未读 / 1 已读
+    created_at     TIMESTAMP,
+    updated_at     TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_notice_user ON t_notification (user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notice_created ON t_notification (user_id, created_at);

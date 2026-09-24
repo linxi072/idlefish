@@ -14,6 +14,8 @@ import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.service.DelayQueueService;
+import com.idlefish.trade.notify.enums.NotificationType;
+import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -32,11 +34,12 @@ public class PayService {
     private final ObjectMapper objectMapper;
     private final IdlefishProperties props;
     private final DelayQueueService delayQueueService;
+    private final NotificationService notificationService;
 
     public PayService(PayOrderMapper payOrderMapper, OrderMapper orderMapper,
                       FundFlowMapper fundFlowMapper, FundEscrowService escrow,
                       ObjectMapper objectMapper, IdlefishProperties props,
-                      @Lazy DelayQueueService delayQueueService) {
+                      @Lazy DelayQueueService delayQueueService, NotificationService notificationService) {
         this.payOrderMapper = payOrderMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
@@ -44,6 +47,7 @@ public class PayService {
         this.objectMapper = objectMapper;
         this.props = props;
         this.delayQueueService = delayQueueService;
+        this.notificationService = notificationService;
     }
 
     /** 预下单：返回渠道支付参数。 */
@@ -151,6 +155,10 @@ public class PayService {
         ff.setType("PAY");
         ff.setBalanceAfter(0L); // 资金托管在平台，买家余额不直接减（演示）
         fundFlowMapper.insert(ff);
+
+        // F-02 通知中心：支付成功触达买家（best-effort，不影响支付主流程）
+        notificationService.notify(po.getBuyerId(), NotificationType.ORDER_PAID, po.getOrderNo(),
+                "支付成功", "您的订单 " + po.getOrderNo() + " 已支付成功，等待卖家发货");
     }
 
     private String extractResource(String body) {

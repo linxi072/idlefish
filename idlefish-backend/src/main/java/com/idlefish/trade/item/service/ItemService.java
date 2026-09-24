@@ -18,6 +18,8 @@ import com.idlefish.trade.item.mapper.ItemMapper;
 import com.idlefish.trade.item.mapper.ItemStatusLogMapper;
 import com.idlefish.trade.item.vo.ItemDetailVO;
 import com.idlefish.trade.item.vo.ItemVO;
+import com.idlefish.trade.notify.enums.NotificationType;
+import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.item.vo.SellerVO;
 import com.idlefish.trade.item.dto.AuditResult;
 import com.idlefish.trade.item.service.ContentAuditService;
@@ -46,6 +48,7 @@ public class ItemService {
     private final ItemStatusLogMapper itemStatusLogMapper;
     private final ContentAuditService contentAuditService;
     private final SearchService searchService;
+    private final NotificationService notificationService;
 
     /** 单实例应用级库存锁（防超卖）；多实例需改用 Redis 分布式锁。 */
     private final ConcurrentMap<Long, Object> itemLocks = new ConcurrentHashMap<>();
@@ -55,7 +58,7 @@ public class ItemService {
     public ItemService(ItemMapper itemMapper, CategoryService categoryService,
                        UserService userService, ItemStateMachine stateMachine, ObjectMapper objectMapper,
                        ItemStatusLogMapper itemStatusLogMapper, ContentAuditService contentAuditService,
-                       @Lazy SearchService searchService) {
+                       @Lazy SearchService searchService, NotificationService notificationService) {
         this.itemMapper = itemMapper;
         this.categoryService = categoryService;
         this.userService = userService;
@@ -64,6 +67,7 @@ public class ItemService {
         this.itemStatusLogMapper = itemStatusLogMapper;
         this.contentAuditService = contentAuditService;
         this.searchService = searchService;
+        this.notificationService = notificationService;
     }
 
     /** 发布商品：初始为 DRAFT 草稿。 */
@@ -126,6 +130,13 @@ public class ItemService {
             upd.setAuditReason(reason);
         }
         itemMapper.updateById(upd);
+        // F-02 通知中心：审核结果触达卖家（best-effort）
+        notificationService.notify(item.getSellerId(),
+                pass ? NotificationType.ITEM_APPROVED : NotificationType.ITEM_REJECTED,
+                String.valueOf(itemId),
+                pass ? "商品审核通过" : "商品审核未通过",
+                "您的商品《" + item.getTitle() + "》" + (pass ? "已通过审核并上架"
+                        : ("未通过审核" + (reason != null ? ("：" + reason) : ""))));
         if (pass) {
             searchService.indexItem(getById(itemId));
         }

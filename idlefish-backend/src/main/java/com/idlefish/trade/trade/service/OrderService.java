@@ -24,6 +24,8 @@ import com.idlefish.trade.trade.vo.OrderVO;
 import com.idlefish.trade.user.service.AddressService;
 import com.idlefish.trade.risk.service.TrackService;
 import com.idlefish.trade.trade.service.DelayQueueService;
+import com.idlefish.trade.notify.enums.NotificationType;
+import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -50,6 +52,7 @@ public class OrderService {
     private final TrackService trackService;
     private final ObjectMapper objectMapper;
     private final DelayQueueService delayQueueService;
+    private final NotificationService notificationService;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -57,7 +60,7 @@ public class OrderService {
                         ItemService itemService, ItemMapper itemMapper,
                         AddressService addressService, LogisticService logisticService,
                         SettlementService settlementService, TrackService trackService, ObjectMapper objectMapper,
-                        @Lazy DelayQueueService delayQueueService) {
+                        @Lazy DelayQueueService delayQueueService, NotificationService notificationService) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.itemService = itemService;
@@ -68,6 +71,7 @@ public class OrderService {
         this.trackService = trackService;
         this.objectMapper = objectMapper;
         this.delayQueueService = delayQueueService;
+        this.notificationService = notificationService;
     }
 
     /** 创建订单（幂等：同买家同商品存在待支付订单则直接返回）。 */
@@ -172,6 +176,10 @@ public class OrderService {
         }
         logisticService.persistShip(orderNo, no, "SF");
 
+        // F-02 通知中心：发货触达买家（best-effort）
+        notificationService.notify(o.getBuyerId(), NotificationType.ORDER_SHIPPED, orderNo, "卖家已发货",
+                "订单 " + orderNo + " 已发货，物流单号 " + no);
+
         // D6 延时队列：发货后提交 10 天自动确认收货延时任务（精准到点触发；本地/RocketMQ 均走此路径）
         try {
             delayQueueService.submit("ORDER_CONFIRM", orderNo, "", 10 * 24 * 60 * 60);
@@ -195,9 +203,11 @@ public class OrderService {
         }
         itemService.markSold(o.getItemId());
         settlementService.onTradeSuccess(orderNo);
-    }
 
-    /** 后台代发货（运营操作，跳过卖家归属校验，仍需状态机校验 + 乐观锁）。 */
+        // F-02 通知中心：确认收货触达卖家（best-effort）
+        notificationService.notify(o.getSellerId(), NotificationType.ORDER_CONFIRMED, orderNo, "买家已确认收货",
+                "订单 " + orderNo + " 已确认收货，款项已结算");
+    }
     public void adminShip(String orderNo, String logisticsNo, Long operatorId) {
         Order o = getByOrderNo(orderNo);
         if (!OrderStatus.PAID.getCode().equals(o.getStatus())) {
@@ -279,6 +289,10 @@ public class OrderService {
         setClosed(o, "timeout");
         closePay(o.getPayNo());
         itemService.releaseStock(o.getItemId(), o.getQuantity());
+
+        // F-02 通知中心：超时关单触达买家（best-effort）
+        notificationService.notify(o.getBuyerId(), NotificationType.ORDER_CLOSED, orderNo, "订单已关闭",
+                "订单 " + orderNo + " 超时未支付，已自动关闭");
     }
 
     /** 定时：运输中订单超过 10 天未确认收货，自动确认并完成结算。 */
@@ -304,6 +318,10 @@ public class OrderService {
         orderMapper.updateById(upd);
         itemService.markSold(o.getItemId());
         settlementService.onTradeSuccess(o.getOrderNo());
+
+        // F-02 通知中心：自动确认收货触达卖家（best-effort）
+        notificationService.notify(o.getSellerId(), NotificationType.ORDER_CONFIRMED, o.getOrderNo(), "买家已确认收货",
+                "订单 " + o.getOrderNo() + " 已确认收货，款项已结算");
     }
 
     /** 定时：已支付超过 72h 未发货，返回需提醒的订单数（提醒由通知中心消费）。 */

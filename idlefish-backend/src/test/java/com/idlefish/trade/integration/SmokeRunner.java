@@ -60,6 +60,7 @@ public class SmokeRunner {
             check("contextLoads", true);
 
             tradeEndToEnd();
+            notificationCheck();
             contentAudit();
             fileUpload();
 
@@ -222,6 +223,31 @@ public class SmokeRunner {
                         .header("Authorization", "Bearer " + token)))
                 .andExpect(status().isOk());
         check("order completed", "completed".equals(orderStatus(orderNo)));
+    }
+
+    private static void notificationCheck() throws Exception {
+        System.out.println("[notificationCheck]");
+        // 交易链路（支付/发货/确认收货/审核）应已触发多条站内通知
+        MvcResult r = mvc.perform(get("/api/notify/unread-count")
+                        .header("Authorization", bearer))
+                .andExpect(status().isOk()).andReturn();
+        long unread = MAPPER.readTree(r.getResponse().getContentAsString()).get("data").asLong();
+        check("notify unread > 0", unread > 0);
+
+        MvcResult l = mvc.perform(get("/api/notify/list")
+                        .header("Authorization", bearer))
+                .andExpect(status().isOk()).andReturn();
+        JsonNode data = MAPPER.readTree(l.getResponse().getContentAsString()).get("data");
+        check("notify list has records", data.get("records").isArray() && data.get("records").size() > 0);
+
+        // 标记全部已读后未读应为 0（验证已读写回）
+        mvc.perform(post("/api/notify/read-all")
+                        .header("Authorization", bearer)).andExpect(status().isOk());
+        MvcResult u2 = mvc.perform(get("/api/notify/unread-count")
+                        .header("Authorization", bearer))
+                .andExpect(status().isOk()).andReturn();
+        long after = MAPPER.readTree(u2.getResponse().getContentAsString()).get("data").asLong();
+        check("notify all-read -> unread 0", after == 0);
     }
 
     private static void contentAudit() throws Exception {
