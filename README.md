@@ -28,6 +28,14 @@
 - 订单 6 态：`pending_pay / paid / pending_ship / shipping / completed / closed`
 - 退款 7 态：`apply / wait_seller / platform / refunding / refunded / rejected / canceled`
 
+## 配套文档
+
+| 文档 | 内容 |
+| --- | --- |
+| `docs/真机联调验证手册.md` | IM 实时/支付回流/优惠券营销三域的联调验收口径、数据库一致性 SQL、护栏与一键命令 |
+| `docs/运维部署手册.md` | 生产构建（local/prod Profile）、环境变量总表、MySQL/Redis 初始化、后端/小程序/PC 后台部署、外部组件 Real 接入闸门、监控/对账/限流、备份回滚与排障 |
+| `idlefish-backend/docs/后续功能迭代路线图.md` | 功能规划、优先级与实施进度台账（F-01~F-15） |
+
 ## 备注
 - 小程序 `tabBar` 当前为纯文字（未配图标）。若微信开发者工具要求图标，在 `miniprogram/images/` 放 PNG 并在 `app.json` 补 `iconPath` / `selectedIconPath` 即可。
 - 微信支付 / 微信登录 / 物流 / ES 检索等在后端均以接口抽象 + Mock 实现，联调真实渠道时替换对应 `Real*ServiceImpl` 与配置开关即可。
