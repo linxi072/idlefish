@@ -1,6 +1,7 @@
 package com.idlefish.trade.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
@@ -114,22 +115,24 @@ public class PayService {
         applyPaid(payNo, transactionId, amount);
     }
 
-    /** 幂等落地支付成功（供 notify / notifyV3 复用）。 */
+    /** 幂等落地支付成功（供 notify / notifyV3 复用）。
+     *  采用「WAIT→SUCCESS 条件更新 + affected 行网关」：仅当支付单仍为 WAIT 时原子置 SUCCESS，
+     *  并发重复回调中仅一条受影响、下游（资金流水/通知）仅执行一次，杜绝重复流水资损。 */
     private void applyPaid(String payNo, String transactionId, Long amount) {
         PayOrder po = payOrderMapper.selectOne(
                 new LambdaQueryWrapper<PayOrder>().eq(PayOrder::getPayNo, payNo));
         if (po == null) {
             throw new BizException(Code.ORDER_NOT_FOUND);
         }
-        if (PayStatus.SUCCESS.getCode().equals(po.getStatus())) {
-            return; // 幂等：已处理
+        int affected = payOrderMapper.update(null, new UpdateWrapper<PayOrder>()
+                .eq("pay_no", payNo)
+                .eq("status", PayStatus.WAIT.getCode())
+                .set("status", PayStatus.SUCCESS.getCode())
+                .set("transaction_id", transactionId)
+                .set("paid_at", LocalDateTime.now()));
+        if (affected == 0) {
+            return; // 已处理（SUCCESS）或不存在：幂等返回，绝不重复写资金流水
         }
-        PayOrder upd = new PayOrder();
-        upd.setId(po.getId());
-        upd.setStatus(PayStatus.SUCCESS.getCode());
-        upd.setTransactionId(transactionId);
-        upd.setPaidAt(LocalDateTime.now());
-        payOrderMapper.updateById(upd);
 
         Order order = orderMapper.selectOne(
                 new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, po.getOrderNo()));
@@ -145,6 +148,10 @@ public class PayService {
             } catch (Exception ignore) {
                 // 延时任务提交失败不影响支付落地（定时扫描兜底提醒）
             }
+
+            // F-05 闭环：支付成功触达卖家（您有新订单），买卖双向不漏
+            notificationService.notify(order.getSellerId(), NotificationType.ORDER_PAID, po.getOrderNo(),
+                    "你有新订单", "订单 " + po.getOrderNo() + " 已支付成功，请尽快发货");
         }
 
         FundFlow ff = new FundFlow();
@@ -159,9 +166,6 @@ public class PayService {
         // F-02 通知中心：支付成功触达买家（best-effort，不影响支付主流程）
         notificationService.notify(po.getBuyerId(), NotificationType.ORDER_PAID, po.getOrderNo(),
                 "支付成功", "您的订单 " + po.getOrderNo() + " 已支付成功，等待卖家发货");
-        // F-05 闭环：同步触达卖家（您有新订单），买卖双向不漏
-        notificationService.notify(order.getSellerId(), NotificationType.ORDER_PAID, po.getOrderNo(),
-                "你有新订单", "订单 " + po.getOrderNo() + " 已支付成功，请尽快发货");
     }
 
     private String extractResource(String body) {

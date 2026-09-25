@@ -63,8 +63,8 @@ public class IdlefishProperties {
         /** RAM 访问密钥 */
         private String accessKey;
         private String secretKey;
-        /** 对外访问基址（CDN / 自定义域名），返回给前端的 URL 前缀 */
-        private String baseUrl = "/uploads/";
+        /** 对外访问基址（CDN / 自定义域名）；留空则回退到 https://<bucket>.<endpoint>/ 默认域名 */
+        private String baseUrl = "";
     }
 
     @Data

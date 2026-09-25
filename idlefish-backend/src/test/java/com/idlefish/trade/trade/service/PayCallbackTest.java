@@ -76,6 +76,15 @@ class PayCallbackTest {
             payStatus.set(u.getStatus());
             return 1;
         });
+        // 条件更新（WAIT→SUCCESS）的桩：仅当当前为 WAIT 时才置 SUCCESS 并返回 1，
+        // 模拟并发重复回调时第二条受影响行为 0，从而下游（资金流水）仅写入一次。
+        when(payOrderMapper.update(any(), any())).thenAnswer(inv -> {
+            if (PayStatus.WAIT.getCode().equals(payStatus.get())) {
+                payStatus.set(PayStatus.SUCCESS.getCode());
+                return 1;
+            }
+            return 0;
+        });
         when(orderMapper.selectOne(any())).thenAnswer(inv -> {
             Order o = new Order();
             o.setId(1L); o.setOrderNo("NO1"); o.setBuyerId(2001L); o.setSellerId(1001L);

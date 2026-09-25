@@ -44,7 +44,12 @@ public class SimpleRateLimiter {
             }
         }
         long used = w.count.incrementAndGet();
-        return used <= permitsPerWindow;
+        if (used <= permitsPerWindow) {
+            return true;
+        }
+        // 超出配额：回滚本次计数，被拒请求不占用配额（避免洪泛请求虚增计数，影响窗口观测与配额）
+        w.count.decrementAndGet();
+        return false;
     }
 
     /** 观测当前窗口已用配额（测试/监控用）。 */
