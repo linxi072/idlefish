@@ -15,6 +15,10 @@
       <view class="msg {{item.isMe?'mine':'peer'}}" wx:if="{{item.type==='text'}}">
         <view class="bubble">{{item.content}}</view>
       </view>
+      <!-- 图片 -->
+      <view class="msg {{item.isMe?'mine':'peer'}}" wx:elif="{{item.type==='image'}}">
+        <image class="bubble-img" src="{{item.content}}" mode="aspectFill" />
+      </view>
       <!-- 商品卡 -->
       <view class="msg {{item.isMe?'mine':'peer'}}" wx:if="{{item.type==='product_card'}}">
         <view class="card-msg">

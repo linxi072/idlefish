@@ -109,10 +109,58 @@ const api = {
     );
   },
 
-  // ===== IM =====
-  getConversations() { return route(() => mock.getConversations(), () => http.get('/api/im/conversations')); },
-  getMessages(convId) { return route(() => mock.getMessages(convId), () => http.get('/api/im/messages?convId=' + convId)); },
-  sendMessage(data) { return route(() => mock.sendMessage(data), () => http.post('/api/im/send', data)); },
+  // ===== IM（对齐 ImController / ConversationVO / MessageVO）=====
+  // 真实模式：后端 ConversationVO 为扁平结构（peerId/peerName/itemId/lastMessage/...），
+  // 映射成 message.js 期望的嵌套 peer/item 形态，保持前后端契约一致
+  getConversations() {
+    return route(
+      () => mock.getConversations(),
+      () => http.get('/api/im/conversations').then((list) => (list || []).map((vo) => ({
+        convId: vo.convId,
+        peer: { id: vo.peerId, nickname: vo.peerName || '', avatar: '' },
+        item: { id: vo.itemId || '', title: '', img: '', price: 0 },
+        lastMsg: vo.lastMessage || '',
+        unread: vo.unread || 0,
+        updatedAt: vo.lastTime || ''
+      })))
+    );
+  },
+  getMessages(convId) {
+    return route(
+      () => mock.getMessages(convId),
+      // 后端 MessageVO 无 msgId，以 seq 兜底（chat.wxml 用 wx:key="msgId"）
+      () => http.get('/api/im/messages?convId=' + convId)
+        .then((list) => (list || []).map((m) => Object.assign({}, m, { msgId: 's' + m.seq })))
+    );
+  },
+  // 发送消息：后端 /api/im/send 用 @RequestParam（receiverId/itemId/content/type），故真实模式走 query
+  sendMessage(data) {
+    return route(
+      () => mock.sendMessage(data),
+      () => {
+        const q = 'receiverId=' + data.receiverId + '&itemId=' + (data.itemId || 0) +
+          '&content=' + encodeURIComponent(data.content || '') + '&type=' + (data.type || 'text');
+        return http.post('/api/im/send?' + q, null, true);
+      }
+    );
+  },
+
+  // ===== 议价（对齐 BargainController / BargainCreateDTO，金额单位：分）=====
+  createBargain(data) { return route(() => mock.createBargain(data), () => http.post('/api/bargain/create', data)); },
+  acceptBargain(bargainId) { return route(() => mock.acceptBargain(bargainId), () => http.post('/api/bargain/accept?bargainId=' + bargainId)); },
+  listBargains(convId) { return route(() => mock.listBargains(convId), () => http.get('/api/bargain/list?convId=' + convId)); },
+
+  // ===== 站内通知（对齐 NotificationController / NotificationVO，IPage → {records,total}）=====
+  notifyList(page, size) {
+    return route(
+      () => mock.notifyList(page, size),
+      () => http.get('/api/notify/list?page=' + (page || 1) + '&size=' + (size || 20))
+        .then((p) => ({ records: (p && p.records) || [], total: (p && p.total) || 0 }))
+    );
+  },
+  notifyUnread() { return route(() => mock.notifyUnread(), () => http.get('/api/notify/unread-count')); },
+  notifyRead(id) { return route(() => mock.notifyRead(id), () => http.post('/api/notify/read', { id })); },
+  notifyReadAll() { return route(() => mock.notifyReadAll(), () => http.post('/api/notify/read-all')); },
 
   // ===== 埋点 =====
   track(event, extra) {

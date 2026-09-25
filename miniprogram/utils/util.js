@@ -99,9 +99,32 @@ function ratingArray(rating) {
   return arr;
 }
 
+// ===== 站内通知（F-09 notification，对齐后端 NotificationType）=====
+// 通知类型中文
+const NOTIFY_TYPE = {
+  order_paid: '订单支付', order_shipped: '卖家发货', order_confirmed: '确认收货', order_closed: '订单关闭',
+  refund_apply: '退款申请', refund_success: '退款成功', refund_rejected: '退款被拒',
+  refund_canceled: '退款撤销', refund_platform: '平台介入', item_approved: '商品过审',
+  item_rejected: '商品驳回', remind_ship: '发货提醒', settlement_success: '结算到账',
+  withdraw_apply: '提现申请', withdraw_approve: '提现通过', withdraw_reject: '提现驳回'
+};
+function notifyTypeText(code) { return NOTIFY_TYPE[code] || '通知'; }
+
+// 通知图标（按类型归类）
+function notifyIcon(type) {
+  if (type && type.indexOf('refund') >= 0) return '💸';
+  if (type && type.indexOf('withdraw') >= 0) return '🏦';
+  if (type && type.indexOf('order') >= 0) return '📦';
+  if (type && type.indexOf('item') >= 0) return '✅';
+  if (type === 'settlement_success') return '💰';
+  if (type === 'remind_ship') return '🚚';
+  return '🔔';
+}
+
 module.exports = {
   formatPrice, formatTime, fromNow, statusText,
   ITEM_STATUS, ORDER_STATUS, REFUND_STATUS,
   REFUND_TYPE, isRefundTerminal, refundStepIndex, canApplyRefund, yuanToFen,
-  REVIEW_ROLE, reviewRoleLabel, canEvaluate, orderRoleToReviewRole, ratingArray
+  REVIEW_ROLE, reviewRoleLabel, canEvaluate, orderRoleToReviewRole, ratingArray,
+  NOTIFY_TYPE, notifyTypeText, notifyIcon
 };

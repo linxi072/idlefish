@@ -59,6 +59,18 @@ const messages = {
   ]
 };
 
+// 本地议价集合（mock 模式，模拟 BargainService；金额单位：分）
+const bargains = [];
+
+// 本地站内通知集合（mock 模式，模拟 NotificationService / NotificationVO；type 见 NotificationType）
+const notifications = [
+  { id: 1, type: 'order_paid', bizId: 'NO20260921001', title: '订单支付成功', content: '您购买的「Switch OLED」已支付 ¥13.80，等待卖家发货', read: 0, createdAt: fmtTs(Date.now() - 3600 * 1000 * 1) },
+  { id: 2, type: 'refund_apply', bizId: 'RF20260920001', title: '收到退款申请', content: '买家对订单 NO20260920002 发起仅退款申请 ¥42.00', read: 0, createdAt: fmtTs(Date.now() - 3600 * 1000 * 2) },
+  { id: 3, type: 'settlement_success', bizId: 'ST20260915', title: '结算到账', content: '订单 NO20260915001 已结算 ¥42.00 至您的钱包', read: 1, createdAt: fmtTs(Date.now() - 3600 * 1000 * 100) },
+  { id: 4, type: 'item_approved', bizId: '9007', title: '商品审核通过', content: '您发布的「九成新羽绒服」已通过审核，开始售卖', read: 1, createdAt: fmtTs(Date.now() - 3600 * 1000 * 150) },
+  { id: 5, type: 'withdraw_apply', bizId: 'WD20260901', title: '提现申请已提交', content: '您的提现申请 ¥50.00 已受理，预计 1-3 个工作日到账', read: 1, createdAt: fmtTs(Date.now() - 3600 * 1000 * 200) }
+];
+
 const riskEvents = [
   { id: 'R1', userId: 1001, ruleId: 'R_NEW_DEVICE', score: 35, action: '放行', createdAt: Date.now() - 3600 * 1000 * 2 },
   { id: 'R2', userId: 1003, ruleId: 'R_FREQ_PUBLISH', score: 72, action: '人工复核', createdAt: Date.now() - 3600 * 1000 * 5 }
@@ -112,6 +124,10 @@ function maskAccount(account) {
 }
 // 评价类失败（同机制）
 function failReview(msg) {
+  return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
+}
+// 议价类失败（同机制）
+function failBargain(msg) {
   return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
 }
 // 评价是否已完成（通过/驳回，不可再提交/修改）
@@ -312,6 +328,49 @@ module.exports = {
   receivedReviews() {
     return delay(reviews.filter(r => r.targetId === me.id && r.status === 1).map(r => Object.assign({}, r)));
   },
+
+  // ===== 议价（对齐 BargainService：创建/接受/会话列表，金额单位：分，24h 有效）=====
+  createBargain(dto) {
+    const b = {
+      id: Date.now(), convId: dto.convId, itemId: dto.itemId,
+      buyerId: me.id, sellerId: dto.sellerId, originPrice: 0,
+      offerPrice: dto.offerPrice, status: 'pending',
+      expireAt: Date.now() + 24 * 3600 * 1000, createdAt: fmtTs(Date.now())
+    };
+    bargains.push(b);
+    return delay(Object.assign({}, b));
+  },
+  acceptBargain(bargainId) {
+    const b = bargains.find(x => x.id === Number(bargainId));
+    if (!b) return failBargain('议价不存在');
+    if (b.status !== 'pending') return failBargain('该议价已不可接受');
+    if (b.expireAt && b.expireAt < Date.now()) { b.status = 'expired'; return failBargain('议价已超时失效'); }
+    b.status = 'accepted';
+    return delay(Object.assign({}, b));
+  },
+  listBargains(convId) { return delay(bargains.filter(b => b.convId === convId).map(b => Object.assign({}, b))); },
+
+  // ===== 站内通知（对齐 NotificationController / NotificationVO：IPage → {records,total}）=====
+  notifyList(page, size) {
+    const sorted = notifications.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const total = sorted.length;
+    const start = (page - 1) * size;
+    return delay({ records: sorted.slice(start, start + size), total });
+  },
+  notifyUnread() {
+    return delay(notifications.filter(n => n.read === 0).length);
+  },
+  notifyRead(id) {
+    const n = notifications.find(x => x.id === Number(id));
+    if (n) n.read = 1;
+    return delay({ ok: true });
+  },
+  notifyReadAll() {
+    const cnt = notifications.filter(n => n.read === 0).length;
+    notifications.forEach(n => { n.read = 1; });
+    return delay(cnt);
+  },
+
   // —— 后台 mock ——
   adminLogin() { return delay({ token: 'admin-mock-token', user: { username: 'admin', role: 'admin' } }); },
   adminStats() { return delay({ gmv: 128600, orderCnt: 342, userCnt: 1560, itemCnt: 892, pendingReview: 23, refunding: 5, todayRegister: 42 }); },

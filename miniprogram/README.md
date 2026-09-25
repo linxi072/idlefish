@@ -28,9 +28,10 @@ miniprogram/
     ├── evaluate/list/                我的评价（我发出的 / 我收到的，F-09）
     ├── wallet/index/                 我的钱包（余额概览 + 流水，F-09）
     ├── wallet/withdraw/              提现申请（金额 / 收款账号，F-09）
-    ├── message/                      消息（会话列表）
-    ├── chat/                         IM 聊天（文本 / 商品卡 / 议价卡）
-    ├── mine/                         我的（资料 / 菜单 / 退出）
+    ├── notification/                 站内通知中心（类型 / 未读红点 / 单条+全部已读，F-09）
+    ├── message/                      消息（IM 会话列表 + Tab 未读角标）
+    ├── chat/                         IM 聊天（文本 / 图片 / 商品卡 / 议价卡 + WebSocket 实时）
+    ├── mine/                         我的（资料 / 菜单 / 退出 + 系统通知角标）
     └── address/                      收货地址管理
 ```
 
@@ -100,6 +101,36 @@ miniprogram/
 
 **金额单位契约**：余额/流水/提现金额全链路「分」；用户输入「元」由 `util.yuanToFen` 转换后传入（后端 `amount` 参数即分），展示统一经 `formatPrice` 除 100。
 
+## 站内通知模块（F-09，对齐后端 `/api/notify` `NotificationController` / `NotificationVO`）
+| 页面 | 路径 | 说明 |
+|---|---|---|
+| 通知中心 | `pages/notification/notification` | 通知列表（类型图标 + 标题 + 内容 + 时间 + 未读红点）、下拉刷新、上拉分页、单条已读、全部已读、空态 |
+
+**入口**：「我的」页菜单「系统通知」→ `pages/notification/notification`；菜单右侧显示未读红点（由 `api.notifyUnread` 驱动）。
+
+**契约（对齐后端 `NotificationService` / `NotificationType`）**：
+- 列表：`GET /api/notify/list?page&size` → 后端 `IPage` 归一化为 `{ records, total }`。
+- 未读数：`GET /api/notify/unread-count`；单条已读 `POST /api/notify/read {id}`；全部已读 `POST /api/notify/read-all`。
+- 通知类型中文与图标经 `util.notifyTypeText` / `util.notifyIcon` 映射（覆盖 16 种 `NotificationType`：订单/退款/结算/提现/审核/发货提醒）。
+- 未读红点（`read: 0/1`）驱动列表高亮与「系统通知」菜单角标；进入即按 `id` 标记已读。
+
+## IM 实时通信 + 议价模块（F-09，对齐后端 `/api/im` + `/api/bargain` + `/ws/im`）
+**会话 / 消息（对齐 `ImController` / `ConversationVO` / `MessageVO`）**：
+- 会话列表 `GET /api/im/conversations`、消息列表 `GET /api/im/messages?convId=`、发送 `POST /api/im/send`（后端用 `@RequestParam`：`receiverId`/`itemId`/`content`/`type`，前端补齐后由 `api.sendMessage` 统一拼 query）、未读 `GET /api/im/unread`。
+- **真实模式 VO 映射**：后端 `ConversationVO` 为扁平结构（`peerId`/`peerName`/`itemId`/`lastMessage`/`lastTime`/`unread`），在 `api.getConversations` 中映射成 `message.js` 期望的嵌套 `peer`/`item` 形态；`MessageVO` 无 `msgId`，以 `seq` 兜底 `wx:key`。
+
+**IM 实时 WebSocket（本次新增接线）**：
+- `pages/chat/chat.js` 在 `onLoad` 连接 `ws(s)://<apiBaseUrl>/ws/im?token=<JWT>`（鉴权与后端 `AuthHandshakeInterceptor` 一致）。
+- 心跳保活：每 25s 发送 `ping`（后端回 `pong`）；`onMessage` 解析 `MessageVO` 并按 `seq` 去重追加（仅接收方收到推送，自己发出的通过 `send` 返回值本地追加，不重复）。
+- 断线重连：指数退避（3s 起步，上限 30s）；`onHide`/`onUnload` 关闭连接并清理心跳与重连定时器。
+- `mock` 模式无 WS 服务，自动跳过连接（消息走本地 mock）。
+
+**议价（对齐 `BargainController` / `BargainCreateDTO` / `BargainService`）**：
+- 发起：`POST /api/bargain/create`（`itemId`/`sellerId`/`convId`/`offerPrice`，**金额「分」**；前端在 `chat` 弹窗输入「元」经 `Math.round(元*100)` 转换）。
+- 接受：`POST /api/bargain/accept?bargainId=`（仅卖家，状态守卫 `pending` 且未超 24h，接受后同步成交价到商品）。
+- 会话内议价卡：`chat` 内「议价」按钮 → 发出 `bargain_card`，卖家侧显示「接受」；接受成功后就地更新卡片状态为「已接受」。
+- ⚠️ 此前 `api.createBargain`/`api.acceptBargain` 缺失导致 `chat` 议价必崩，本次补全并补齐 `mock.createBargain`/`acceptBargain`/`listBargains`。
+
 ## Mock 演示数据
 `utils/mock.js` 预置两条退款单，`me.id = 2001`：
 - `RF20260920001`（订单 NO20260920002，**我是买家**，仅退款，待卖家处理）→ 演示「撤销/平台介入」
@@ -113,6 +144,10 @@ miniprogram/
 `utils/mock.js` 另预置钱包演示数据，`me.id = 2001`：
 - 2 条 `SETTLE` 结算入账流水（5200 + 4200 分 = ¥94.00 累计结算）→ 初始可提现 ¥94.00、冻结中 ¥0.00。
 - 钱包页「提现」→ 输入金额（元）与收款账号 → 提交后新增 `pending` 提现单与一条 `FREEZE` 冻结流水，可提现相应减少；余额口径随提现实时变化（与后端一致）。
+
+`utils/mock.js` 另预置站内通知（5 条，`me.id = 2001`）：订单支付 / 退款申请（未读）/ 结算到账 / 商品过审 / 提现申请（后 3 条已读）→ 演示未读红点与全部已读。
+
+`utils/mock.js` 另预置 IM 会话（`C1`/`C2`）与消息，以及空 `bargains` 集合；在 `chat` 内发起议价将实时写入 `bargains` 并发出 `bargain_card`，卖家接受后状态变为 `accepted`。
 
 > 注：mock 数据中的金额沿用历史写法（如 MacBook `4200`），与其它页面一样被 `formatPrice` 视为「分」展示为 ¥42.00；
 > 这是 mock 数据本身的单位不一致（真实后端为「分」，如 420000），不影响真实后端联调。

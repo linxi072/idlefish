@@ -13,6 +13,7 @@
     "pages/evaluate/list/list",
     "pages/wallet/index/index",
     "pages/wallet/withdraw/withdraw",
+    "pages/notification/notification",
     "pages/message/message",
     "pages/chat/chat",
     "pages/mine/mine",

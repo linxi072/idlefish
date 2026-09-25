@@ -13,5 +13,6 @@
 .m-item:last-child { border-bottom: none; }
 .m-ico { font-size: 36rpx; margin-right: 20rpx; }
 .m-name { flex: 1; font-size: 28rpx; color: var(--t1); }
-.m-arrow { color: var(--t4); font-size: 36rpx; }
+.m-arrow { color: var(--t4); font-size: 36rpx; margin-left: 8rpx; }
+.m-badge { min-width: 32rpx; height: 32rpx; line-height: 32rpx; padding: 0 8rpx; text-align: center; font-size: 22rpx; color: #fff; background: var(--red); border-radius: 16rpx; }
 .logout { margin-top: 30rpx; color: var(--red); border-color: #FFD0D0; }

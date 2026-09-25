@@ -26,6 +26,7 @@
     <view class="m-item" wx:for="{{menus}}" wx:key="name" data-url="{{item.url}}" bindtap="onMenu">
       <text class="m-ico">{{item.icon}}</text>
       <text class="m-name">{{item.name}}</text>
+      <text class="m-badge" wx:if="{{item.badge && notifUnread > 0}}">{{notifUnread > 99 ? '99+' : notifUnread}}</text>
       <text class="m-arrow">›</text>
     </view>
   </view>

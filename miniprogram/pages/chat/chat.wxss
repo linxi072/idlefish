@@ -11,6 +11,7 @@
 .msg.peer { justify-content: flex-start; }
 .bubble { max-width: 70%; padding: 18rpx 24rpx; border-radius: 20rpx; font-size: 28rpx; background: #fff; color: var(--t1); }
 .msg.mine .bubble { background: linear-gradient(135deg,#FFCE3D,#FFB300); color: #5A4000; }
+.bubble-img { width: 280rpx; height: 280rpx; border-radius: 16rpx; background: #eee; }
 .card-msg { max-width: 70%; padding: 16rpx 20rpx; border-radius: 16rpx; background: #fff; border: 2rpx solid #FFE9B0; }
 .card-tag { font-size: 20rpx; color: #7A5A00; background: var(--xy-light); padding: 2rpx 10rpx; border-radius: 6rpx; }
 .card-title { font-size: 26rpx; color: var(--t1); margin-top: 8rpx; }

@@ -1,0 +1,28 @@
+<view class="notify">
+  <view class="topbar">
+    <text class="title">通知</text>
+    <text class="all-read" wx:if="{{unread > 0}}" bindtap="markAll">全部已读</text>
+  </view>
+
+  <view class="list">
+    <view class="n-item {{item.read === 0 ? 'unread' : ''}}" wx:for="{{list}}" wx:key="id"
+          data-id="{{item.id}}" bindtap="markRead">
+      <view class="n-ico">{{item.icon}}</view>
+      <view class="n-body">
+        <view class="n-top">
+          <text class="n-title">{{item.title}}</text>
+          <text class="n-dot" wx:if="{{item.read === 0}}"></text>
+        </view>
+        <view class="n-content">{{item.content}}</view>
+        <view class="n-time">{{item.timeT}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty" wx:if="{{!loading && list.length === 0}}">
+    <view class="icon">🔔</view>
+    <view class="tip">暂无通知</view>
+  </view>
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+  <view class="nomore" wx:if="{{finished && list.length > 0}}">没有更多了</view>
+</view>

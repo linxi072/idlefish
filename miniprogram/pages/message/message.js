@@ -9,7 +9,18 @@ Page({
     api.getConversations().then((list) => {
       const items = (list || []).map(c => Object.assign({}, c, { timeT: fromNow(c.updatedAt) }));
       this.setData({ list: items, loading: false });
+      this.refreshTabBadge(items);
     }).catch(() => this.setData({ loading: false }));
+  },
+
+  // IM 未读总数 → 消息 Tab 角标（tabBar 索引 2）
+  refreshTabBadge(list) {
+    const total = (list || []).reduce((s, c) => s + (c.unread || 0), 0);
+    if (total > 0) {
+      wx.setTabBarBadge({ index: 2, text: total > 99 ? '99+' : String(total) }).catch(() => {});
+    } else {
+      wx.removeTabBarBadge({ index: 2 }).catch(() => {});
+    }
   },
 
   goChat(e) {
