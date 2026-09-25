@@ -60,25 +60,8 @@ Page({
   buyNow() {
     const it = this.data.item;
     if (it.status !== 'onsale') { wx.showToast({ title: '商品当前不可购买', icon: 'none' }); return; }
-    wx.showLoading({ title: '创建订单' });
-    api.getAddresses().then((addrs) => {
-      const addr = (addrs || []).find(a => a.isDefault) || (addrs || [])[0];
-      if (!addr) {
-        wx.hideLoading();
-        wx.showModal({ title: '提示', content: '请先添加收货地址', confirmText: '去添加', success: (r) => { if (r.confirm) wx.navigateTo({ url: '/pages/address/address' }); } });
-        return Promise.reject({ silent: true });
-      }
-      return api.createOrder({
-        itemId: it.id, quantity: 1, addressId: addr.id,
-        idempotentKey: 'k_' + it.id + '_' + Date.now()
-      });
-    }).then((order) => {
-      wx.hideLoading();
-      api.track('order_create', { order_no: order.orderNo, item_id: it.id, amount: order.amount });
-      wx.navigateTo({ url: '/pages/order/detail/detail?orderNo=' + order.orderNo });
-    }).catch((e) => {
-      if (!e || !e.silent) { wx.hideLoading(); wx.showToast({ title: (e && e.msg) || '下单失败', icon: 'none' }); }
-    });
+    // 跳转结算页（携带 itemId）：地址选择 + 优惠券核销 + 创建订单统一在结算页完成
+    wx.navigateTo({ url: '/pages/checkout/checkout?itemId=' + it.id });
   },
 
   onShareAppMessage() {

@@ -27,6 +27,11 @@ Page({
     o.amountText = formatPrice(o.amount);
     o.statusT = statusText('order', o.status);
     o.timeT = formatTime(o.createdAt);
+    // 优惠券抵扣展示：商品金额 = 实付 + 抵扣；有抵扣时单独列出
+    const disc = o.discountAmount || 0;
+    o.hasDiscount = disc > 0;
+    o.discountText = '-¥' + formatPrice(disc);
+    o.goodsAmountText = formatPrice((o.amount || 0) + disc);
     return o;
   },
 

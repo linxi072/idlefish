@@ -1,0 +1,22 @@
+.my { padding: 20rpx; }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 10rpx 10rpx 16rpx; }
+.tb-title { font-size: 34rpx; font-weight: 700; }
+.tb-link { font-size: 26rpx; color: var(--blue); }
+
+.tabs { display: flex; background: #fff; border-radius: 16rpx; padding: 8rpx; margin-bottom: 20rpx; }
+.tab { flex: 1; text-align: center; font-size: 28rpx; color: var(--t2); padding: 16rpx 0; border-radius: 12rpx; }
+.tab.on { background: var(--xy-light); color: #7A5A00; font-weight: 600; }
+
+.coupon { display: flex; align-items: center; background: #fff; border-radius: 20rpx; margin-bottom: 20rpx; padding: 28rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,.04); }
+.coupon.used { opacity: .55; }
+.c-left { flex: 1; }
+.c-desc { font-size: 38rpx; font-weight: 800; color: var(--red); }
+.c-name { font-size: 28rpx; color: var(--t1); margin-top: 8rpx; }
+.c-meta { margin-top: 14rpx; }
+.c-expire { font-size: 22rpx; color: var(--t3); margin-top: 14rpx; }
+.c-status { font-size: 28rpx; color: var(--t2); font-weight: 600; padding-left: 20rpx; }
+
+.empty { padding: 160rpx 0; text-align: center; color: var(--t3); }
+.empty .icon { font-size: 96rpx; }
+.empty .tip { margin-top: 20rpx; font-size: 26rpx; }
+.retry { display: inline-flex; margin: 24rpx auto 0; padding: 0 40rpx; }

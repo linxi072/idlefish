@@ -162,6 +162,22 @@ const api = {
   notifyRead(id) { return route(() => mock.notifyRead(id), () => http.post('/api/notify/read', { id })); },
   notifyReadAll() { return route(() => mock.notifyReadAll(), () => http.post('/api/notify/read-all')); },
 
+  // ===== 优惠券（对齐 CouponController / CouponService：center/claim/my/available，金额单位：分）=====
+  // 领券中心（分页，仅可领）：IPage → {records,total}
+  couponCenter(page, size) {
+    return route(
+      () => mock.couponCenter(page, size),
+      () => http.get('/api/coupon/center?page=' + (page || 1) + '&size=' + (size || 20))
+        .then((p) => ({ records: (p && p.records) || [], total: (p && p.total) || 0 }))
+    );
+  },
+  // 领取优惠券：couponId 走 query
+  couponClaim(couponId) { return route(() => mock.couponClaim(couponId), () => http.post('/api/coupon/claim?couponId=' + couponId)); },
+  // 我的优惠券（status 可选：UNUSED/USED/EXPIRED，空=全部）：返回数组
+  couponMy(status) { return route(() => mock.couponMy(status), () => http.get('/api/coupon/my' + (status ? ('?status=' + status) : ''))); },
+  // 下单可用券（itemId + 商品金额（分））：返回数组（含 discountAmount 可抵扣）
+  couponAvailable(itemId, amount) { return route(() => mock.couponAvailable(itemId, amount), () => http.get('/api/coupon/available?itemId=' + itemId + '&amount=' + amount)); },
+
   // ===== 埋点 =====
   track(event, extra) {
     const app = getApp();

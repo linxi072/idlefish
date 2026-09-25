@@ -108,6 +108,57 @@ const fundFlows = [
 // 本地提现单（status: pending/done/rejected）
 const withdrawals = [];
 
+// ===== 本地优惠券集合（mock 模式，模拟 CouponService；金额单位：分）=====
+// 模板与 data-mysql.sql 种子保持一致（F-10）：三种平台券 + 一张暂停发放的商品券
+const COUPON_DAY = 86400000;
+const coupons = [
+  { id: 1, name: '全场满100减20', type: 'FULL_REDUCTION', thresholdAmount: 10000, reduceAmount: 2000, discountRate: 1.0, maxDiscountAmount: 0, scope: 'ALL', scopeId: null, totalCount: 1000, claimedCount: 0, perUserLimit: 1, status: 'ACTIVE', startAt: Date.now() - COUPON_DAY, endAt: Date.now() + 90 * COUPON_DAY },
+  { id: 2, name: '无门槛立减5元', type: 'NO_THRESHOLD', thresholdAmount: 0, reduceAmount: 500, discountRate: 1.0, maxDiscountAmount: 0, scope: 'ALL', scopeId: null, totalCount: 2000, claimedCount: 0, perUserLimit: 1, status: 'ACTIVE', startAt: Date.now() - COUPON_DAY, endAt: Date.now() + 90 * COUPON_DAY },
+  { id: 3, name: '数码9折(封顶30)', type: 'DISCOUNT', thresholdAmount: 0, reduceAmount: 0, discountRate: 0.9, maxDiscountAmount: 3000, scope: 'CATEGORY', scopeId: 111, totalCount: 500, claimedCount: 0, perUserLimit: 1, status: 'ACTIVE', startAt: Date.now() - COUPON_DAY, endAt: Date.now() + 90 * COUPON_DAY },
+  { id: 4, name: 'iPhone专享减100', type: 'FULL_REDUCTION', thresholdAmount: 500000, reduceAmount: 10000, discountRate: 1.0, maxDiscountAmount: 0, scope: 'ITEM', scopeId: 9002, totalCount: 200, claimedCount: 0, perUserLimit: 1, status: 'PAUSED', startAt: Date.now() - COUPON_DAY, endAt: Date.now() + 90 * COUPON_DAY }
+];
+// 用户券：me 已领取「无门槛立减5元」，便于演示「我的优惠券」与下单可用券；
+// 满减券 / 数码折扣券保留在领券中心供用户领取，形成完整领取→使用链路
+const userCoupons = [
+  { id: 1, couponId: 2, userId: me.id, orderNo: null, status: 'UNUSED', expireAt: Date.now() + 90 * COUPON_DAY, claimedAt: Date.now() - 3600000, usedAt: null }
+];
+
+// 优惠券抵扣计算（与后端 CouponService.calculateDiscount 纯函数一致）
+function couponCalculateDiscount(c, goodsAmount) {
+  if (!c || !goodsAmount || goodsAmount <= 0) return 0;
+  let discount;
+  if (c.type === 'FULL_REDUCTION') {
+    const threshold = c.thresholdAmount || 0;
+    if (goodsAmount < threshold) return 0;
+    discount = c.reduceAmount || 0;
+  } else if (c.type === 'NO_THRESHOLD') {
+    discount = c.reduceAmount || 0;
+  } else if (c.type === 'DISCOUNT') {
+    const rate = c.discountRate == null ? 1.0 : c.discountRate;
+    discount = Math.round(goodsAmount * (1.0 - rate));
+    const cap = c.maxDiscountAmount || 0;
+    if (cap > 0 && discount > cap) discount = cap;
+  } else {
+    return 0;
+  }
+  if (discount < 0) discount = 0;
+  return Math.min(discount, goodsAmount);
+}
+
+// 适用范围校验（与后端 CouponService.isScopeApplicable 一致：精确匹配类目/商品）
+function couponScopeApplicable(c, item) {
+  if (c.scope === 'ALL') return true;
+  if (!item) return false;
+  if (c.scope === 'CATEGORY') return c.scopeId != null && c.scopeId === item.categoryId;
+  if (c.scope === 'ITEM') return c.scopeId != null && c.scopeId === item.id;
+  return false;
+}
+
+// 优惠券类失败（同 failRefund 机制）
+function failCoupon(msg) {
+  return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
+}
+
 function findRefund(refundNo) { return refunds.find(r => r.refundNo === refundNo) || null; }
 // 模拟后端的 BizException(STATE_NOT_ALLOWED)：延迟后 reject，前端按 (e.msg) 提示
 function failRefund(msg) {
@@ -176,7 +227,33 @@ module.exports = {
   getAddresses() { return delay(addresses); },
   saveAddress(dto) { const a = Object.assign({ id: Date.now() }, dto); addresses.push(a); return delay(a); },
   deleteAddress(id) { return delay({ ok: true }); },
-  createOrder(dto) { return delay({ orderNo: 'NO' + Date.now(), amount: dto.amount || 100, status: 'pending_pay', lockExpireAt: Date.now() + 1800000 }); },
+  createOrder(dto) {
+    const it = items.find(i => i.id === Number(dto.itemId)) || items[0];
+    const goodsAmount = dto.amount != null ? dto.amount : (it ? it.price : 100);
+    let discountAmount = 0;
+    let usedUc = null;
+    if (dto.userCouponId) {
+      const uc = userCoupons.find(u => u.id === Number(dto.userCouponId) && u.userId === me.id && u.status === 'UNUSED');
+      if (uc) {
+        const c = coupons.find(x => x.id === uc.couponId);
+        // 严格对齐后端 OrderService.createOrder 核销路径：范围 + 门槛校验
+        if (c && couponScopeApplicable(c, it)) {
+          discountAmount = couponCalculateDiscount(c, goodsAmount);
+          if (discountAmount > 0) { uc.status = 'USED'; uc.orderNo = 'NO' + Date.now(); uc.usedAt = Date.now(); usedUc = uc; }
+        }
+      }
+    }
+    const payAmount = Math.max(0, goodsAmount - discountAmount);
+    const orderNo = 'NO' + Date.now();
+    const order = {
+      orderNo, item: it, amount: payAmount, freight: 0, status: 'pending_pay', role: 'buyer',
+      addressSnapshot: (dto.addressId && addresses.find(a => a.id === Number(dto.addressId))) || addresses[0],
+      createdAt: Date.now(), payNo: '', logistics: null,
+      discountAmount, couponId: usedUc ? usedUc.id : null
+    };
+    orders.push(order);
+    return delay({ orderNo, amount: payAmount, discountAmount, status: 'pending_pay', lockExpireAt: Date.now() + 1800000 });
+  },
   prepay(dto) { return delay({ payNo: 'P' + Date.now(), prepayParams: { timeStamp: '1', nonceStr: 'x', package: 'prepay_id=mock', signType: 'MD5', paySign: 'mock' } }); },
   payNotify(dto) { return delay({ ok: true }); },
   payMockComplete(payNo) { return delay({ ok: true }); },
@@ -369,6 +446,63 @@ module.exports = {
     const cnt = notifications.filter(n => n.read === 0).length;
     notifications.forEach(n => { n.read = 1; });
     return delay(cnt);
+  },
+
+  // ===== 优惠券（对齐 CouponController / CouponService：center/claim/my/available）=====
+  couponCenter(page, size) {
+    const now = Date.now();
+    const valid = coupons.filter(c => c.status === 'ACTIVE' && c.endAt > now && (c.claimedCount || 0) < (c.totalCount || 0));
+    const total = valid.length;
+    const start = (page - 1) * size;
+    const records = valid.slice(start, start + size).map(c => {
+      const owned = userCoupons.filter(u => u.couponId === c.id && u.userId === me.id).length;
+      const claimable = c.status === 'ACTIVE' && c.endAt > now && (c.claimedCount || 0) < (c.totalCount || 0) && owned < (c.perUserLimit || 1);
+      return Object.assign({}, c, { claimed: owned > 0, claimable });
+    });
+    return delay({ records, total });
+  },
+  couponClaim(couponId) {
+    const c = coupons.find(x => x.id === Number(couponId));
+    if (!c) return failCoupon('优惠券不存在');
+    if (c.status !== 'ACTIVE') return failCoupon('优惠券不在发放中');
+    const now = Date.now();
+    if (now < c.startAt || now > c.endAt) return failCoupon('不在领取时间范围内');
+    const owned = userCoupons.filter(u => u.couponId === c.id && u.userId === me.id).length;
+    if (owned >= (c.perUserLimit || 1)) return failCoupon('您已领取，不可重复领取');
+    if ((c.claimedCount || 0) >= (c.totalCount || 0)) return failCoupon('手慢了，优惠券已抢光');
+    c.claimedCount = (c.claimedCount || 0) + 1;
+    userCoupons.push({ id: userCoupons.length + 1, couponId: c.id, userId: me.id, orderNo: null, status: 'UNUSED', expireAt: c.endAt, claimedAt: now, usedAt: null });
+    return delay({ ok: true });
+  },
+  couponMy(status) {
+    const list = userCoupons.filter(u => u.userId === me.id && (!status || u.status === status)).map(u => {
+      const c = coupons.find(x => x.id === u.couponId) || {};
+      return Object.assign({}, u, {
+        name: c.name, type: c.type, thresholdAmount: c.thresholdAmount, reduceAmount: c.reduceAmount,
+        discountRate: c.discountRate, maxDiscountAmount: c.maxDiscountAmount, scope: c.scope, scopeId: c.scopeId,
+        discountAmount: 0
+      });
+    });
+    return delay(list);
+  },
+  couponAvailable(itemId, amount) {
+    const item = items.find(i => i.id === Number(itemId)) || null;
+    const now = Date.now();
+    const list = userCoupons.filter(u => u.userId === me.id && u.status === 'UNUSED' && (!u.expireAt || u.expireAt > now))
+      .map(u => {
+        const c = coupons.find(x => x.id === u.couponId);
+        if (!c || !couponScopeApplicable(c, item)) return null;
+        const discount = couponCalculateDiscount(c, amount);
+        if (discount <= 0) return null;
+        return Object.assign({}, u, {
+          name: c.name, type: c.type, thresholdAmount: c.thresholdAmount, reduceAmount: c.reduceAmount,
+          discountRate: c.discountRate, maxDiscountAmount: c.maxDiscountAmount, scope: c.scope, scopeId: c.scopeId,
+          discountAmount: discount
+        });
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b.discountAmount || 0) - (a.discountAmount || 0));
+    return delay(list);
   },
 
   // —— 后台 mock ——

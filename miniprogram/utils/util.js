@@ -121,10 +121,42 @@ function notifyIcon(type) {
   return '🔔';
 }
 
+// ===== 优惠券（F-10 coupon，金额单位：分；与后端 CouponService 常量/算法对齐）=====
+// 券类型中文
+const COUPON_TYPE = { FULL_REDUCTION: '满减券', NO_THRESHOLD: '无门槛券', DISCOUNT: '折扣券' };
+function couponTypeText(t) { return COUPON_TYPE[t] || t; }
+
+// 券描述（如「满100.00减20.00」「立减5.00元」「9折(封顶30.00)」）
+function couponDesc(c) {
+  if (!c) return '';
+  if (c.type === 'FULL_REDUCTION') {
+    return '满' + formatPrice(c.thresholdAmount || 0) + '减' + formatPrice(c.reduceAmount || 0);
+  }
+  if (c.type === 'NO_THRESHOLD') {
+    return '立减' + formatPrice(c.reduceAmount || 0) + '元';
+  }
+  if (c.type === 'DISCOUNT') {
+    const z = Math.round((c.discountRate == null ? 1 : c.discountRate) * 100) / 10;
+    const rateText = Number.isInteger(z) ? (z + '') : z.toFixed(1);
+    const cap = c.maxDiscountAmount ? '(封顶' + formatPrice(c.maxDiscountAmount) + ')' : '';
+    return rateText + '折' + cap;
+  }
+  return '';
+}
+
+// 适用范围中文
+const COUPON_SCOPE = { ALL: '全场通用', CATEGORY: '指定类目', ITEM: '指定商品' };
+function couponScopeText(s) { return COUPON_SCOPE[s] || '全场通用'; }
+
+// 用户券状态中文
+const COUPON_STATUS = { UNUSED: '未使用', USED: '已使用', EXPIRED: '已过期' };
+function couponStatusText(s) { return COUPON_STATUS[s] || s; }
+
 module.exports = {
   formatPrice, formatTime, fromNow, statusText,
   ITEM_STATUS, ORDER_STATUS, REFUND_STATUS,
   REFUND_TYPE, isRefundTerminal, refundStepIndex, canApplyRefund, yuanToFen,
   REVIEW_ROLE, reviewRoleLabel, canEvaluate, orderRoleToReviewRole, ratingArray,
-  NOTIFY_TYPE, notifyTypeText, notifyIcon
+  NOTIFY_TYPE, notifyTypeText, notifyIcon,
+  COUPON_TYPE, couponTypeText, couponDesc, couponScopeText, couponStatusText
 };

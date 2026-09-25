@@ -22,8 +22,9 @@
 
   <!-- 金额 -->
   <view class="card amount">
-    <view class="a-row"><text>商品金额</text><text>¥{{order.amountText}}</text></view>
-    <view class="a-row"><text>运费</text><text>¥{{order.item ? 0 : 0}}</text></view>
+    <view class="a-row"><text>商品金额</text><text>¥{{order.goodsAmountText}}</text></view>
+    <view class="a-row" wx:if="{{order.hasDiscount}}"><text>优惠券抵扣</text><text class="discount">-¥{{order.discountText}}</text></view>
+    <view class="a-row"><text>运费</text><text>¥0.00</text></view>
     <view class="a-row total"><text>实付/实收</text><text class="price">¥{{order.amountText}}</text></view>
   </view>
 

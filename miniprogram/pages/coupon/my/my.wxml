@@ -1,0 +1,40 @@
+<view class="page my">
+  <!-- 顶部：去领券中心 -->
+  <view class="topbar">
+    <view class="tb-title">我的优惠券</view>
+    <view class="tb-link" bindtap="goCenter">去领券 ›</view>
+  </view>
+
+  <!-- 状态 Tab -->
+  <view class="tabs">
+    <view class="tab {{active === item.key ? 'on' : ''}}" wx:for="{{tabs}}" wx:key="key" data-key="{{item.key}}" bindtap="switchTab">
+      {{item.label}}
+    </view>
+  </view>
+
+  <block wx:if="{{!loadErr && list.length}}">
+    <view class="coupon {{item.status !== 'UNUSED' ? 'used' : ''}}" wx:for="{{list}}" wx:key="id">
+      <view class="c-left">
+        <view class="c-desc">{{item.desc}}</view>
+        <view class="c-name">{{item.name}}</view>
+        <view class="c-meta">
+          <text class="tag tag-yellow">{{item.typeText}}</text>
+          <text class="tag">{{item.scopeText}}</text>
+        </view>
+        <view wx:if="{{item.expireText}}" class="c-expire">有效期至 {{item.expireText}}</view>
+      </view>
+      <view class="c-status">{{item.statusText}}</view>
+    </view>
+  </block>
+
+  <view wx:elif="{{loadErr}}" class="empty">
+    <view class="icon">⚠️</view>
+    <view class="tip">加载失败，点击重试</view>
+    <view class="btn btn-ghost retry" bindtap="retry">重新加载</view>
+  </view>
+  <view wx:else class="empty">
+    <view class="icon">🎟️</view>
+    <view class="tip">暂无{{active === 'UNUSED' ? '未使用' : (active === 'USED' ? '已使用' : '已过期')}}的优惠券</view>
+    <view class="btn btn-ghost retry" bindtap="goCenter">去领券中心</view>
+  </view>
+</view>

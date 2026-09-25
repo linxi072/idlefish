@@ -1,0 +1,37 @@
+<view class="page center">
+  <view class="topbar">
+    <view class="tb-title">领券中心</view>
+    <view class="tb-link" bindtap="goMy">我的优惠券 ›</view>
+  </view>
+
+  <block wx:if="{{!loadErr && list.length}}">
+    <view class="coupon" wx:for="{{list}}" wx:key="id">
+      <view class="c-left">
+        <view class="c-desc">{{item.desc}}</view>
+        <view class="c-name">{{item.name}}</view>
+        <view class="c-meta">
+          <text class="tag tag-yellow">{{item.typeText}}</text>
+          <text class="tag">{{item.scopeText}}</text>
+        </view>
+        <view class="c-valid">有效期 {{item.startText}} ~ {{item.endText}}</view>
+        <view class="c-stock">{{item.stockText}}</view>
+      </view>
+      <view class="c-right">
+        <view class="c-btn {{item.claimed ? 'done' : (item.claimable ? '' : 'disabled')}}" data-id="{{item.id}}" bindtap="claim">
+          {{item.claimed ? '已领取' : (item.claimable ? '立即领取' : '已抢光')}}
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{finished}}" class="foot">没有更多了</view>
+    <view wx:elif="{{loading}}" class="foot">加载中...</view>
+  </block>
+
+  <view wx:elif="{{loadErr}}" class="empty">
+    <view class="icon">⚠️</view>
+    <view class="tip">加载失败，下拉重试</view>
+  </view>
+  <view wx:else class="empty">
+    <view class="icon">🎟️</view>
+    <view class="tip">暂无可领取的优惠券</view>
+  </view>
+</view>

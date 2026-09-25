@@ -10,6 +10,7 @@
 .g-price { color: var(--red); font-weight: 700; margin-top: 20rpx; }
 .amount .a-row, .meta .a-row { display: flex; justify-content: space-between; font-size: 26rpx; color: var(--t1); padding: 12rpx 0; }
 .amount .total { border-top: 2rpx solid #F2F3F5; margin-top: 10rpx; padding-top: 20rpx; font-weight: 600; }
+.amount .discount { color: var(--green); font-weight: 600; }
 .addr-top { font-size: 26rpx; font-weight: 600; margin-bottom: 12rpx; }
 .addr-detail { font-size: 26rpx; color: var(--t2); }
 .action-bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; padding: 16rpx 20rpx; background: #fff; box-shadow: 0 -4rpx 16rpx rgba(0,0,0,.05); }

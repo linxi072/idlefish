@@ -1,0 +1,44 @@
+.checkout { padding: 20rpx 20rpx 160rpx; }
+.card { background: #fff; border-radius: 20rpx; padding: 28rpx; margin-bottom: 20rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,.04); }
+
+/* 地址 */
+.addr { position: relative; }
+.a-top { font-size: 30rpx; }
+.a-name { font-weight: 700; margin-right: 20rpx; }
+.a-phone { color: var(--t2); }
+.a-detail { font-size: 26rpx; color: var(--t2); margin-top: 10rpx; padding-right: 40rpx; }
+.a-empty { font-size: 30rpx; color: var(--t2); }
+.a-arrow { position: absolute; right: 28rpx; top: 50%; transform: translateY(-50%); color: var(--t4); font-size: 40rpx; }
+
+/* 商品 */
+.goods { display: flex; }
+.g-img { width: 140rpx; height: 140rpx; border-radius: 12rpx; background: #eee; }
+.g-info { flex: 1; margin-left: 20rpx; }
+.g-title { font-size: 28rpx; }
+.g-price { color: var(--red); font-weight: 700; margin-top: 16rpx; }
+
+/* 优惠券 */
+.c-head { font-size: 28rpx; font-weight: 600; margin-bottom: 12rpx; }
+.c-row { display: flex; align-items: center; padding: 18rpx 0; border-top: 2rpx solid #F2F3F5; }
+.c-none { color: var(--t2); }
+.c-left { flex: 1; }
+.c-name { font-size: 28rpx; color: var(--t1); }
+.c-sub { font-size: 22rpx; color: var(--t3); margin-top: 6rpx; }
+.c-discount { color: var(--green); font-weight: 700; margin-right: 16rpx; }
+.c-radio { width: 36rpx; height: 36rpx; border-radius: 50%; border: 2rpx solid #D0D3D9; color: #fff; font-size: 24rpx; text-align: center; line-height: 36rpx; }
+.c-row.on .c-radio { background: var(--xy-deep); border-color: var(--xy-deep); }
+.c-row.on .c-name, .c-row.on.c-none { color: var(--t1); }
+.c-empty { font-size: 24rpx; color: var(--t3); padding: 12rpx 0; }
+
+/* 汇总 */
+.s-row { display: flex; justify-content: space-between; font-size: 26rpx; color: var(--t1); padding: 10rpx 0; }
+.s-row .discount { color: var(--green); font-weight: 600; }
+.s-row.total { border-top: 2rpx solid #F2F3F5; margin-top: 8rpx; padding-top: 18rpx; font-weight: 600; }
+.s-row.total .price { font-size: 34rpx; }
+
+/* 提交栏 */
+.submit-bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; padding: 16rpx 28rpx; background: #fff; box-shadow: 0 -4rpx 16rpx rgba(0,0,0,.05); }
+.sb-pay { font-size: 26rpx; color: var(--t2); }
+.sb-pay .price { font-size: 38rpx; margin-left: 8rpx; }
+.sb-btn { width: 280rpx; height: 80rpx; }
+.loading { text-align: center; color: var(--t3); padding: 120rpx 0; font-size: 26rpx; }

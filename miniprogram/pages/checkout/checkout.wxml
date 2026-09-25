@@ -1,0 +1,59 @@
+<view class="page checkout" wx:if="{{!loading}}">
+  <!-- 收货地址 -->
+  <view class="card addr" bindtap="chooseAddress">
+    <block wx:if="{{address}}">
+      <view class="a-top">
+        <text class="a-name">{{address.receiver}}</text>
+        <text class="a-phone">{{address.phone}}</text>
+      </view>
+      <view class="a-detail">{{address.province}}{{address.city}}{{address.district}} {{address.detail}}</view>
+    </block>
+    <view wx:else class="a-empty">＋ 选择收货地址</view>
+    <view class="a-arrow">›</view>
+  </view>
+
+  <!-- 商品 -->
+  <view class="card goods">
+    <image class="g-img" src="{{item.img}}" mode="aspectFill" />
+    <view class="g-info">
+      <view class="g-title ellipsis-2">{{item.title}}</view>
+      <view class="g-price">¥{{item.priceText || ''}}</view>
+    </view>
+  </view>
+
+  <!-- 优惠券 -->
+  <view class="card coupon">
+    <view class="c-head">优惠券</view>
+    <view class="c-row c-none {{selectedCouponId === 0 ? 'on' : ''}}" data-id="0" bindtap="selectCoupon">
+      <text>不使用优惠券</text>
+      <view class="c-radio">{{selectedCouponId === 0 ? '✓' : ''}}</view>
+    </view>
+    <block wx:if="{{coupons.length}}">
+      <view class="c-row {{selectedCouponId === item.id ? 'on' : ''}}" wx:for="{{coupons}}" wx:key="id" data-id="{{item.id}}" bindtap="selectCoupon">
+        <view class="c-left">
+          <view class="c-name">{{item.name}}</view>
+          <view class="c-sub">{{item.desc}} · {{item.scopeText}}</view>
+        </view>
+        <view class="c-discount">{{item.discountText}}</view>
+        <view class="c-radio">{{selectedCouponId === item.id ? '✓' : ''}}</view>
+      </view>
+    </block>
+    <view wx:else class="c-empty">暂无可用优惠券</view>
+  </view>
+
+  <!-- 金额汇总 -->
+  <view class="card summary">
+    <view class="s-row"><text>商品金额</text><text>¥{{item.priceText || ''}}</text></view>
+    <view class="s-row" wx:if="{{discountAmount > 0}}"><text>优惠券抵扣</text><text class="discount">-¥{{discountText}}</text></view>
+    <view class="s-row"><text>运费</text><text>¥0.00</text></view>
+    <view class="s-row total"><text>实付款</text><text class="price">¥{{payText}}</text></view>
+  </view>
+</view>
+
+<!-- 提交栏 -->
+<view class="submit-bar" wx:if="{{!loading}}">
+  <view class="sb-pay">实付 <text class="price">¥{{payText}}</text></view>
+  <view class="btn sb-btn" bindtap="onSubmit">提交订单</view>
+</view>
+
+<view wx:if="{{loading}}" class="loading">加载中...</view>
