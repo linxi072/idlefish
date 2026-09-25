@@ -154,4 +154,12 @@ export const notifications = [
   { id: 5, title: '账号风控处置', content: '用户「新注册用户」因命中高危规则已被封禁。', type: 'risk', read: 0, createdAt: '2026-09-21 07:56' }
 ];
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications };
+// ===== 优惠券模板（F-10 营销，对齐 Coupon / CouponCreateDTO；金额单位：分）=====
+export const coupons = [
+  { id: 1, name: '全场满100减20', type: 'FULL_REDUCTION', thresholdAmount: 10000, reduceAmount: 2000, discountRate: 1.0, maxDiscountAmount: 0, scope: 'ALL', scopeId: null, totalCount: 1000, claimedCount: 312, perUserLimit: 1, status: 'ACTIVE', startAt: '2026-09-01 00:00:00', endAt: '2026-11-30 23:59:59' },
+  { id: 2, name: '无门槛立减5元', type: 'NO_THRESHOLD', thresholdAmount: 0, reduceAmount: 500, discountRate: 1.0, maxDiscountAmount: 0, scope: 'ALL', scopeId: null, totalCount: 2000, claimedCount: 876, perUserLimit: 1, status: 'ACTIVE', startAt: '2026-09-01 00:00:00', endAt: '2026-11-30 23:59:59' },
+  { id: 3, name: '数码9折(封顶30)', type: 'DISCOUNT', thresholdAmount: 0, reduceAmount: 0, discountRate: 0.9, maxDiscountAmount: 3000, scope: 'CATEGORY', scopeId: 111, totalCount: 500, claimedCount: 88, perUserLimit: 1, status: 'ACTIVE', startAt: '2026-09-01 00:00:00', endAt: '2026-11-30 23:59:59' },
+  { id: 4, name: 'iPhone专享减100', type: 'FULL_REDUCTION', thresholdAmount: 500000, reduceAmount: 10000, discountRate: 1.0, maxDiscountAmount: 0, scope: 'ITEM', scopeId: 9002, totalCount: 200, claimedCount: 0, perUserLimit: 1, status: 'PAUSED', startAt: '2026-09-01 00:00:00', endAt: '2026-11-30 23:59:59' }
+];
+
+export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons };
