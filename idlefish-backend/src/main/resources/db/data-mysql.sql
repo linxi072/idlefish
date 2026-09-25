@@ -95,3 +95,10 @@ INSERT IGNORE INTO t_sys_dict_data (id, dict_type, dict_label, dict_value, dict_
 (7, 'item_status', '待审核', 'pending_review', 3, 1),
 (8, 'item_status', '已驳回', 'rejected', 4, 1),
 (9, 'item_status', '已下架', 'removed', 5, 1);
+
+-- ===== 优惠券种子（F-10）：演示三种类型，有效期 90 天，金额单位 分 =====
+INSERT IGNORE INTO t_coupon (id, name, type, threshold_amount, reduce_amount, discount_rate, max_discount_amount, scope, scope_id, total_count, claimed_count, per_user_limit, status, start_at, end_at) VALUES
+(1, '全场满100减20', 'FULL_REDUCTION', 10000, 2000, 1.0, 0, 'ALL', NULL, 1000, 0, 1, 'ACTIVE', '2026-09-01 00:00:00', '2026-11-30 23:59:59'),
+(2, '无门槛立减5元', 'NO_THRESHOLD', 0, 500, 1.0, 0, 'ALL', NULL, 2000, 0, 1, 'ACTIVE', '2026-09-01 00:00:00', '2026-11-30 23:59:59'),
+(3, '数码9折(封顶30)', 'DISCOUNT', 0, 0, 0.9, 3000, 'CATEGORY', 111, 500, 0, 1, 'ACTIVE', '2026-09-01 00:00:00', '2026-11-30 23:59:59'),
+(4, 'iPhone专享减100', 'FULL_REDUCTION', 500000, 10000, 1.0, 0, 'ITEM', 9002, 200, 0, 1, 'PAUSED', '2026-09-01 00:00:00', '2026-11-30 23:59:59');

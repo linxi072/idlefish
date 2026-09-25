@@ -11,4 +11,6 @@ public class OrderCreateVO {
     private String orderNo;
     /** 应付金额（分），金额单位契约：前端展示需 /100 转元 */
     private Long amount;
+    /** 优惠券抵扣金额（分），无券为 0 */
+    private Long discountAmount;
 }

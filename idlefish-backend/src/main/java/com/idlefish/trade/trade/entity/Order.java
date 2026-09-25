@@ -31,6 +31,8 @@ public class Order extends BaseEntity {
     private String payNo;
     private String logisticsNo;
     private String closeType;       // timeout / cancel
+    private Long userCouponId;      // 使用的用户券 ID（t_user_coupon.id）
+    private Long discountAmount;    // 优惠券抵扣金额（分）
 
     @Version
     private Integer version;

@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS t_order (
     pay_no           VARCHAR(32),
     logistics_no     VARCHAR(64),
     close_type       VARCHAR(32),
+    user_coupon_id   BIGINT,
+    discount_amount  BIGINT       DEFAULT 0,
     created_at       DATETIME,
     updated_at       DATETIME,
     UNIQUE KEY uk_order_no (order_no),
@@ -496,4 +498,44 @@ CREATE TABLE IF NOT EXISTS t_credit_log (
     created_at       DATETIME,
     updated_at       DATETIME,
     KEY idx_credit_user (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===== 优惠券 / 营销（F-10）=====
+
+-- 优惠券模板（平台发放）：金额单位 分
+CREATE TABLE IF NOT EXISTS t_coupon (
+    id                BIGINT       PRIMARY KEY,
+    name              VARCHAR(64),
+    type              VARCHAR(32),                   -- FULL_REDUCTION / NO_THRESHOLD / DISCOUNT
+    threshold_amount  BIGINT       DEFAULT 0,         -- 满减门槛（分）
+    reduce_amount     BIGINT       DEFAULT 0,         -- 减免金额（分）
+    discount_rate     DOUBLE       DEFAULT 1,         -- 折扣率（DISCOUNT，0.9=9折）
+    max_discount_amount BIGINT     DEFAULT 0,         -- 折扣封顶减免（分）
+    scope             VARCHAR(16)  DEFAULT 'ALL',     -- ALL / CATEGORY / ITEM
+    scope_id          BIGINT,                         -- 适用类目/商品 ID
+    total_count       INT          DEFAULT 0,         -- 发放总量
+    claimed_count     INT          DEFAULT 0,         -- 已领取数
+    per_user_limit    INT          DEFAULT 1,         -- 每人限领
+    status            VARCHAR(16)  DEFAULT 'ACTIVE',  -- ACTIVE / PAUSED / ENDED
+    start_at          DATETIME,
+    end_at            DATETIME,
+    created_at        DATETIME,
+    updated_at        DATETIME,
+    KEY idx_coupon_status (status, end_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 用户优惠券（领取后落库）
+CREATE TABLE IF NOT EXISTS t_user_coupon (
+    id               BIGINT       PRIMARY KEY,
+    coupon_id         BIGINT,
+    user_id          BIGINT,
+    order_no         VARCHAR(32),
+    status           VARCHAR(16)  DEFAULT 'UNUSED',  -- UNUSED / USED / EXPIRED
+    expire_at        DATETIME,
+    claimed_at       DATETIME,
+    used_at          DATETIME,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_uc_user (user_id, status),
+    KEY idx_uc_order (order_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

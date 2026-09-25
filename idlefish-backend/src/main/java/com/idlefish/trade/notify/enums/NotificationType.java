@@ -23,7 +23,8 @@ public enum NotificationType {
     SETTLEMENT_SUCCESS("settlement_success", "结算到账"),
     WITHDRAW_APPLY("withdraw_apply", "提现申请"),
     WITHDRAW_APPROVE("withdraw_approve", "提现通过"),
-    WITHDRAW_REJECT("withdraw_reject", "提现驳回");
+    WITHDRAW_REJECT("withdraw_reject", "提现驳回"),
+    COUPON_CLAIMED("coupon_claimed", "优惠券领取");
 
     private final String code;
     private final String desc;

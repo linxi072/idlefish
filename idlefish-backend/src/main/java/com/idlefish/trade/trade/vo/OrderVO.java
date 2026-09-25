@@ -22,11 +22,14 @@ public class OrderVO {
     private Long freight;
     private Long payAmount;
     private Long amount;            // 兼容前端：应付总额 = payAmount（单位：分）
+    private Long discountAmount;    // 优惠券抵扣（分）
+    private Long couponId;          // 使用的用户券 ID
     private Double unitPriceYuan;   // 展示用：对应字段/100，单位元（金额单位契约）
     private Double totalAmountYuan;
     private Double freightYuan;
     private Double payAmountYuan;
     private Double amountYuan;
+    private Double discountAmountYuan;
     private String status;          // OrderStatus.code
     private String remark;
     private String payStatus;       // PayOrder.status

@@ -55,6 +55,7 @@ public class OrderService {
     private final DelayQueueService delayQueueService;
     private final NotificationService notificationService;
     private final CreditService creditService;
+    private final com.idlefish.trade.marketing.service.CouponService couponService;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -63,7 +64,7 @@ public class OrderService {
                         AddressService addressService, LogisticService logisticService,
                         SettlementService settlementService, TrackService trackService, ObjectMapper objectMapper,
                         @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
-                        CreditService creditService) {
+                        CreditService creditService, com.idlefish.trade.marketing.service.CouponService couponService) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.itemService = itemService;
@@ -76,6 +77,7 @@ public class OrderService {
         this.delayQueueService = delayQueueService;
         this.notificationService = notificationService;
         this.creditService = creditService;
+        this.couponService = couponService;
     }
 
     /** 创建订单（幂等：同买家同商品存在待支付订单则直接返回）。 */
@@ -131,6 +133,24 @@ public class OrderService {
         po.setStatus(PayStatus.WAIT.getCode());
         payOrderMapper.insert(po);
 
+        // F-10 优惠券核销（下单抵扣）：goods 金额 = total，抵扣后重算应付（抵扣不作用于运费）
+        long discount = 0L;
+        if (dto.getUserCouponId() != null) {
+            discount = couponService.redeem(buyerId, dto.getUserCouponId(), orderNo, itemId, total);
+            long finalPay = Math.max(0L, total - discount + freight);
+            Order oUpd = new Order();
+            oUpd.setId(o.getId());
+            oUpd.setPayAmount(finalPay);
+            oUpd.setDiscountAmount(discount);
+            oUpd.setUserCouponId(dto.getUserCouponId());
+            orderMapper.updateById(oUpd);
+            PayOrder poUpd = new PayOrder();
+            poUpd.setId(po.getId());
+            poUpd.setAmount(finalPay);
+            payOrderMapper.updateById(poUpd);
+            payAmount = finalPay;
+        }
+
         // D6 延时队列：下单后提交 30 分钟关单延时任务（精准到点触发；本地实现或 RocketMQ 均走此路径）
         try {
             delayQueueService.submit("ORDER_CLOSE", orderNo, "", 30 * 60);
@@ -148,6 +168,7 @@ public class OrderService {
         OrderCreateVO vo = new OrderCreateVO();
         vo.setOrderNo(orderNo);
         vo.setAmount(payAmount);
+        vo.setDiscountAmount(discount);
         return vo;
     }
 
@@ -160,6 +181,7 @@ public class OrderService {
         setClosed(o, "cancel");
         closePay(o.getPayNo());
         itemService.releaseStock(o.getItemId(), o.getQuantity());
+        couponService.releaseByOrder(orderNo);   // F-10：取消释放已核销优惠券
     }
 
     /** 卖家发货。 */
@@ -299,6 +321,7 @@ public class OrderService {
         setClosed(o, "timeout");
         closePay(o.getPayNo());
         itemService.releaseStock(o.getItemId(), o.getQuantity());
+        couponService.releaseByOrder(orderNo);   // F-10：超时关单释放已核销优惠券
 
         // F-02 通知中心：超时关单触达买家（best-effort）
         notificationService.notify(o.getBuyerId(), NotificationType.ORDER_CLOSED, orderNo, "订单已关闭",
@@ -405,6 +428,9 @@ public class OrderService {
         vo.setFreightYuan(fenToYuan(o.getFreight()));
         vo.setPayAmountYuan(fenToYuan(o.getPayAmount()));
         vo.setAmountYuan(fenToYuan(o.getPayAmount()));
+        vo.setDiscountAmount(o.getDiscountAmount());
+        vo.setCouponId(o.getUserCouponId());
+        vo.setDiscountAmountYuan(o.getDiscountAmount() == null ? 0 : o.getDiscountAmount() / 100.0);
         vo.setStatus(o.getStatus());
         vo.setRemark(o.getRemark());
         vo.setLogisticsNo(o.getLogisticsNo());

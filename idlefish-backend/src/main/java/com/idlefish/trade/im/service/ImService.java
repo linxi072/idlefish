@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 @Service
 public class ImService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ImService.class);
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ConversationMapper conversationMapper;
@@ -193,8 +194,14 @@ public class ImService {
 
     private void push(Long receiverId, Message msg) {
         try {
-            String payload = objectMapper.writeValueAsString(toVO(msg));
-            wsSessionManager.send(receiverId, payload);
+            MessageVO vo = toVO(msg);
+            vo.setServerTime(System.currentTimeMillis()); // 服务端处理完成时刻，供真机测算延迟
+            String payload = objectMapper.writeValueAsString(vo);
+            int delivered = wsSessionManager.send(receiverId, payload);
+            if (delivered == 0) {
+                // 接收方不在线：离线由未读计数兜底，不抛异常
+                log.debug("[im] 用户 {} 不在线，消息 seq={} 进入离线", receiverId, msg.getSeq());
+            }
         } catch (Exception ignored) {
             // 序列化失败忽略
         }

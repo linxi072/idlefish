@@ -13,6 +13,8 @@ public class MessageVO {
     private Integer readFlag;
     private Long seq;
     private String createdAt;
+    /** 服务端推送时刻（epoch millis），供真机测算「服务端处理耗时」与端到端延迟基准。 */
+    private Long serverTime;
 
     public String getConvId() {
         return convId;
@@ -76,5 +78,13 @@ public class MessageVO {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Long getServerTime() {
+        return serverTime;
+    }
+
+    public void setServerTime(Long serverTime) {
+        this.serverTime = serverTime;
     }
 }

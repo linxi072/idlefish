@@ -27,6 +27,9 @@ public enum Code {
     FREQUENCY_LIMIT(30004, "操作过于频繁，请稍后再试"),
     BALANCE_NOT_ENOUGH(30005, "账户余额不足"),
     BIZ_ERROR(30006, "业务校验失败"),
+    COUPON_NOT_FOUND(30007, "优惠券不存在"),
+    COUPON_INVALID(30008, "优惠券不可用"),
+    COUPON_SOLD_OUT(30009, "优惠券已抢光"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),
