@@ -1,0 +1,21 @@
+<view class="page wd">
+  <view class="card">
+    <view class="sec-title">提现金额</view>
+    <view class="amt-row">
+      <text class="cny">¥</text>
+      <input class="amt-input" type="digit" placeholder="0.00" value="{{amount}}" bindinput="onAmount" />
+      <view class="all" bindtap="allIn">全部</view>
+    </view>
+    <view class="hint">可提现余额 ¥{{balanceText}}（提现后进入审核，到账前冻结）</view>
+  </view>
+
+  <view class="card">
+    <view class="sec-title">收款账号</view>
+    <input class="acc-input" placeholder="请输入支付宝 / 银行卡账号" value="{{account}}" bindinput="onAccount" />
+    <view class="hint">账号将脱敏展示，仅用于本次提现打款</view>
+  </view>
+
+  <view class="action-bar">
+    <view class="btn btn-block {{canSubmit ? '' : 'btn-disabled'}}" bindtap="submit">确认提现</view>
+  </view>
+</view>

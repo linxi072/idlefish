@@ -11,6 +11,8 @@
     "pages/refund/detail/detail",
     "pages/evaluate/apply/apply",
     "pages/evaluate/list/list",
+    "pages/wallet/index/index",
+    "pages/wallet/withdraw/withdraw",
     "pages/message/message",
     "pages/chat/chat",
     "pages/mine/mine",

@@ -1,0 +1,34 @@
+.wallet { padding: 20rpx; }
+.balance-card {
+  background: linear-gradient(135deg, var(--xy), var(--xy-deep));
+  border-radius: 20rpx; padding: 36rpx 32rpx; color: #5A4000;
+  position: relative; margin-bottom: 20rpx;
+}
+.b-label { font-size: 24rpx; opacity: .85; }
+.b-amount { font-size: 64rpx; font-weight: 800; margin: 12rpx 0 28rpx; }
+.b-row { display: flex; }
+.b-item { flex: 1; }
+.b-num { font-size: 32rpx; font-weight: 700; }
+.b-cap { font-size: 22rpx; opacity: .85; margin-top: 6rpx; }
+.b-btn {
+  position: absolute; right: 32rpx; top: 36rpx;
+  background: #fff; color: #5A4000; font-size: 26rpx; font-weight: 700;
+  padding: 12rpx 32rpx; border-radius: 30rpx;
+}
+
+.flows { padding: 28rpx; }
+.sec-title { font-size: 30rpx; font-weight: 600; margin-bottom: 16rpx; }
+.flow {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 22rpx 0; border-bottom: 2rpx solid #F2F3F5;
+}
+.flow:last-child { border-bottom: none; }
+.f-type { font-size: 28rpx; color: var(--t1); }
+.f-time { font-size: 22rpx; color: var(--t3); margin-top: 8rpx; }
+.f-right { font-size: 32rpx; font-weight: 700; }
+.f-right.in { color: var(--green); }
+.f-right.out { color: var(--t1); }
+.loading { text-align: center; color: var(--t3); padding: 40rpx 0; font-size: 26rpx; }
+.empty { padding: 80rpx 0; text-align: center; color: var(--t3); }
+.empty .icon { font-size: 80rpx; }
+.empty .tip { margin-top: 16rpx; font-size: 26rpx; }

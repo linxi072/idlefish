@@ -1,0 +1,37 @@
+<view class="page wallet">
+  <!-- 余额概览卡片 -->
+  <view class="balance-card">
+    <view class="b-label">可提现余额（元）</view>
+    <view class="b-amount">¥{{withdrawableText}}</view>
+    <view class="b-row">
+      <view class="b-item">
+        <view class="b-num">{{frozenText}}</view>
+        <view class="b-cap">冻结中</view>
+      </view>
+      <view class="b-item">
+        <view class="b-num">{{settledText}}</view>
+        <view class="b-cap">累计结算</view>
+      </view>
+    </view>
+    <view class="b-btn" bindtap="goWithdraw">提现</view>
+  </view>
+
+  <!-- 钱包流水 -->
+  <view class="card flows">
+    <view class="sec-title">钱包流水</view>
+    <block wx:if="{{!loading && flows.length}}">
+      <view class="flow" wx:for="{{flows}}" wx:key="id">
+        <view class="f-left">
+          <view class="f-type">{{item.typeText}}</view>
+          <view class="f-time">{{item.timeText}}</view>
+        </view>
+        <view class="f-right {{item.direction === 'IN' ? 'in' : 'out'}}">{{item.amountText}}</view>
+      </view>
+    </block>
+    <view wx:elif="{{loading}}" class="loading">加载中...</view>
+    <view wx:else class="empty">
+      <view class="icon">💰</view>
+      <view class="tip">暂无钱包流水</view>
+    </view>
+  </view>
+</view>

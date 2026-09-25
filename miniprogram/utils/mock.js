@@ -87,10 +87,28 @@ const reviews = [
   { id: 3, orderNo: 'NO20260901001', itemId: 9002, reviewerId: 1001, targetId: me.id, role: 'SELLER_BUYER', rating: 5, content: '非常好的买家，付款及时，推荐！', anonymous: 0, status: 1, createdAt: fmtTs(Date.now() - 3600 * 1000 * 720) }
 ];
 
+// 本地钱包流水（mock 模式，模拟 FundFlow 钱包相关类型：SETTLE/FREEZE/WITHDRAW/UNFREEZE）
+// 余额口径与后端一致：可提现 = 累计 SETTLE(IN) − 已提现(pending+done)；退款 REFUND 不计入钱包
+const fundFlows = [
+  { id: 1, bizNo: 'ST20260910', userId: me.id, direction: 'IN', type: 'SETTLE', amount: 5200, balanceAfter: 5200, createdAt: Date.now() - 3600 * 1000 * 200 },
+  { id: 2, bizNo: 'ST20260915', userId: me.id, direction: 'IN', type: 'SETTLE', amount: 4200, balanceAfter: 9400, createdAt: Date.now() - 3600 * 1000 * 100 }
+];
+// 本地提现单（status: pending/done/rejected）
+const withdrawals = [];
+
 function findRefund(refundNo) { return refunds.find(r => r.refundNo === refundNo) || null; }
 // 模拟后端的 BizException(STATE_NOT_ALLOWED)：延迟后 reject，前端按 (e.msg) 提示
 function failRefund(msg) {
   return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
+}
+// 提现类失败（同机制）
+function failWithdraw(msg) {
+  return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
+}
+// 收款账号脱敏：仅保留前 2 后 2（对齐后端 WithdrawalService.mask）
+function maskAccount(account) {
+  if (!account || account.length <= 4) return account;
+  return account.substring(0, 2) + '****' + account.substring(account.length - 2);
 }
 // 评价类失败（同机制）
 function failReview(msg) {
@@ -239,6 +257,32 @@ module.exports = {
     return delay(m);
   },
   track() { return delay({ ok: true }); },
+  // ===== 钱包 / 提现（对齐 WalletController / WithdrawalService 余额口径与守卫）=====
+  walletBalance() {
+    const settled = fundFlows.filter(f => f.type === 'SETTLE' && f.direction === 'IN').reduce((s, f) => s + f.amount, 0);
+    const reserved = withdrawals.filter(w => w.status === 'pending' || w.status === 'done').reduce((s, w) => s + w.amount, 0);
+    const frozen = withdrawals.filter(w => w.status === 'pending').reduce((s, w) => s + w.amount, 0);
+    return delay({ withdrawable: settled - reserved, frozen, settledTotal: settled });
+  },
+  walletFlows(page, size) {
+    const sorted = fundFlows.slice().sort((a, b) => b.createdAt - a.createdAt);
+    const total = sorted.length;
+    const start = (page - 1) * size;
+    return delay({ items: sorted.slice(start, start + size), total });
+  },
+  walletWithdraw(amountFen, account) {
+    if (!amountFen || amountFen <= 0) return failWithdraw('提现金额无效');
+    const settled = fundFlows.filter(f => f.type === 'SETTLE' && f.direction === 'IN').reduce((s, f) => s + f.amount, 0);
+    const reserved = withdrawals.filter(w => w.status === 'pending' || w.status === 'done').reduce((s, w) => s + w.amount, 0);
+    const balance = settled - reserved;
+    if (balance < amountFen) return failWithdraw('可提现余额不足');
+    const w = { id: Date.now(), userId: me.id, amount: amountFen, account: maskAccount(account), status: 'pending', createdAt: Date.now() };
+    withdrawals.push(w);
+    const balAfter = balance - amountFen;
+    fundFlows.push({ id: fundFlows.length + 1, bizNo: 'WD' + w.id, userId: me.id, direction: 'OUT', type: 'FREEZE', amount: amountFen, balanceAfter: balAfter, createdAt: Date.now() });
+    return delay({ id: w.id });
+  },
+
   // ===== 评价 / 信用（对齐 ReviewService 互评 + 内容机审）=====
   submitReview(dto) {
     const o = orders.find(x => x.orderNo === dto.orderNo);

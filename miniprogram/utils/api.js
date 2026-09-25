@@ -90,6 +90,25 @@ const api = {
   // 我收到的评价（被评价方视角，仅通过）
   receivedReviews() { return route(() => mock.receivedReviews(), () => http.get('/api/reviews/received')); },
 
+  // ===== 钱包 / 提现（后端 base: /api/wallet，对齐 WalletController / WithdrawalService，金额单位均为「分」）=====
+  // 余额概览：{ withdrawable, frozen, settledTotal }
+  walletBalance() { return route(() => mock.walletBalance(), () => http.get('/api/wallet/balance')); },
+  // 钱包流水（仅钱包相关类型 SETTLE/FREEZE/WITHDRAW/UNFREEZE）：归一化为 { items, total }
+  walletFlows(page, size) {
+    return route(
+      () => mock.walletFlows(page, size),
+      () => http.get('/api/wallet/flows?page=' + (page || 1) + '&size=' + (size || 20))
+        .then((p) => ({ items: (p && p.records) || [], total: (p && p.total) || 0 }))
+    );
+  },
+  // 提现申请：amount 为「分」，account 为收款账号；后端 WithdrawalService.apply 先冻结（FREEZE）
+  walletWithdraw(amountFen, account) {
+    return route(
+      () => mock.walletWithdraw(amountFen, account),
+      () => http.post('/api/wallet/withdraw?amount=' + amountFen + '&account=' + encodeURIComponent(account || ''))
+    );
+  },
+
   // ===== IM =====
   getConversations() { return route(() => mock.getConversations(), () => http.get('/api/im/conversations')); },
   getMessages(convId) { return route(() => mock.getMessages(convId), () => http.get('/api/im/messages?convId=' + convId)); },

@@ -1,0 +1,21 @@
+.wd { padding: 20rpx 20rpx 160rpx; }
+.wd .card { margin-bottom: 20rpx; }
+.sec-title { font-size: 30rpx; font-weight: 600; margin-bottom: 20rpx; }
+.amt-row {
+  display: flex; align-items: center;
+  border-bottom: 2rpx solid #F2F3F5; padding-bottom: 16rpx;
+}
+.cny { font-size: 48rpx; font-weight: 700; margin-right: 16rpx; color: var(--t1); }
+.amt-input { flex: 1; font-size: 56rpx; font-weight: 700; color: var(--t1); }
+.all {
+  font-size: 26rpx; color: var(--xy-deep); font-weight: 600;
+  padding: 8rpx 20rpx; background: var(--xy-light); border-radius: 24rpx;
+}
+.hint { font-size: 22rpx; color: var(--t3); margin-top: 16rpx; line-height: 1.5; }
+.acc-input { height: 80rpx; font-size: 28rpx; color: var(--t1); border-bottom: 2rpx solid #F2F3F5; }
+.action-bar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding: 16rpx 20rpx; background: #fff;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, .05);
+}
+.btn-disabled { opacity: .5; }

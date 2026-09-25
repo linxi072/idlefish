@@ -7,6 +7,7 @@ Page({
     menus: [
       { icon: '📦', name: '我的发布', url: '' },
       { icon: '📋', name: '我的订单', url: '/pages/order/list/list' },
+      { icon: '💰', name: '我的钱包', url: '/pages/wallet/index/index' },
       { icon: '⭐', name: '我的评价', url: '/pages/evaluate/list/list' },
       { icon: '📍', name: '收货地址', url: '/pages/address/address' },
       { icon: '💬', name: '消息中心', url: '/pages/message/message' },
