@@ -1,0 +1,67 @@
+<view class="page apply-refund">
+
+  <!-- 商品卡片 -->
+  <view class="card goods" wx:if="{{order}}">
+    <image class="g-img" src="{{order.item.img}}" mode="aspectFill" />
+    <view class="g-info">
+      <view class="g-title ellipsis-2">{{order.item.title}}</view>
+      <view class="g-price">实付 ¥{{maxText}}</view>
+    </view>
+  </view>
+
+  <!-- 不可申请提示 -->
+  <view class="card tip-card" wx:if="{{!eligible && ineligibleTip}}">
+    <view class="tip-text">{{ineligibleTip}}</view>
+  </view>
+
+  <block wx:if="{{eligible}}">
+    <!-- 退款方式 -->
+    <view class="card">
+      <view class="sec-title">退款方式</view>
+      <view class="r-types">
+        <view class="r-type {{type==='only_refund'?'on':''}}" data-type="only_refund" bindtap="onType">
+          <view class="rt-name">仅退款</view>
+          <view class="rt-desc">无需退货，直接退款</view>
+        </view>
+        <view class="r-type {{type==='return_refund'?'on':''}}" data-type="return_refund" bindtap="onType">
+          <view class="rt-name">退货退款</view>
+          <view class="rt-desc">需寄回商品后退款</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 退款金额 -->
+    <view class="card">
+      <view class="sec-title">退款金额</view>
+      <view class="amt-row">
+        <text class="amt-symbol">¥</text>
+        <input class="amt-input" type="digit" value="{{amount}}" bindinput="onAmount" bindblur="onAmountBlur" placeholder="0.00" />
+      </view>
+      <view class="amt-hint">
+        <text>最多可退 ¥{{maxText}}</text>
+        <text class="amt-all" bindtap="onFillAll">全额退款</text>
+      </view>
+    </view>
+
+    <!-- 退款原因 -->
+    <view class="card">
+      <view class="sec-title">退款原因</view>
+      <textarea class="r-textarea" value="{{reason}}" bindinput="onReason" maxlength="{{reasonMax}}" placeholder="请详细描述退款原因，便于卖家处理" />
+      <view class="counter">{{reasonLen}}/{{reasonMax}}</view>
+    </view>
+
+    <!-- 说明 -->
+    <view class="card notice">
+      <view class="n-item" wx:if="{{type==='only_refund'}}">· 卖家同意后将直接退款到您的支付账户</view>
+      <view class="n-item" wx:else>· 卖家同意后需您寄回商品，可在详情页填写退货物流</view>
+      <view class="n-item">· 卖家 48 小时未处理将自动同意退款</view>
+    </view>
+  </block>
+
+  <!-- 底部提交 -->
+  <view class="action-bar">
+    <view class="btn btn-block {{(!eligible || submitting) ? 'btn-disabled' : ''}}" bindtap="submit">
+      {{submitting ? '提交中…' : '提交退款申请'}}
+    </view>
+  </view>
+</view>

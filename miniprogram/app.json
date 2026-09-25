@@ -7,6 +7,8 @@
     "pages/publish/publish",
     "pages/order/list/list",
     "pages/order/detail/detail",
+    "pages/refund/apply/apply",
+    "pages/refund/detail/detail",
     "pages/message/message",
     "pages/chat/chat",
     "pages/mine/mine",

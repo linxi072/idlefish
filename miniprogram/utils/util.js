@@ -48,4 +48,36 @@ function statusText(type, code) {
   return code;
 }
 
-module.exports = { formatPrice, formatTime, fromNow, statusText, ITEM_STATUS, ORDER_STATUS, REFUND_STATUS };
+// ===== 退款/售后辅助（F-09）=====
+// 退款类型中文
+const REFUND_TYPE = { only_refund: '仅退款', return_refund: '退货退款' };
+
+// 退款终态：refunded/refunded/rejected/canceled，终态不可再撤销或平台介入
+const REFUND_TERMINAL = { refunded: true, rejected: true, canceled: true };
+function isRefundTerminal(code) { return !!REFUND_TERMINAL[code]; }
+
+// 退款进度步骤下标（详情页时间线用）：0=卖家处理 1=退款中 2=退款成功；-1=非正常推进（已拒绝/已撤销）
+function refundStepIndex(code) {
+  if (code === 'apply' || code === 'wait_seller') return 0;
+  if (code === 'platform' || code === 'refunding') return 1;
+  if (code === 'refunded') return 2;
+  return -1;
+}
+
+// 允许申请退款的订单状态（严格对齐后端 RefundService.apply 守卫：仅 paid / shipping）
+function canApplyRefund(orderStatus) {
+  return orderStatus === 'paid' || orderStatus === 'shipping';
+}
+
+// 元 → 分（金额单位契约：后端统一「分」）。非法输入返回 -1
+function yuanToFen(yuan) {
+  const v = Number(yuan);
+  if (yuan === '' || yuan === null || yuan === undefined || isNaN(v)) return -1;
+  return Math.round(v * 100);
+}
+
+module.exports = {
+  formatPrice, formatTime, fromNow, statusText,
+  ITEM_STATUS, ORDER_STATUS, REFUND_STATUS,
+  REFUND_TYPE, isRefundTerminal, refundStepIndex, canApplyRefund, yuanToFen
+};

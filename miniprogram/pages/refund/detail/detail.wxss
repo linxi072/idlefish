@@ -1,0 +1,82 @@
+.refund-detail { padding: 0 0 180rpx; }
+.refund-detail .card { margin: 20rpx; }
+
+.loading { padding: 80rpx 0; text-align: center; color: var(--t3); font-size: 26rpx; }
+
+/* 错误态 */
+.err { text-align: center; padding: 40rpx; }
+.err-text { font-size: 26rpx; color: var(--t2); margin-bottom: 24rpx; }
+.retry { display: inline-flex; }
+
+/* 状态条 */
+.status-banner {
+  background: linear-gradient(135deg, #FFCE3D, #FFB300);
+  padding: 40rpx 30rpx; color: #5A4000;
+}
+.sb-title { font-size: 38rpx; font-weight: 700; }
+.sb-sub { font-size: 24rpx; margin-top: 12rpx; }
+
+/* 特殊流转提示 */
+.special-tip {
+  display: flex; align-items: center;
+  margin: 20rpx; padding: 20rpx 24rpx;
+  background: #FFF7E6; border-radius: 12rpx;
+  font-size: 26rpx; color: #B26A00; line-height: 1.5;
+}
+.st-icon { margin-right: 12rpx; }
+
+/* 横向进度节点 */
+.steps-card { padding: 30rpx 20rpx; }
+.steps { display: flex; }
+.step { flex: 1; position: relative; text-align: center; padding: 0 8rpx; }
+.s-line {
+  position: absolute; top: 18rpx; left: -50%; width: 100%; height: 4rpx;
+  background: #E5E7EB; z-index: 0;
+}
+.step:first-child .s-line { display: none; }
+.s-dot {
+  position: relative; z-index: 1;
+  width: 36rpx; height: 36rpx; border-radius: 50%;
+  background: #E5E7EB; margin: 0 auto 16rpx;
+  border: 4rpx solid #fff; box-sizing: border-box;
+}
+.s-title { font-size: 26rpx; color: var(--t2); }
+.s-desc { font-size: 20rpx; color: var(--t3); margin-top: 8rpx; line-height: 1.4; }
+/* 已完成 */
+.step.done .s-dot { background: var(--green); }
+.step.done .s-title { color: var(--t1); font-weight: 600; }
+.step.done .s-line { background: var(--green); }
+/* 进行中 */
+.step.active .s-dot { background: var(--xy-deep); box-shadow: 0 0 0 8rpx var(--xy-light); }
+.step.active .s-title { color: var(--t1); font-weight: 600; color: #7A5A00; }
+.step.active .s-line { background: var(--xy-deep); }
+
+/* 商品 */
+.goods { display: flex; }
+.g-img { width: 160rpx; height: 160rpx; border-radius: 12rpx; background: #eee; flex-shrink: 0; }
+.g-info { flex: 1; margin-left: 20rpx; }
+.g-title { font-size: 28rpx; }
+.g-amount { color: var(--red); font-weight: 700; margin-top: 20rpx; }
+
+/* 退款信息 */
+.meta .m-row {
+  display: flex; justify-content: space-between;
+  font-size: 26rpx; padding: 12rpx 0;
+}
+.m-val { color: var(--t2); max-width: 60%; text-align: right; word-break: break-all; }
+.m-val.link { color: var(--blue); }
+.m-val.price { color: var(--red); font-weight: 700; }
+
+/* 底部操作（可能同时有多枚按钮，故换行 + 紧凑尺寸） */
+.action-bar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: flex; flex-wrap: wrap; justify-content: flex-end;
+  padding: 16rpx 20rpx; background: #fff;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, .05);
+}
+.action-bar .ab {
+  height: 68rpx; min-width: 180rpx; padding: 0 24rpx;
+  font-size: 26rpx; border-radius: 34rpx; margin: 0 0 12rpx 12rpx;
+}
+
+.no-action { text-align: center; font-size: 24rpx; color: var(--t3); padding: 30rpx; }

@@ -67,6 +67,23 @@ const riskEvents = [
 // 本地收藏集合（mock 模式使用）
 const favSet = new Set();
 
+// 本地退款单集合（mock 模式，模拟 RefundService 7 态状态机）
+// 预置两条：一条「我是买家」待卖家处理，一条「我是卖家」待处理，便于演示买卖双方操作
+const refunds = [
+  { refundNo: 'RF20260920001', orderNo: 'NO20260920002', buyerId: me.id, sellerId: 1002, type: 'only_refund', amount: 4200, reason: '收到的电脑与描述不符', status: 'wait_seller', logisticsNo: '', createdAt: Date.now() - 3600 * 1000 * 2 },
+  { refundNo: 'RF20260919001', orderNo: 'NO20260919003', buyerId: 1003, sellerId: me.id, type: 'return_refund', amount: 5200, reason: '买家要求退货，屏幕有暗点', status: 'wait_seller', logisticsNo: '', createdAt: Date.now() - 3600 * 1000 * 6 }
+];
+
+function findRefund(refundNo) { return refunds.find(r => r.refundNo === refundNo) || null; }
+// 模拟后端的 BizException(STATE_NOT_ALLOWED)：延迟后 reject，前端按 (e.msg) 提示
+function failRefund(msg) {
+  return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
+}
+// 退款是否处于终态（不可再操作）
+function refundTerminal(status) {
+  return status === 'refunded' || status === 'rejected' || status === 'canceled';
+}
+
 function delay(data, ms) {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms || 200));
 }
@@ -115,9 +132,71 @@ module.exports = {
   cancelOrder() { return delay({ ok: true }); },
   confirmOrder() { return delay({ ok: true }); },
   shipOrder(dto) { return delay({ ok: true }); },
-  applyRefund(dto) { return delay({ refundNo: 'RF' + Date.now(), status: 'apply' }); },
-  listRefunds() { return delay([]); },
-  cancelRefund() { return delay({ ok: true }); },
+  // ===== 退款 / 售后（对齐 RefundService 状态机守卫）=====
+  applyRefund(dto) {
+    // 幂等：同订单存在进行中退款单则直接返回（对齐 RefundService.apply）
+    const exist = refunds.find(r => r.orderNo === dto.orderNo && ['wait_seller', 'platform', 'refunding'].indexOf(r.status) >= 0);
+    if (exist) return delay({ refundNo: exist.refundNo, status: exist.status });
+    const o = orders.find(x => x.orderNo === dto.orderNo);
+    const r = {
+      refundNo: 'RF' + Date.now(), orderNo: dto.orderNo,
+      // 订单 role 决定 me 是买家还是卖家，便于 mock 演示双向操作
+      buyerId: (o && o.role === 'seller') ? 1003 : me.id,
+      sellerId: (o && o.role === 'seller') ? me.id : ((o && o.item && o.item.seller && o.item.seller.id) || 1001),
+      type: dto.type, amount: dto.amount, reason: dto.reason,
+      status: 'wait_seller', logisticsNo: '', createdAt: Date.now()
+    };
+    refunds.push(r);
+    return delay({ refundNo: r.refundNo, status: r.status });
+  },
+  getRefund(refundNo) {
+    const r = findRefund(refundNo);
+    return delay(r ? Object.assign({}, r) : null);
+  },
+  listRefundsByOrder(orderNo) { return delay(refunds.filter(r => r.orderNo === orderNo).map(r => Object.assign({}, r))); },
+  agreeRefund(refundNo) {
+    const r = findRefund(refundNo);
+    if (!r) return failRefund('退款单不存在');
+    if (r.status !== 'wait_seller') return failRefund('当前状态不可同意');
+    r.status = 'refunded';
+    return delay({ ok: true });
+  },
+  rejectRefund(refundNo, reason) {
+    const r = findRefund(refundNo);
+    if (!r) return failRefund('退款单不存在');
+    if (r.status !== 'wait_seller') return failRefund('当前状态不可拒绝');
+    r.status = 'rejected';
+    r.reason = reason || r.reason;
+    return delay({ ok: true });
+  },
+  returnRefundLogistics(refundNo, logisticsNo) {
+    const r = findRefund(refundNo);
+    if (!r) return failRefund('退款单不存在');
+    if (r.status !== 'wait_seller') return failRefund('当前状态不可填写退货物流');
+    r.logisticsNo = logisticsNo;
+    return delay({ ok: true });
+  },
+  confirmRefundReturn(refundNo) {
+    const r = findRefund(refundNo);
+    if (!r) return failRefund('退款单不存在');
+    if (r.status !== 'wait_seller') return failRefund('当前状态不可确认收货');
+    r.status = 'refunded';
+    return delay({ ok: true });
+  },
+  platformRefund(refundNo) {
+    const r = findRefund(refundNo);
+    if (!r) return failRefund('退款单不存在');
+    if (refundTerminal(r.status)) return failRefund('当前状态不可介入');
+    r.status = 'platform';
+    return delay({ ok: true });
+  },
+  cancelRefund(refundNo) {
+    const r = findRefund(refundNo);
+    if (!r) return failRefund('退款单不存在');
+    if (refundTerminal(r.status)) return failRefund('当前状态不可撤销');
+    r.status = 'canceled';
+    return delay({ ok: true });
+  },
   // ===== 图片上传（mock 返回占位图地址）=====
   uploadImage(filePath) { return delay('https://picsum.photos/seed/' + Date.now() + '/800/800'); },
   // ===== 收藏（mock 本地集合）=====

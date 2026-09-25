@@ -1,0 +1,72 @@
+<view class="page refund-detail">
+
+  <!-- 加载 / 错误 -->
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+  <view class="card err" wx:if="{{!loading && errorTip}}">
+    <view class="err-text">{{errorTip}}</view>
+    <view class="btn btn-ghost btn-sm retry" bindtap="loadDetail">重试</view>
+  </view>
+
+  <block wx:if="{{!loading && !errorTip && refund}}">
+    <!-- 状态条 -->
+    <view class="status-banner">
+      <view class="sb-title">{{refund.statusT}}</view>
+      <view class="sb-sub">{{refund.typeT}} · 退款金额 ¥{{refund.amountText}}</view>
+    </view>
+
+    <!-- 特殊流转提示 -->
+    <view class="special-tip" wx:if="{{specialText}}">
+      <text class="st-icon">⚠️</text><text>{{specialText}}</text>
+    </view>
+
+    <!-- 进度条（终态或非正常推进时弱化展示） -->
+    <view class="card steps-card">
+      <view class="steps">
+        <view class="step {{item.state}}" wx:for="{{steps}}" wx:key="title">
+          <view class="s-line"></view>
+          <view class="s-dot"></view>
+          <view class="s-title">{{item.title}}</view>
+          <view class="s-desc">{{item.desc}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 商品 -->
+    <view class="card goods" wx:if="{{order}}">
+      <image class="g-img" src="{{order.item.img}}" mode="aspectFill" />
+      <view class="g-info">
+        <view class="g-title ellipsis-2">{{order.item.title}}</view>
+        <view class="g-amount">实付 ¥{{refund.amountText}}</view>
+      </view>
+    </view>
+
+    <!-- 退款信息 -->
+    <view class="card meta">
+      <view class="m-row"><text>退款单号</text><text class="m-val">{{refund.refundNo}}</text></view>
+      <view class="m-row"><text>关联订单</text><text class="m-val link" bindtap="goOrder">{{refund.orderNo}}</text></view>
+      <view class="m-row"><text>退款方式</text><text class="m-val">{{refund.typeT}}</text></view>
+      <view class="m-row"><text>退款金额</text><text class="m-val price">¥{{refund.amountText}}</text></view>
+      <view class="m-row"><text>退款原因</text><text class="m-val">{{refund.reason || '未填写'}}</text></view>
+      <view class="m-row" wx:if="{{refund.logisticsNo}}"><text>退货物流</text><text class="m-val">{{refund.logisticsNo}}</text></view>
+      <view class="m-row"><text>申请时间</text><text class="m-val">{{refund.timeT}}</text></view>
+      <view class="m-row" wx:if="{{roleText}}"><text>交易角色</text><text class="m-val">{{roleText}}</text></view>
+    </view>
+
+    <!-- 底部操作 -->
+    <view class="action-bar" wx:if="{{canCancel || canReturn || canPlatform || canAgree || canConfirmReturn || canReject}}">
+      <view class="btn btn-ghost ab" bindtap="contact">联系对方</view>
+      <view class="btn btn-ghost ab" wx:if="{{canCancel}}" bindtap="cancelRefund">撤销退款</view>
+      <view class="btn btn-ghost ab" wx:if="{{canReturn}}" bindtap="returnLogistics">填退货物流</view>
+      <view class="btn btn-ghost ab" wx:if="{{canPlatform}}" bindtap="askPlatform">平台介入</view>
+      <view class="btn btn-ghost ab" wx:if="{{canReject}}" bindtap="rejectRefund">拒绝退款</view>
+      <view class="btn ab" wx:if="{{canAgree}}" bindtap="agreeRefund">同意退款</view>
+      <view class="btn ab" wx:if="{{canConfirmReturn}}" bindtap="confirmReturn">确认收货并退款</view>
+    </view>
+
+    <!-- 无可用操作时的说明 -->
+    <view class="card no-action" wx:else>
+      <text wx:if="{{terminated}}">该退款单已结束，如需帮助请联系平台客服</text>
+      <text wx:else>当前无可执行操作，等待对方处理</text>
+    </view>
+  </block>
+</view>

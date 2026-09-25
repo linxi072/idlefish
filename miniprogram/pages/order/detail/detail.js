@@ -1,17 +1,22 @@
 const api = require('../../utils/api.js');
-const { formatPrice, statusText, formatTime } = require('../../utils/util.js');
+const { formatPrice, statusText, formatTime, canApplyRefund } = require('../../utils/util.js');
 
 Page({
   data: {
     orderNo: '', order: null, amountText: '', statusT: '', timeT: '',
-    showShip: false, showRefund: false,
-    shipForm: { company: '', logisticNo: '' },
-    refundForm: { type: 'only_refund', reason: '' }
+    showShip: false, shipForm: { company: '', logisticNo: '' },
+    // 售后：该订单已有的退款单（用于「查看/处理退款」入口）+ 是否可发起申请
+    refund: null, canApply: false
   },
 
   onLoad(options) {
     this.setData({ orderNo: options.orderNo });
     this.reload();
+  },
+
+  onShow() {
+    // 从退款页返回后刷新最新售后状态
+    if (this.data.orderNo) this.reload();
   },
 
   onUnload() { this.stopPoll(); },
@@ -28,7 +33,28 @@ Page({
       this.fmt(o);
       this.setData({ order: o });
       this.maybePoll(o.status);
+      this.loadRefund();
     }).catch((e) => wx.showToast({ title: (e && e.msg) || '加载失败', icon: 'none' }));
+  },
+
+  // 加载该订单的售后单：后端按订单维度查询，取进行中（若无则最新一条）作为入口
+  loadRefund() {
+    api.listRefundsByOrder(this.data.orderNo).then((list) => {
+      const arr = list || [];
+      const ongoing = ['apply', 'wait_seller', 'platform', 'refunding'];
+      const pick = arr.find(r => ongoing.indexOf(r.status) >= 0) || arr[arr.length - 1] || null;
+      this.setData({ refund: pick || null });
+      this.refreshApplyFlag();
+    }).catch(() => {
+      // 售后信息加载失败不影响订单主流程
+      this.refreshApplyFlag();
+    });
+  },
+
+  // 是否可发起退款申请：无进行中退款单 且 订单状态符合后端守卫（paid / shipping）
+  refreshApplyFlag() {
+    const st = this.data.order && this.data.order.status;
+    this.setData({ canApply: !this.data.refund && canApplyRefund(st) });
   },
 
   // R-11：待支付状态下轮询订单状态，支付成功后自动刷新
@@ -94,19 +120,19 @@ Page({
     }).catch((e) => wx.showToast({ title: (e && e.msg) || '发货失败', icon: 'none' }));
   },
 
-  openRefund() { this.setData({ showRefund: true }); },
-  closeRefund() { this.setData({ showRefund: false }); },
-  onRefundField(e) { this.setData({ ['refundForm.' + e.currentTarget.dataset.k]: e.detail.value }); },
-  onRefundType(e) { this.setData({ 'refundForm.type': e.currentTarget.dataset.type }); },
-  submitRefund() {
-    const f = this.data.refundForm;
-    if (!f.reason.trim()) return wx.showToast({ title: '请填写退款原因', icon: 'none' });
-    api.applyRefund({ orderNo: this.data.orderNo, type: f.type, reason: f.reason, amount: this.data.order.amount }).then((r) => {
-      this.setData({ showRefund: false });
-      wx.showToast({ title: '退款申请已提交', icon: 'success' });
-      api.track('refund_apply', { order_no: this.data.orderNo, refund_type: f.type, amount: this.data.order.amount });
-      this.reload();
-    }).catch((e) => wx.showToast({ title: (e && e.msg) || '申请失败', icon: 'none' }));
+  // ===== 售后入口（统一走 pages/refund/* 页面，不再内联弹窗）=====
+  goRefundApply() {
+    if (!this.data.canApply) {
+      return wx.showToast({ title: '当前订单状态不支持申请退款', icon: 'none' });
+    }
+    wx.navigateTo({ url: '/pages/refund/apply/apply?orderNo=' + this.data.orderNo });
+  },
+
+  goRefundDetail() {
+    const r = this.data.refund;
+    if (!r) return;
+    const role = (this.data.order && this.data.order.role) || '';
+    wx.navigateTo({ url: '/pages/refund/detail/detail?refundNo=' + r.refundNo + '&role=' + role });
   },
 
   contact() {

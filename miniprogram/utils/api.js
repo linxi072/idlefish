@@ -68,10 +68,17 @@ const api = {
   confirmOrder(orderNo) { return route(() => mock.confirmOrder(), () => http.post('/api/orders/' + orderNo + '/confirm')); },
   shipOrder(orderNo, data) { return route(() => mock.shipOrder(data), () => http.post('/api/orders/' + orderNo + '/ship', data)); },
 
-  // ===== 退款 =====
+  // ===== 退款 / 售后（后端 base: /api/refunds —— 注意是复数 refunds）=====
   applyRefund(data) { return route(() => mock.applyRefund(data), () => http.post('/api/refunds/apply', data)); },
-  listRefunds() { return route(() => mock.listRefunds(), () => Promise.resolve([])); },
-  cancelRefund(refundNo) { return route(() => mock.cancelRefund(), () => http.post('/api/refund/' + refundNo + '/cancel')); },
+  getRefund(refundNo) { return route(() => mock.getRefund(refundNo), () => http.get('/api/refunds/' + refundNo)); },
+  // 某订单的退款单列表（后端无「我的退款」全局列表，故按订单维度查询）
+  listRefundsByOrder(orderNo) { return route(() => mock.listRefundsByOrder(orderNo), () => http.get('/api/refunds/order/' + orderNo)); },
+  agreeRefund(refundNo) { return route(() => mock.agreeRefund(refundNo), () => http.post('/api/refunds/' + refundNo + '/agree')); },
+  rejectRefund(refundNo, reason) { return route(() => mock.rejectRefund(refundNo, reason), () => http.post('/api/refunds/' + refundNo + '/reject?reason=' + encodeURIComponent(reason || ''))); },
+  returnRefundLogistics(refundNo, logisticsNo) { return route(() => mock.returnRefundLogistics(refundNo, logisticsNo), () => http.post('/api/refunds/' + refundNo + '/return-logistics?logisticsNo=' + encodeURIComponent(logisticsNo || ''))); },
+  confirmRefundReturn(refundNo) { return route(() => mock.confirmRefundReturn(refundNo), () => http.post('/api/refunds/' + refundNo + '/confirm-return')); },
+  platformRefund(refundNo) { return route(() => mock.platformRefund(refundNo), () => http.post('/api/refunds/platform/' + refundNo)); },
+  cancelRefund(refundNo) { return route(() => mock.cancelRefund(refundNo), () => http.post('/api/refunds/' + refundNo + '/cancel')); },
 
   // ===== IM =====
   getConversations() { return route(() => mock.getConversations(), () => http.get('/api/im/conversations')); },

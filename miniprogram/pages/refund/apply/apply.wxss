@@ -1,0 +1,52 @@
+.apply-refund { padding: 20rpx 20rpx 160rpx; }
+.apply-refund .card { margin-bottom: 20rpx; }
+
+.sec-title { font-size: 30rpx; font-weight: 600; margin-bottom: 20rpx; }
+
+/* 商品 */
+.goods { display: flex; }
+.g-img { width: 160rpx; height: 160rpx; border-radius: 12rpx; background: #eee; flex-shrink: 0; }
+.g-info { flex: 1; margin-left: 20rpx; }
+.g-title { font-size: 28rpx; }
+.g-price { color: var(--red); font-weight: 700; margin-top: 20rpx; }
+
+/* 不可申请提示 */
+.tip-card { background: #FFF7E6; }
+.tip-text { font-size: 26rpx; color: #B26A00; line-height: 1.6; }
+
+/* 退款方式 */
+.r-types { display: flex; }
+.r-type {
+  flex: 1; border: 2rpx solid #E5E7EB; border-radius: 12rpx;
+  padding: 20rpx; text-align: center; margin-right: 16rpx;
+}
+.r-type:last-child { margin-right: 0; }
+.r-type.on { border-color: var(--xy-deep); background: var(--xy-light); }
+.rt-name { font-size: 28rpx; font-weight: 600; }
+.rt-desc { font-size: 22rpx; color: var(--t3); margin-top: 8rpx; }
+
+/* 退款金额 */
+.amt-row { display: flex; align-items: baseline; border-bottom: 2rpx solid #F2F3F5; padding-bottom: 12rpx; }
+.amt-symbol { font-size: 36rpx; color: var(--red); font-weight: 700; }
+.amt-input { flex: 1; font-size: 44rpx; font-weight: 700; margin-left: 12rpx; height: 60rpx; }
+.amt-hint { display: flex; justify-content: space-between; font-size: 24rpx; color: var(--t3); margin-top: 16rpx; }
+.amt-all { color: var(--xy-deep); font-weight: 600; }
+
+/* 退款原因 */
+.r-textarea {
+  width: 100%; height: 180rpx; box-sizing: border-box;
+  border: 2rpx solid #E5E7EB; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx;
+}
+.counter { text-align: right; font-size: 22rpx; color: var(--t3); margin-top: 8rpx; }
+
+/* 说明 */
+.notice { background: #FAFBFC; }
+.n-item { font-size: 24rpx; color: var(--t2); line-height: 1.8; }
+
+/* 底部 */
+.action-bar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding: 16rpx 20rpx; background: #fff;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, .05);
+}
+.btn-disabled { opacity: .5; }
