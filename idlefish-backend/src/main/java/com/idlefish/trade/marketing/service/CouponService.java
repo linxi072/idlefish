@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
+import org.springframework.dao.DuplicateKeyException;
 import com.idlefish.trade.item.entity.Item;
 import com.idlefish.trade.item.mapper.ItemMapper;
 import com.idlefish.trade.marketing.dto.CouponCreateDTO;
@@ -154,7 +155,15 @@ public class CouponService {
         uc.setStatus(UC_UNUSED);
         uc.setExpireAt(coupon.getEndAt());
         uc.setClaimedAt(now);
-        userCouponMapper.insert(uc);
+        try {
+            userCouponMapper.insert(uc);
+        } catch (DuplicateKeyException e) {
+            // 并发重复领取兜底：唯一索引拦截后，回滚本次已占用的库存计数，返回友好错误（避免 500 资损/误报）
+            couponMapper.update(null, new LambdaUpdateWrapper<Coupon>()
+                    .eq(Coupon::getId, couponId)
+                    .setSql("claimed_count = claimed_count - 1"));
+            throw new BizException(Code.BIZ_ERROR, "您已领取，不可重复领取");
+        }
 
         // 领取成功通知（best-effort，不影响领取主流程）
         try {

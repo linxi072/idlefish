@@ -537,5 +537,7 @@ CREATE TABLE IF NOT EXISTS t_user_coupon (
     created_at       DATETIME,
     updated_at       DATETIME,
     KEY idx_uc_user (user_id, status),
-    KEY idx_uc_order (order_no)
+    KEY idx_uc_order (order_no),
+    -- 券并发限领兜底：同一用户对同一券唯一，杜绝并发竞态下重复领取（与 per_user_limit 默认 1 一致）
+    UNIQUE KEY uk_user_coupon (user_id, coupon_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

@@ -1,6 +1,9 @@
 name: CI
 
-# F-03 测试与 CI：H2 内存库 + 默认 Mock 外部依赖，跑通编译与全量测试（含核心域不变量 + 限流单测）。
+# F-03 测试与 CI：默认 local profile 走真实 MySQL（application.yml 默认数据源），
+# 由本工作流 provision 一个 MySQL 8.0 服务容器，使 @SpringBootTest 集成测试（ApiIntegrationTest /
+# SubsystemSmokeTest）也能跑全量；纯 Mockito 单测（CouponServiceTest / PayCallbackTest /
+# SimpleRateLimiterTest 等）同样在此环境执行。
 # 说明：当前 git 仓库根为会话目录，业务模块位于 idlefish-backend/ 子目录；
 # 若后续将 idlefish-backend 作为独立仓库推送，请将本文件迁移至 idlefish-backend/.github/workflows/ci.yml
 # 并将下方 working-directory 改为 . 或删除。
@@ -17,6 +20,19 @@ jobs:
     defaults:
       run:
         working-directory: idlefish-backend
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: idlefish
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,5 +44,14 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Build and test (offline-friendly, H2 + Mock)
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/3306) >/dev/null 2>&1; then
+              echo "MySQL is up"; break
+            fi
+            echo "Waiting for MySQL... ($i)"; sleep 2
+          done
+
+      - name: Build and test (MySQL-backed full suite)
         run: mvn -B -ntp test
