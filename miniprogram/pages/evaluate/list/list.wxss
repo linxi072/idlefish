@@ -1,0 +1,21 @@
+.eval-list { padding: 20rpx; }
+.tabs { display: flex; background: #fff; border-radius: 20rpx; overflow: hidden; margin-bottom: 20rpx; }
+.tab { flex: 1; text-align: center; padding: 24rpx 0; font-size: 28rpx; color: var(--t2); }
+.tab.on { color: var(--t1); font-weight: 700; background: var(--xy-light); }
+
+.r-item { margin-bottom: 20rpx; }
+.r-top { font-size: 26rpx; }
+.r-role { font-weight: 600; color: var(--t1); }
+.r-time { color: var(--t3); font-size: 22rpx; }
+
+.stars { display: flex; margin: 12rpx 0; }
+.star { font-size: 36rpx; color: #D9D9D9; margin-right: 8rpx; line-height: 1; }
+.star.on { color: #FFB300; }
+
+.r-content { font-size: 28rpx; color: var(--t1); line-height: 1.6; }
+
+.r-foot { margin-top: 16rpx; font-size: 24rpx; }
+.r-anon { color: var(--t2); background: #F0F1F4; border-radius: 8rpx; padding: 4rpx 12rpx; }
+.r-link { color: var(--xy-deep); }
+
+.loading { text-align: center; color: var(--t3); padding: 40rpx 0; }

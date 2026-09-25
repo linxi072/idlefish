@@ -85,6 +85,11 @@
       {{order.role==='buyer' ? '查看售后' : '处理退款'}}
     </view>
     <view class="btn btn-ghost ab" wx:elif="{{canApply}}" bindtap="goRefundApply">申请退款</view>
+
+    <!-- 评价入口：仅已完成/已关闭订单可评；已评价 → 查看评价 -->
+    <view class="btn btn-ghost ab" wx:if="{{canEvaluate}}" bindtap="goEvaluate">
+      {{reviewed ? '查看评价' : '评价'}}
+    </view>
   </view>
 
   <!-- 发货弹层 -->

@@ -1,0 +1,50 @@
+<view class="page eval-list">
+  <view class="tabs">
+    <view class="tab {{tab==='my'?'on':''}}" data-tab="my" bindtap="switchTab">我发出的</view>
+    <view class="tab {{tab==='received'?'on':''}}" data-tab="received" bindtap="switchTab">我收到的</view>
+  </view>
+
+  <!-- 我发出的 -->
+  <view class="list" wx:if="{{tab==='my'}}">
+    <view class="card r-item" wx:for="{{myList}}" wx:key="id">
+      <view class="r-top between">
+        <text class="r-role">{{item.roleLabel}}</text>
+        <text class="r-time">{{item.createdAt}}</text>
+      </view>
+      <view class="stars">
+        <text class="star {{filled ? 'on' : ''}}" wx:for="{{item.ratingArr}}" wx:for-item="filled" wx:key="index">★</text>
+      </view>
+      <view class="r-content">{{item.content}}</view>
+      <view class="r-foot between">
+        <text class="r-anon" wx:if="{{item.anonymous}}">匿名</text>
+        <text class="r-link" data-id="{{item.itemId}}" bindtap="goItem">查看商品 ›</text>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{!loading && myList.length===0}}">
+      <view class="icon">⭐</view><view class="tip">还没有评价，完成交易后快来评价吧</view>
+    </view>
+  </view>
+
+  <!-- 我收到的 -->
+  <view class="list" wx:if="{{tab==='received'}}">
+    <view class="card r-item" wx:for="{{receivedList}}" wx:key="id">
+      <view class="r-top between">
+        <text class="r-role">{{item.peerName}} 评价了我</text>
+        <text class="r-time">{{item.createdAt}}</text>
+      </view>
+      <view class="stars">
+        <text class="star {{filled ? 'on' : ''}}" wx:for="{{item.ratingArr}}" wx:for-item="filled" wx:key="index">★</text>
+      </view>
+      <view class="r-content">{{item.content}}</view>
+      <view class="r-foot between">
+        <text class="r-anon" wx:if="{{item.anonymous}}">匿名</text>
+        <text class="r-link" data-id="{{item.itemId}}" bindtap="goItem">查看商品 ›</text>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{!loading && receivedList.length===0}}">
+      <view class="icon">💬</view><view class="tip">还没有收到评价，好好经营信用吧</view>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+</view>

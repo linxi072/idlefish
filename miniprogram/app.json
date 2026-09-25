@@ -9,6 +9,8 @@
     "pages/order/detail/detail",
     "pages/refund/apply/apply",
     "pages/refund/detail/detail",
+    "pages/evaluate/apply/apply",
+    "pages/evaluate/list/list",
     "pages/message/message",
     "pages/chat/chat",
     "pages/mine/mine",

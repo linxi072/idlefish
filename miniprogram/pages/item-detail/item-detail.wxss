@@ -14,6 +14,23 @@
 .desc { margin: 0 20rpx 20rpx; }
 .sec-title { font-size: 28rpx; font-weight: 600; margin-bottom: 12rpx; }
 .desc-text { font-size: 26rpx; color: var(--t2); line-height: 42rpx; }
+
+/* 评价 */
+.reviews { margin: 0 20rpx 20rpx; }
+.r-head { display: flex; align-items: baseline; justify-content: space-between; }
+.r-summary { font-size: 24rpx; color: var(--t3); font-weight: 400; }
+.r-avg { color: #FFB300; font-weight: 700; font-size: 28rpx; }
+.stars { display: flex; }
+.star { font-size: 32rpx; color: #D9D9D9; margin-right: 6rpx; line-height: 1; }
+.star.on { color: #FFB300; }
+.r-stars { margin: 4rpx 0 16rpx; }
+.r-list { border-top: 2rpx solid #F2F3F5; padding-top: 16rpx; }
+.r-item { padding: 16rpx 0; border-bottom: 2rpx solid #F7F8FA; }
+.r-item:last-child { border-bottom: none; }
+.r-top { font-size: 26rpx; }
+.r-name { font-weight: 600; color: var(--t1); }
+.r-time { color: var(--t3); font-size: 22rpx; }
+.r-content { font-size: 26rpx; color: var(--t1); line-height: 1.6; margin-top: 8rpx; }
 .safe-tip { margin: 0 20rpx 20rpx; padding: 18rpx 24rpx; background: var(--xy-light); color: #7A5A00; font-size: 24rpx; border-radius: 14rpx; }
 .action-bar { position: fixed; left: 0; right: 0; bottom: 0; height: 110rpx; background: #fff; display: flex; align-items: center; padding: 0 20rpx; box-shadow: 0 -4rpx 16rpx rgba(0,0,0,.05); }
 .act { width: 110rpx; display: flex; flex-direction: column; align-items: center; color: var(--t2); }

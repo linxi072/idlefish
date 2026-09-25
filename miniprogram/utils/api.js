@@ -80,6 +80,16 @@ const api = {
   platformRefund(refundNo) { return route(() => mock.platformRefund(refundNo), () => http.post('/api/refunds/platform/' + refundNo)); },
   cancelRefund(refundNo) { return route(() => mock.cancelRefund(refundNo), () => http.post('/api/refunds/' + refundNo + '/cancel')); },
 
+  // ===== 评价 / 信用（后端 base: /api/reviews，对齐 ReviewController / ReviewSubmitDTO）=====
+  // 提交评价：orderNo + rating(1-5,必填) + content(≤512,选填) + anonymous(0/1)
+  submitReview(data) { return route(() => mock.submitReview(data), () => http.post('/api/reviews/submit', data)); },
+  // 某商品评价列表（展示，仅通过）
+  listReviewsByItem(itemId) { return route(() => mock.listReviewsByItem(itemId), () => http.get('/api/reviews/item/' + itemId, null, false)); },
+  // 我发出的评价（仅通过）
+  myReviews() { return route(() => mock.myReviews(), () => http.get('/api/reviews/my')); },
+  // 我收到的评价（被评价方视角，仅通过）
+  receivedReviews() { return route(() => mock.receivedReviews(), () => http.get('/api/reviews/received')); },
+
   // ===== IM =====
   getConversations() { return route(() => mock.getConversations(), () => http.get('/api/im/conversations')); },
   getMessages(convId) { return route(() => mock.getMessages(convId), () => http.get('/api/im/messages?convId=' + convId)); },

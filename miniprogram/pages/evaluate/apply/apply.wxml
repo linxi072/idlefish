@@ -1,0 +1,66 @@
+<view class="page eval-apply">
+
+  <!-- 商品卡片 -->
+  <view class="card goods" wx:if="{{order}}">
+    <image class="g-img" src="{{order.item.img}}" mode="aspectFill" />
+    <view class="g-info">
+      <view class="g-title ellipsis-2">{{order.item.title}}</view>
+      <view class="g-price">实付 ¥{{order.amountText}}</view>
+    </view>
+  </view>
+
+  <!-- 不可评价提示 -->
+  <view class="card tip-card" wx:if="{{!eligible && ineligibleTip}}">
+    <view class="tip-text">{{ineligibleTip}}</view>
+  </view>
+
+  <!-- 已评价：只读展示 -->
+  <view class="card done" wx:if="{{existing}}">
+    <view class="sec-title">您已评价</view>
+    <view class="stars">
+      <text class="star {{existing.ratingArr[index] ? 'on' : ''}}" wx:for="{{existing.ratingArr}}" wx:key="index" wx:for-index="index">★</text>
+    </view>
+    <view class="done-content">{{existing.content}}</view>
+    <view class="done-anon" wx:if="{{existing.anonymous}}">匿名评价</view>
+    <view class="done-tip">感谢您的反馈，评价已帮助更多用户参考</view>
+  </view>
+
+  <block wx:if="{{eligible && !existing}}">
+    <!-- 评分 -->
+    <view class="card">
+      <view class="sec-title">{{roleLabel}}</view>
+      <view class="stars">
+        <text class="star {{ratingArr[index] ? 'on' : ''}}" wx:for="{{ratingArr}}" wx:key="index" wx:for-index="index" data-n="{{index+1}}" bindtap="onRating">★</text>
+      </view>
+      <view class="rate-hint">{{rating}} 分 · {{rating >= 4 ? '满意' : (rating >= 3 ? '一般' : '不满意')}}</view>
+    </view>
+
+    <!-- 评价内容 -->
+    <view class="card">
+      <view class="sec-title">评价内容</view>
+      <textarea class="r-textarea" value="{{content}}" bindinput="onContent" maxlength="{{contentMax}}" placeholder="说说这次交易的体验，帮助更多人参考" />
+      <view class="counter">{{contentLen}}/{{contentMax}}</view>
+    </view>
+
+    <!-- 匿名 -->
+    <view class="card anon">
+      <view class="anon-left">
+        <view class="anon-name">匿名评价</view>
+        <view class="anon-desc">勾选后，对方将看不到您的昵称</view>
+      </view>
+      <switch class="anon-switch" checked="{{anonymous}}" bindchange="onAnon" color="#FFB300" />
+    </view>
+  </block>
+
+  <!-- 底部操作 -->
+  <view class="action-bar">
+    <block wx:if="{{existing}}">
+      <view class="btn btn-block btn-ghost" bindtap="goOrder">返回订单</view>
+    </block>
+    <block wx:else>
+      <view class="btn btn-block {{(!eligible || submitting) ? 'btn-disabled' : ''}}" bindtap="submit">
+        {{submitting ? '提交中…' : '提交评价'}}
+      </view>
+    </block>
+  </view>
+</view>

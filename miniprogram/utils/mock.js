@@ -74,11 +74,30 @@ const refunds = [
   { refundNo: 'RF20260919001', orderNo: 'NO20260919003', buyerId: 1003, sellerId: me.id, type: 'return_refund', amount: 5200, reason: '买家要求退货，屏幕有暗点', status: 'wait_seller', logisticsNo: '', createdAt: Date.now() - 3600 * 1000 * 6 }
 ];
 
+// 本地评价集合（mock 模式，模拟 ReviewService 互评 + 内容机审）
+// 预置：2 条「我发出的」（买家评卖家 / 卖家评买家）+ 1 条「我收到的」，便于演示双向与评价展示
+function fmtTs(ts) {
+  const d = new Date(ts);
+  const p = (x) => (x < 10 ? '0' + x : '' + x);
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+const reviews = [
+  { id: 1, orderNo: 'NO20260910001', itemId: 9001, reviewerId: me.id, targetId: 1001, role: 'BUYER_SELLER', rating: 5, content: '笔记本成色很好，卖家发货快，沟通顺畅！', anonymous: 0, status: 1, createdAt: fmtTs(Date.now() - 3600 * 1000 * 240) },
+  { id: 2, orderNo: 'NO20260905001', itemId: 9003, reviewerId: me.id, targetId: 1002, role: 'SELLER_BUYER', rating: 4, content: '买家很爽快，交易愉快。', anonymous: 0, status: 1, createdAt: fmtTs(Date.now() - 3600 * 1000 * 480) },
+  { id: 3, orderNo: 'NO20260901001', itemId: 9002, reviewerId: 1001, targetId: me.id, role: 'SELLER_BUYER', rating: 5, content: '非常好的买家，付款及时，推荐！', anonymous: 0, status: 1, createdAt: fmtTs(Date.now() - 3600 * 1000 * 720) }
+];
+
 function findRefund(refundNo) { return refunds.find(r => r.refundNo === refundNo) || null; }
 // 模拟后端的 BizException(STATE_NOT_ALLOWED)：延迟后 reject，前端按 (e.msg) 提示
 function failRefund(msg) {
   return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
 }
+// 评价类失败（同机制）
+function failReview(msg) {
+  return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
+}
+// 评价是否已完成（通过/驳回，不可再提交/修改）
+function reviewTerminal(status) { return status === 1 || status === 2; }
 // 退款是否处于终态（不可再操作）
 function refundTerminal(status) {
   return status === 'refunded' || status === 'rejected' || status === 'canceled';
@@ -220,6 +239,35 @@ module.exports = {
     return delay(m);
   },
   track() { return delay({ ok: true }); },
+  // ===== 评价 / 信用（对齐 ReviewService 互评 + 内容机审）=====
+  submitReview(dto) {
+    const o = orders.find(x => x.orderNo === dto.orderNo);
+    if (!o) return failReview('订单不存在');
+    if (o.status !== 'completed' && o.status !== 'closed') return failReview('仅已完成/已关闭订单可评价');
+    // 评价角色：me 是买家则「买家评价卖家」，否则「卖家评价买家」
+    const myRole = o.role === 'buyer' ? 'BUYER_SELLER' : 'SELLER_BUYER';
+    // 幂等：同订单、同角色仅允许一条（待审/通过）
+    const exist = reviews.find(r => r.orderNo === dto.orderNo && r.role === myRole && (r.status === 0 || r.status === 1));
+    if (exist) return delay({ id: exist.id });
+    const targetId = o.role === 'buyer' ? (o.item && o.item.seller && o.item.seller.id) : (o.buyerId || 1003);
+    const r = {
+      id: Date.now(), orderNo: dto.orderNo,
+      itemId: o.item ? o.item.id : 0, reviewerId: me.id, targetId, role: myRole,
+      rating: dto.rating, content: (dto.content || '').trim(),
+      anonymous: dto.anonymous ? 1 : 0, status: 1, createdAt: fmtTs(Date.now())
+    };
+    reviews.push(r);
+    return delay({ id: r.id });
+  },
+  listReviewsByItem(itemId) {
+    return delay(reviews.filter(r => r.itemId === Number(itemId) && r.status === 1).map(r => Object.assign({}, r)));
+  },
+  myReviews() {
+    return delay(reviews.filter(r => r.reviewerId === me.id && r.status === 1).map(r => Object.assign({}, r)));
+  },
+  receivedReviews() {
+    return delay(reviews.filter(r => r.targetId === me.id && r.status === 1).map(r => Object.assign({}, r)));
+  },
   // —— 后台 mock ——
   adminLogin() { return delay({ token: 'admin-mock-token', user: { username: 'admin', role: 'admin' } }); },
   adminStats() { return delay({ gmv: 128600, orderCnt: 342, userCnt: 1560, itemCnt: 892, pendingReview: 23, refunding: 5, todayRegister: 42 }); },

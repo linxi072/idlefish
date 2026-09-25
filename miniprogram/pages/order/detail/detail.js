@@ -1,12 +1,14 @@
 const api = require('../../utils/api.js');
-const { formatPrice, statusText, formatTime, canApplyRefund } = require('../../utils/util.js');
+const { formatPrice, statusText, formatTime, canApplyRefund, canEvaluate, orderRoleToReviewRole } = require('../../utils/util.js');
 
 Page({
   data: {
     orderNo: '', order: null, amountText: '', statusT: '', timeT: '',
     showShip: false, shipForm: { company: '', logisticNo: '' },
     // 售后：该订单已有的退款单（用于「查看/处理退款」入口）+ 是否可发起申请
-    refund: null, canApply: false
+    refund: null, canApply: false,
+    // 评价：仅已完成/已关闭订单可评；已评价则入口显示「查看评价」
+    reviewed: false, canEvaluate: false
   },
 
   onLoad(options) {
@@ -34,6 +36,7 @@ Page({
       this.setData({ order: o });
       this.maybePoll(o.status);
       this.loadRefund();
+      this.loadReviewState(o);
     }).catch((e) => wx.showToast({ title: (e && e.msg) || '加载失败', icon: 'none' }));
   },
 
@@ -133,6 +136,23 @@ Page({
     if (!r) return;
     const role = (this.data.order && this.data.order.role) || '';
     wx.navigateTo({ url: '/pages/refund/detail/detail?refundNo=' + r.refundNo + '&role=' + role });
+  },
+
+  // 评价入口状态：仅已完成/已关闭订单可评；调 myReviews 判定该订单该角色是否已评
+  loadReviewState(o) {
+    if (!canEvaluate(o.status)) {
+      this.setData({ canEvaluate: false, reviewed: false });
+      return;
+    }
+    const roleCode = orderRoleToReviewRole(o.role);
+    api.myReviews().then((list) => {
+      const reviewed = (list || []).some(r => r.orderNo === o.orderNo && r.role === roleCode);
+      this.setData({ canEvaluate: true, reviewed });
+    }).catch(() => { this.setData({ canEvaluate: true, reviewed: false }); });
+  },
+
+  goEvaluate() {
+    wx.navigateTo({ url: '/pages/evaluate/apply/apply?orderNo=' + this.data.orderNo });
   },
 
   contact() {

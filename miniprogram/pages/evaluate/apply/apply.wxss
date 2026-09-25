@@ -1,0 +1,47 @@
+.eval-apply { padding: 20rpx 20rpx 160rpx; }
+.eval-apply .card { margin-bottom: 20rpx; }
+
+.sec-title { font-size: 30rpx; font-weight: 600; margin-bottom: 20rpx; }
+
+/* 商品 */
+.goods { display: flex; }
+.g-img { width: 160rpx; height: 160rpx; border-radius: 12rpx; background: #eee; flex-shrink: 0; }
+.g-info { flex: 1; margin-left: 20rpx; }
+.g-title { font-size: 28rpx; }
+.g-price { color: var(--red); font-weight: 700; margin-top: 20rpx; }
+
+/* 不可评价提示 */
+.tip-card { background: #FFF7E6; }
+.tip-text { font-size: 26rpx; color: #B26A00; line-height: 1.6; }
+
+/* 星标 */
+.stars { display: flex; }
+.star { font-size: 56rpx; color: #D9D9D9; margin-right: 16rpx; line-height: 1; }
+.star.on { color: #FFB300; }
+.rate-hint { font-size: 24rpx; color: var(--t3); margin-top: 16rpx; }
+
+/* 评价内容 */
+.r-textarea {
+  width: 100%; height: 180rpx; box-sizing: border-box;
+  border: 2rpx solid #E5E7EB; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx;
+}
+.counter { text-align: right; font-size: 22rpx; color: var(--t3); margin-top: 8rpx; }
+
+/* 匿名 */
+.anon { display: flex; justify-content: space-between; align-items: center; }
+.anon-name { font-size: 28rpx; font-weight: 600; }
+.anon-desc { font-size: 22rpx; color: var(--t3); margin-top: 6rpx; }
+.anon-switch { transform: scale(0.85); }
+
+/* 已评价只读 */
+.done-content { font-size: 28rpx; color: var(--t1); line-height: 1.6; margin-top: 8rpx; }
+.done-anon { display: inline-block; font-size: 20rpx; color: var(--t2); background: #F0F1F4; border-radius: 8rpx; padding: 4rpx 12rpx; margin-top: 16rpx; }
+.done-tip { font-size: 24rpx; color: var(--t3); margin-top: 20rpx; }
+
+/* 底部 */
+.action-bar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding: 16rpx 20rpx; background: #fff;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, .05);
+}
+.btn-disabled { opacity: .5; }

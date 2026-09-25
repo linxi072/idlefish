@@ -76,8 +76,32 @@ function yuanToFen(yuan) {
   return Math.round(v * 100);
 }
 
+// ===== 评价 / 信用（F-09 evaluate，对齐后端 ReviewRole / ReviewSubmitDTO）=====
+// 评价角色中文（后端 ReviewRole：BUYER_SELLER=买家评价卖家，SELLER_BUYER=卖家评价买家）
+const REVIEW_ROLE = { BUYER_SELLER: '我评价卖家', SELLER_BUYER: '我评价买家' };
+function reviewRoleLabel(code) { return REVIEW_ROLE[code] || code; }
+
+// 订单是否允许评价（严格对齐后端 ReviewService.submit 守卫：仅 COMPLETED / CLOSED）
+function canEvaluate(orderStatus) {
+  return orderStatus === 'completed' || orderStatus === 'closed';
+}
+
+// 订单角色 → 评价角色 code（买家评价卖家 / 卖家评价买家）
+function orderRoleToReviewRole(orderRole) {
+  return orderRole === 'buyer' ? 'BUYER_SELLER' : 'SELLER_BUYER';
+}
+
+// 评分转 5 格布尔数组，便于 WXML 用 wx:for 渲染星标（filled=实心）
+function ratingArray(rating) {
+  const n = Math.max(0, Math.min(5, Number(rating) || 0));
+  const arr = [];
+  for (let i = 1; i <= 5; i++) arr.push(i <= n);
+  return arr;
+}
+
 module.exports = {
   formatPrice, formatTime, fromNow, statusText,
   ITEM_STATUS, ORDER_STATUS, REFUND_STATUS,
-  REFUND_TYPE, isRefundTerminal, refundStepIndex, canApplyRefund, yuanToFen
+  REFUND_TYPE, isRefundTerminal, refundStepIndex, canApplyRefund, yuanToFen,
+  REVIEW_ROLE, reviewRoleLabel, canEvaluate, orderRoleToReviewRole, ratingArray
 };

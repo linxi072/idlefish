@@ -24,6 +24,8 @@ miniprogram/
     ├── order/detail/                 订单详情（支付 / 发货 / 确认收货 / 售后入口）
     ├── refund/apply/                 申请退款（方式 / 金额 / 原因，F-09）
     ├── refund/detail/                退款详情（状态时间线 + 买卖双方操作，F-09）
+    ├── evaluate/apply/               提交评价（星级评分 / 内容 / 匿名，F-09）
+    ├── evaluate/list/                我的评价（我发出的 / 我收到的，F-09）
     ├── message/                      消息（会话列表）
     ├── chat/                         IM 聊天（文本 / 商品卡 / 议价卡）
     ├── mine/                         我的（资料 / 菜单 / 退出）
@@ -65,10 +67,32 @@ miniprogram/
 
 **金额单位契约**：全链路以「分」为单位，用户输入「元」由 `util.yuanToFen` 转换，展示统一经 `formatPrice` 除 100。
 
+## 评价模块（F-09）
+| 页面 | 路径 | 说明 |
+|---|---|---|
+| 提交评价 | `pages/evaluate/apply/apply` | 星级评分（1-5）、评价内容（≤512 字）、匿名开关；已评价则只读展示；提交后返回订单详情 |
+| 我的评价 | `pages/evaluate/list/list` | Tab 切换「我发出的 / 我收到的」，星标 + 内容 + 匿名标签 + 时间，可跳转商品详情 |
+
+**入口**：
+- 订单详情（`pages/order/detail`）：仅 `completed`/`closed` 订单显示「评价 / 查看评价」，调 `myReviews` 判定是否已评（严格对齐后端 `ReviewService.submit` 守卫：仅 COMPLETED/CLOSED 可评）。
+- 商品详情（`pages/item-detail`）：展示该商品评分汇总（均分 + 条数）与评价列表（`/api/reviews/item/:id`）。
+- 「我的」页菜单：「我的评价」→ `pages/evaluate/list/list`。
+
+**状态/契约（对齐后端 `ReviewController` / `ReviewSubmitDTO` / `ReviewService`）**：
+- 提交入参：`orderNo` + `rating`(1-5, 必填) + `content`(≤512, 选填) + `anonymous`(0/1)。
+- 互评角色：买家→`BUYER_SELLER`，卖家→`SELLER_BUYER`（前端经 `util.orderRoleToReviewRole` 推导）。
+- 幂等：同订单、同角色仅一条；已评价时 `myReviews` 命中即只读展示，不再重复提交。
+- 内容机审：后端机审通过直接通过并触发被评价方信用重算；mock 默认通过。
+
 ## Mock 演示数据
 `utils/mock.js` 预置两条退款单，`me.id = 2001`：
 - `RF20260920001`（订单 NO20260920002，**我是买家**，仅退款，待卖家处理）→ 演示「撤销/平台介入」
 - `RF20260919001`（订单 NO20260919003，**我是卖家**，退货退款，待处理）→ 演示「同意/拒绝/确认收货」
+
+`utils/mock.js` 另预置 3 条评价，`me.id = 2001`：
+- 我发出的 2 条：买家评卖家（商品 9001，5 分）、卖家评买家（商品 9003，4 分）
+- 我收到的 1 条：用户 1001 评我（商品 9002，5 分）
+商品详情页 9001/9002/9003 可分别看到对应评价；「我的评价」页可直接查看双向评价。
 
 > 注：mock 数据中的金额沿用历史写法（如 MacBook `4200`），与其它页面一样被 `formatPrice` 视为「分」展示为 ¥42.00；
 > 这是 mock 数据本身的单位不一致（真实后端为「分」，如 420000），不影响真实后端联调。

@@ -38,6 +38,32 @@
     <view class="desc-text">{{item.description}}</view>
   </view>
 
+  <!-- 评价 -->
+  <view class="reviews card">
+    <view class="sec-title r-head">
+      <text>商品评价</text>
+      <text class="r-summary" wx:if="{{reviewCount > 0}}">
+        <text class="r-avg">{{reviewAvg}}</text> 分 · {{reviewCount}} 条
+      </text>
+      <text class="r-summary" wx:else>暂无评价</text>
+    </view>
+    <view class="stars r-stars" wx:if="{{reviewCount > 0}}">
+      <text class="star {{filled ? 'on' : ''}}" wx:for="{{reviewStars}}" wx:for-item="filled" wx:key="index">★</text>
+    </view>
+    <view class="r-list" wx:if="{{reviewCount > 0}}">
+      <view class="r-item" wx:for="{{reviews}}" wx:key="id">
+        <view class="r-top between">
+          <text class="r-name">{{item.peerName}}</text>
+          <text class="r-time">{{item.createdAt}}</text>
+        </view>
+        <view class="stars">
+          <text class="star {{filled ? 'on' : ''}}" wx:for="{{item.ratingArr}}" wx:for-item="filled" wx:key="index">★</text>
+        </view>
+        <view class="r-content">{{item.content}}</view>
+      </view>
+    </view>
+  </view>
+
   <!-- 担保提示 -->
   <view class="safe-tip">🛡️ 担保交易：付款后资金由平台托管，确认收货后打款给卖家</view>
 

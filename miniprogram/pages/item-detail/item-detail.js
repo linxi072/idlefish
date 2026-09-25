@@ -1,9 +1,11 @@
 const api = require('../../utils/api.js');
-const { formatPrice, fromNow, statusText } = require('../../utils/util.js');
+const { formatPrice, fromNow, statusText, ratingArray } = require('../../utils/util.js');
 
 Page({
   data: {
-    id: null, item: null, loading: true, fav: false, curImg: 0
+    id: null, item: null, loading: true, fav: false, curImg: 0,
+    // 评价展示（对齐后端 /api/reviews/item/:id，仅通过）
+    reviews: [], reviewCount: 0, reviewAvg: 0, reviewStars: [false, false, false, false, false]
   },
 
   onLoad(options) {
@@ -16,6 +18,7 @@ Page({
       this.setData({ item, loading: false });
       api.track('item_view', { item_id: id, source: 'detail' });
       api.favoriteCheck(id).then((fav) => this.setData({ fav: !!fav })).catch(() => {});
+      this.loadReviews(id);
     }).catch((e) => {
       this.setData({ loading: false });
       wx.showToast({ title: (e && e.msg) || '加载失败', icon: 'none' });
@@ -23,6 +26,19 @@ Page({
   },
 
   onImgChange(e) { this.setData({ curImg: e.detail.current }); },
+
+  // 拉取商品评价（通过），计算均分与星标，补充展示名（匿名→匿名用户）
+  loadReviews(id) {
+    api.listReviewsByItem(id).then((list) => {
+      const arr = (list || []).map(r => Object.assign({}, r, {
+        ratingArr: ratingArray(r.rating),
+        peerName: r.anonymous ? '匿名用户' : ('用户' + r.reviewerId)
+      }));
+      const count = arr.length;
+      const avg = count ? Math.round(arr.reduce((s, r) => s + r.rating, 0) / count * 10) / 10 : 0;
+      this.setData({ reviews: arr, reviewCount: count, reviewAvg: avg, reviewStars: ratingArray(Math.round(avg)) });
+    }).catch(() => {});
+  },
 
   toggleFav() {
     const itemId = this.data.id;
