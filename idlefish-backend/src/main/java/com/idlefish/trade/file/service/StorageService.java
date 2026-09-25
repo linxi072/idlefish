@@ -5,7 +5,6 @@ import java.io.InputStream;
 /**
  * 对象存储抽象：屏蔽本地盘与阿里云 OSS 差异。
  * 实现：
- * - {@link LocalDiskStorageServiceImpl}（idlefish.oss.mock=true 默认）：落本地 uploads 目录，演示可用；
  * - {@link OssStorageServiceImpl}（idlefish.oss.mock=false）：对接真实阿里云 OSS（REST + HMAC-SHA1 签名）。
  * 切换由 application.yml 的 idlefish.oss.mock 控制，不改动业务代码。
  */

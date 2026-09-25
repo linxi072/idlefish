@@ -8,7 +8,7 @@ import java.util.List;
  * 内容审核抽象（PRD §B3 AI 机审 / §E3 IM 审核）：
  * Mock 实现本地关键词/正则机审（复用 SensitiveWords）；
  * 真实实现对接阿里云内容安全（绿网）文本/图片检测。
- * 由 idlefish.audit.mock 开关切换（默认 Mock，沙箱可跑通）。
+ * 统一使用真实内容安全实现。
  */
 public interface ContentAuditService {
 

@@ -59,9 +59,9 @@ const api = {
   // ===== 订单 / 支付 =====
   createOrder(data) { return route(() => mock.createOrder(data), () => http.post('/api/orders/create', data)); },
   prepay(data) { return route(() => mock.prepay(data), () => http.post('/api/pay/prepay', data)); },
+  // 注：后端已移除 Mock 支付完成端点 /api/pay/mock/{payNo} 与真实支付下的表单式 notify 旁路。
+  // 真实支付结果一律由微信异步回调 /api/pay/notify/v3 落地，前端通过订单轮询获取状态。
   payNotify(data) { return route(() => mock.payNotify(data), () => http.post('/api/pay/notify', data, false)); },
-  // Mock 支付完成（仅在 idlefish.pay.mock=true 的真实后端可用，复用 notify 幂等/验签逻辑）
-  payMockComplete(payNo) { return route(() => mock.payMockComplete(payNo), () => http.post('/api/pay/mock/' + payNo, {}, false)); },
   listOrders(role) { return route(() => mock.listOrders(role), () => http.get('/api/orders?role=' + (role || ''))); },
   getOrder(orderNo) { return route(() => mock.getOrder(orderNo), () => http.get('/api/orders/' + orderNo)); },
   cancelOrder(orderNo) { return route(() => mock.cancelOrder(), () => http.post('/api/orders/' + orderNo + '/cancel')); },

@@ -5,7 +5,7 @@ import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.im.ws.WsSessionManager;
 import com.idlefish.trade.notify.channel.ChannelType;
 import com.idlefish.trade.notify.channel.InAppNotifyChannel;
-import com.idlefish.trade.notify.channel.MockSmsNotifyChannelImpl;
+import com.idlefish.trade.notify.channel.RealSmsNotifyChannelImpl;
 import com.idlefish.trade.notify.channel.NotifyChannel;
 import com.idlefish.trade.notify.channel.NotifyMessage;
 import com.idlefish.trade.notify.channel.PushNotifyChannel;
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * F-05 通知渠道抽象与路由纯单测（无 Spring 上下文，CI `mvn test` 执行）。
- * 覆盖：渠道路由策略、分发只命中匹配渠道、InApp 落库、Push 离线跳过/在线推送、MockSms 不外抛。
+ * 覆盖：渠道路由策略、分发只命中匹配渠道、InApp 落库、Push 离线跳过/在线推送、真实短信 fail-closed。
  */
 class NotifyChannelTest {
 
@@ -95,8 +95,9 @@ class NotifyChannelTest {
     }
 
     @Test
-    void mockSms_channel_does_not_throw() {
-        MockSmsNotifyChannelImpl sms = new MockSmsNotifyChannelImpl();
+    void realSms_channel_is_fail_closed_and_does_not_throw() {
+        // 生产已移除 Mock 短信：真实渠道为 fail-closed，凭据缺失时回落日志，绝不外抛
+        RealSmsNotifyChannelImpl sms = new RealSmsNotifyChannelImpl(new IdlefishProperties());
         assertEquals(ChannelType.SMS, sms.type());
         sms.send(NotifyMessage.builder().userId(1L).type(NotificationType.REFUND_PLATFORM)
                 .title("x").content("y").build());

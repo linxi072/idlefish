@@ -6,6 +6,7 @@ import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.common.IdlefishProperties;
+import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.risk.entity.RiskEvent;
 import com.idlefish.trade.risk.mapper.RiskEventMapper;
 import com.idlefish.trade.trade.entity.FundFlow;
@@ -40,6 +41,7 @@ public class SettlementService {
     private final FundEscrowService escrow;
     private final IdlefishProperties props;
     private final NotificationService notificationService;
+    private final MetricsRegistry metrics;
 
     /** 平台佣金比例（PRD §4.3）。 */
     private static final double PLATFORM_RATE = 0.05;
@@ -47,7 +49,7 @@ public class SettlementService {
     public SettlementService(SettlementMapper settlementMapper, OrderMapper orderMapper,
                              FundFlowMapper fundFlowMapper, RiskEventMapper riskEventMapper,
                              FundEscrowService escrow, IdlefishProperties props,
-                             NotificationService notificationService) {
+                             NotificationService notificationService, MetricsRegistry metrics) {
         this.settlementMapper = settlementMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
@@ -55,6 +57,7 @@ public class SettlementService {
         this.escrow = escrow;
         this.props = props;
         this.notificationService = notificationService;
+        this.metrics = metrics;
     }
 
     /** 交易成功：生成待结算单（T+1）。幂等：同一订单仅生成一次，防并发双重结算资损。 */
@@ -85,14 +88,13 @@ public class SettlementService {
             // 并发场景由 t_settlement.order_no 唯一约束兜底，安全忽略
         }
         // 真实微信分账：交易成功后即时将卖家应得款项分账至接收方（生产为卖家子商户号）；
-        // 演示（pay.mock=true）跳过；异常不阻断结算单生成（结算仍按 T+1 放款兜底）。
-        if (!props.isPayMock()) {
-            try {
-                escrow.profitShare(o.getPayNo(), o.getPayAmount(),
-                        props.getPay().getMchid(), sellerAmount);
-            } catch (Exception e) {
-                log.warn("微信分账发起失败（不影响结算单）orderNo={}: {}", orderNo, e.getMessage());
-            }
+        // 异常不阻断结算单生成（结算仍按 T+1 放款兜底）。
+        try {
+            metrics.timed("settle.profitshare", () -> escrow.profitShare(o.getPayNo(), o.getPayAmount(),
+                    props.getPay().getMchid(), sellerAmount));
+        } catch (Exception e) {
+            metrics.increment("settle.profitshare.failure");
+            log.warn("微信分账发起失败（不影响结算单）orderNo={}: {}", orderNo, e.getMessage());
         }
     }
 
@@ -130,6 +132,7 @@ public class SettlementService {
             if (claimed == 0) {
                 continue;
             }
+            metrics.increment("settle.settled");
 
             // F-05 闭环：结算放款成功后触达卖家（资金变动通知），best-effort 不阻断主流程
             notificationService.notify(s.getSellerId(), NotificationType.SETTLEMENT_SUCCESS, s.getSettleNo(),

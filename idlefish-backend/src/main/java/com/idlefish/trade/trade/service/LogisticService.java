@@ -5,8 +5,7 @@ import java.util.Map;
 
 /**
  * 物流服务抽象（PRD §D5 物流）：
- * - {@link MockLogisticsServiceImpl}（idlefish.logistics.mock=true 默认）：模拟单号与轨迹，并落库；
- * - {@link RealLogisticsServiceImpl}（idlefish.logistics.mock=false）：对接真实物流商（快递100），不可用时降级模拟。
+ * - {@link RealLogisticsServiceImpl}（真实物流查询，默认启用）：对接真实物流商（快递100），不可用时降级模拟。
  */
 public interface LogisticService {
 

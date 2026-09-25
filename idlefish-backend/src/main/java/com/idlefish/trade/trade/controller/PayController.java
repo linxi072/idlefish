@@ -37,13 +37,6 @@ public class PayController {
         return Result.ok();
     }
 
-    /** Mock 支付完成（仅 Mock 模式可用）：演示链路中由前端触发，走通 待支付→已支付。 */
-    @PostMapping("/mock/{payNo}")
-    public Result<Void> mockPay(@PathVariable String payNo) {
-        payService.mockComplete(payNo);
-        return Result.ok();
-    }
-
     /**
      * 微信支付 v3 回调（真实模式）：JSON 密文 + 签名头。验签 + 解密 + 幂等落地。
      * 生产需放行该端点鉴权（WebConfig 已对 /api/pay/** 放行）。

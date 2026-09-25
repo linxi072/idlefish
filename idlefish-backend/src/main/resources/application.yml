@@ -29,6 +29,13 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
 
+# 零依赖可观测性：traceId 透传至日志（MDC），HTTP 请求指标在 /actuator/metrics 暴露
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level traceId=%X{traceId:-} %logger{36} - %msg%n"
+  level:
+    root: INFO
+
 # 业务自定义配置
 idlefish:
   jwt:
@@ -46,6 +53,9 @@ idlefish:
   cache:
     # 缓存实现：local（默认，内存，离线可用，与 local profile 一致）/ redis（生产，需 idlefish.redis 配置，prod profile 构建）
     type: local
+  observability:
+    # 零依赖可观测性总开关：HTTP traceId + 请求指标 + 业务指标
+    enabled: ${IDLEFISH_OBSERVABILITY_ENABLED:true}
   redis:
     host: 127.0.0.1
     port: 6379
@@ -53,13 +63,11 @@ idlefish:
     password:
     timeout-ms: 3000
   login:
-    # mock=true 走本地 Mock 登录（code 直接当 openid，离线可跑通）；生产部署请通过 IDLEFISH_LOGIN_MOCK=false 对接真实微信
-    mock: ${IDLEFISH_LOGIN_MOCK:true}        # true=本地 Mock 登录；false=真实 jscode2session
+    # 真实微信登录（jscode2session）；AppID/Secret 必须经环境变量注入
     appid: "${IDLEFISH_LOGIN_APPID:}"        # 微信小程序 AppID
     secret: "${IDLEFISH_LOGIN_SECRET:}"      # 微信小程序 AppSecret（生产务必走环境变量，切勿明文提交）
   pay:
-    # mock=true 走本地 Mock 支付（跑通链路）；生产部署请通过环境变量 IDLEFISH_PAY_MOCK=false 关闭
-    mock: ${IDLEFISH_PAY_MOCK:true}          # true=本地 Mock 支付（跑通链路）；false=对接真实微信分账
+    # 真实微信支付 v3（JSAPI 下单 / 退款 / 分账 / 回调验签解密），凭据经环境变量注入
     mchid: "${IDLEFISH_PAY_MCHID:}"
     appid: "${IDLEFISH_PAY_APPID:}"
     serial-no: "${IDLEFISH_PAY_SERIAL:}"
@@ -68,12 +76,11 @@ idlefish:
     notify-url: "${IDLEFISH_PAY_NOTIFY_URL:}"
     gateway: "https://api.mch.weixin.qq.com"
   search:
-    mock: true          # true=基于数据库的实现（模拟 ES）；false=对接真实 Elasticsearch
-    hosts:              # mock=false 时使用，例如 - http://127.0.0.1:9200
+    hosts:              # 真实 Elasticsearch 节点
       - "http://127.0.0.1:9200"
     index: "idlefish_item"
   mq:
-    mock: true          # true=基于 DB 持久化 + 定时器的本地实现；false=对接真实 RocketMQ
+    # 真实 RocketMQ（阿里云 HTTP 接入点）
     endpoint: "${IDLEFISH_MQ_ENDPOINT:}"
     access-key: "${IDLEFISH_MQ_AK:}"
     secret-key: "${IDLEFISH_MQ_SK:}"
@@ -81,16 +88,13 @@ idlefish:
     topic: "idlefish_delay"
     group: "idlefish_delay_grp"
   audit:
-    mock: true          # true=本地关键词/正则机审（复用 SensitiveWords）；false=阿里云内容安全（绿网）
+    # 真实阿里云内容安全（绿网）机审
   logistics:
-    mock: true          # true=本地模拟物流轨迹；false=对接真实物流商（快递100/菜鸟）
+    # 真实物流查询（快递100 / 菜鸟）
     provider: "kuaidi100"
     customer: "${IDLEFISH_LOGI_CUSTOMER:}"
     key: "${IDLEFISH_LOGI_KEY:}"
     url: "https://poll.kuaidi100.com/poll/query.do"
-  file:
-    mock: false         # false=真实落盘到本地 uploads（演示可用）；生产应改为 OSS
-    base-url: "/uploads/"
   oss:
     endpoint: "${IDLEFISH_OSS_ENDPOINT:}"
     bucket: "${IDLEFISH_OSS_BUCKET:}"
@@ -106,8 +110,6 @@ idlefish:
     device-order-window-min: 1
     blacklist-device-ids: []
   notify:
-    # 短信模式：mock（默认，仅日志）/ real（真实外发，需 sms.* 凭据，F-13 接入）
-    sms-mode: ${IDLEFISH_NOTIFY_SMS_MODE:mock}
     # 实时 WebSocket 推送是否启用（本地 WS 即真实通道，无需外部凭据）
     push-enabled: ${IDLEFISH_NOTIFY_PUSH_ENABLED:true}
     sms:

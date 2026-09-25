@@ -2,17 +2,15 @@ package com.idlefish.trade.notify.channel;
 
 import com.idlefish.trade.common.IdlefishProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * 短信渠道真实实现（生产启用：idlefish.notify.sms-mode=real）。
+ * 短信渠道真实实现（真实短信渠道（fail-closed，凭据缺失回落日志））。
  * 当前为 fail-closed 骨架：真实短信网关调用需注入凭据（签名/模板/密钥）后在此实现；
  * 配置缺失、未启用或发送异常时回落日志，绝不外抛，避免阻断主业务流程。
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "idlefish.notify.sms-mode", havingValue = "real")
 public class RealSmsNotifyChannelImpl implements SmsNotifyChannel {
 
     private final IdlefishProperties.Notify notify;

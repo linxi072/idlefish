@@ -8,7 +8,6 @@ import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.user.dto.WxSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -18,7 +17,6 @@ import org.springframework.web.client.RestTemplate;
  * 配置缺失或微信返回错误码时抛出 {@link BizException}（登录是入口，失败即失败，不静默吞错）。
  */
 @Service
-@ConditionalOnProperty(name = "idlefish.login.mock", havingValue = "false")
 public class RealWechatLoginServiceImpl implements WechatLoginService {
 
     private static final Logger log = LoggerFactory.getLogger(RealWechatLoginServiceImpl.class);

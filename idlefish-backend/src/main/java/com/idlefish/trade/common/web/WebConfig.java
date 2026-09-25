@@ -5,10 +5,8 @@ import com.idlefish.trade.admin.web.CurrentAdminArgumentResolver;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.nio.file.Paths;
 import java.util.List;
 
 /**
@@ -75,15 +73,4 @@ public class WebConfig implements WebMvcConfigurer {
         resolvers.add(currentAdminArgumentResolver);
     }
 
-    /**
-     * 静态资源映射：将上传目录以 /uploads/** 对外提供（与 idlefish.file.base-url 一致）。
-     * 生产环境应改用 OSS/S3 等对象存储，此处仅用于本地演示。
-     */
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String uploadDir = Paths.get(System.getProperty("user.dir"), "uploads")
-                .toAbsolutePath().toUri().toString();
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations(uploadDir);
-    }
 }

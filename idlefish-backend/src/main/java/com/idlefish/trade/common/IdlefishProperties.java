@@ -9,7 +9,9 @@ import java.util.List;
 
 /**
  * 读取 application.yml 中 idlefish.* 业务配置。
- * 外部组件均遵循「接口 + Mock（默认）+ 真实实现（按需开启）」的可切换范式。
+ * 外部组件一律使用真实实现：微信支付/分账、微信登录、阿里云 OSS、Elasticsearch、
+ * RocketMQ、物流查询、内容审核、短信。仅缓存保留 local/redis 双实现
+ * （idlefish.cache.type 切换，local 为离线默认）。
  */
 @Configuration
 @ConfigurationProperties(prefix = "idlefish")
@@ -17,12 +19,6 @@ import java.util.List;
 public class IdlefishProperties {
 
     private Jwt jwt = new Jwt();
-    private boolean payMock = true;
-    private boolean searchMock = true;
-    private boolean mqMock = true;
-    private boolean auditMock = true;
-    private boolean logisticsMock = true;
-    private File file = new File();
     private Oss oss = new Oss();
     private Search search = new Search();
     private Logistics logistics = new Logistics();
@@ -36,20 +32,13 @@ public class IdlefishProperties {
     private Redis redis = new Redis();
     private Notify notify = new Notify();
     private Credit credit = new Credit();
+    private Observability observability = new Observability();
 
     @Data
     public static class Jwt {
         private String secret;
         private long expireSeconds = 86400L;
         private long refreshSeconds = 2592000L;
-    }
-
-    @Data
-    public static class File {
-        /** 是否使用伪造 URL（不落盘）。演示默认 false，真实落盘并由后端静态映射 /uploads 提供访问。 */
-        private boolean mock = false;
-        /** 访问基址，需与静态资源映射路径一致。 */
-        private String baseUrl = "/uploads/";
     }
 
     @Data
@@ -140,8 +129,6 @@ public class IdlefishProperties {
 
     @Data
     public static class Login {
-        /** 是否使用本地 Mock 登录（code 直接当 openid）；生产置 false 走真实 jscode2session */
-        private boolean mock = true;
         /** 微信小程序 AppID */
         private String appid;
         /** 微信小程序 AppSecret（生产通过环境变量注入，切勿明文提交） */
@@ -182,8 +169,6 @@ public class IdlefishProperties {
 
     @Data
     public static class Notify {
-        /** 短信模式：mock（默认，仅日志）/ real（真实外发，需 sms.* 凭据，F-13 接入）。 */
-        private String smsMode = "mock";
         /** 实时 WebSocket 推送是否启用（本地 WS 即真实通道，无需外部凭据）。 */
         private boolean pushEnabled = true;
         /** 真实短信网关配置（smsMode=real 时生效）。 */
@@ -199,6 +184,12 @@ public class IdlefishProperties {
             private String secretKey;
             private String endpoint;
         }
+    }
+
+    @Data
+    public static class Observability {
+        /** 零依赖可观测性总开关：HTTP traceId + 请求指标 + 业务指标。 */
+        private boolean enabled = true;
     }
 
     @Data

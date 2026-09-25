@@ -9,10 +9,12 @@ import com.idlefish.trade.trade.entity.DelayTask;
 import com.idlefish.trade.trade.entity.PayOrder;
 import com.idlefish.trade.trade.mapper.DelayTaskMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
+import com.idlefish.trade.trade.service.FundEscrowService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,6 +30,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -35,14 +39,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 七大外部组件子系统「集成联调」冒烟测试（默认 mock 模式，零外部依赖即可跑通）：
+ * 七大外部组件子系统「集成联调」冒烟测试（全部走真实实现，需 MySQL + 外部基建）：
  * - B3/E3 AI 内容审核：发布含敏感词商品 → 机审驳回（rejected）；正常商品 → 审核通过（onsale）。
  * - F3 设备指纹风控：下单携带设备头 → 落设备指纹 + 埋点；风控引擎 R3/R4/R5/R6 规则可加载。
- * - D6 RocketMQ 延时队列（本地实现）：下单提交 ORDER_CLOSE、支付成功提交 REMIND_SHIP、发货提交 ORDER_CONFIRM。
- * - D5 物流 API（本地模拟）：发货落 t_logistics，轨迹查询返回非空。
- * - D2 微信支付+分账（Mock）：支付成功幂等落地 + 状态流转（paid→shipping→completed）。
- * - OSS 对象存储（本地磁盘实现）：文件上传落盘 uploads/ 并返回可访问 URL。
- * - ES 索引（本地实现）：审核通过触发 indexItem（mock 无副作用，验证调用链不抛错）。
+ * - D6 RocketMQ 延时队列：下单提交 ORDER_CLOSE、支付成功提交 REMIND_SHIP、发货提交 ORDER_CONFIRM。
+ * - D5 物流 API：发货落 t_logistics，轨迹查询返回非空。
+ * - D2 微信支付+分账：支付成功幂等落地 + 状态流转（paid→shipping→completed）；
+ *   支付完成以 @MockBean 桩替代真实微信托管，避免依赖线上凭证。
+ * - OSS 对象存储：文件上传至 OSS 并返回可访问 URL。
+ * - ES 索引：审核通过触发 indexItem。
  * 验证核心：所有 Bean 正常装配（无循环依赖/缺失 Bean），关键子系统端到端闭环。
  */
 @SpringBootTest
@@ -58,6 +63,10 @@ class SubsystemSmokeTest {
     private DeviceFingerprintMapper deviceFingerprintMapper;
     @Autowired
     private PayOrderMapper payOrderMapper;
+
+    /** 测试侧桩：生产已移除 Mock 托管实现，集成测试用桩放行验签以驱动支付完成闭环。 */
+    @MockBean
+    private FundEscrowService escrow;
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -217,7 +226,10 @@ class SubsystemSmokeTest {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PayOrder>()
                         .eq(PayOrder::getOrderNo, orderNo));
         assertNotNull(po);
-        mvc.perform(post("/api/pay/mock/" + po.getPayNo())).andExpect(status().isOk());
+        // 生产已移除 Mock 支付：以测试桩放行验签，走真实回调端点完成支付落地
+        when(escrow.verifyNotify(any())).thenReturn(true);
+        mvc.perform(post("/api/pay/notify").param("payNo", po.getPayNo()))
+                .andExpect(status().isOk());
         assertEquals("paid", orderStatus(orderNo), "支付后订单应为 paid");
         assertDelayTask("REMIND_SHIP", orderNo);
 
@@ -243,7 +255,7 @@ class SubsystemSmokeTest {
         assertEquals("completed", orderStatus(orderNo), "确认收货后订单应为 completed");
     }
 
-    // ===== OSS 对象存储（本地磁盘实现，file.mock=false） =====
+    // ===== OSS 对象存储（真实 OSS） =====
 
     @Test
     void fileUploadStoresLocally() throws Exception {

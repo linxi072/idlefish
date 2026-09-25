@@ -7,7 +7,6 @@ import com.idlefish.trade.trade.entity.DelayTask;
 import com.idlefish.trade.trade.mapper.DelayTaskMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -21,12 +20,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 真实 RocketMQ 延时队列（idlefish.mq.mock=false）：发送阿里云 RocketMQ 延时消息；
+ * 真实 RocketMQ 延时队列（真实 RocketMQ，默认启用）：发送阿里云 RocketMQ 延时消息；
  * DB（t_delay_task）作为兜底，scanAndExecute 补偿未消费到的任务，消费由 /api/mq/consume 推送触发。
  * 注：HTTP 接入点签名需结合阿里云 RocketMQ 实例校验；发送失败时自动降级为 DB 兜底执行，保证不丢。
  */
 @Service
-@ConditionalOnProperty(name = "idlefish.mq.mock", havingValue = "false")
 public class RocketMqDelayServiceImpl implements DelayQueueService {
 
     private static final Logger log = LoggerFactory.getLogger(RocketMqDelayServiceImpl.class);

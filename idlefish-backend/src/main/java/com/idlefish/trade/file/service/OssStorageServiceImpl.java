@@ -4,7 +4,6 @@ import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.common.util.SignUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -26,7 +25,6 @@ import java.util.TimeZone;
  * 生产建议开启 HTTPS、配置 CDN 与防盗链，并结合 STS 临时凭证下发前端直传。
  */
 @Service
-@ConditionalOnProperty(name = "idlefish.oss.mock", havingValue = "false")
 public class OssStorageServiceImpl implements StorageService {
 
     private static final Logger log = LoggerFactory.getLogger(OssStorageServiceImpl.class);

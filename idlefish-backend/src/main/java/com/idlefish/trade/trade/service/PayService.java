@@ -5,8 +5,8 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
-import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.common.enums.OrderStatus;
+import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.common.enums.PayStatus;
 import com.idlefish.trade.trade.entity.FundFlow;
 import com.idlefish.trade.trade.entity.Order;
@@ -33,22 +33,23 @@ public class PayService {
     private final FundFlowMapper fundFlowMapper;
     private final FundEscrowService escrow;
     private final ObjectMapper objectMapper;
-    private final IdlefishProperties props;
     private final DelayQueueService delayQueueService;
     private final NotificationService notificationService;
+    private final MetricsRegistry metrics;
 
     public PayService(PayOrderMapper payOrderMapper, OrderMapper orderMapper,
                       FundFlowMapper fundFlowMapper, FundEscrowService escrow,
-                      ObjectMapper objectMapper, IdlefishProperties props,
-                      @Lazy DelayQueueService delayQueueService, NotificationService notificationService) {
+                      ObjectMapper objectMapper,
+                      @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
+                      MetricsRegistry metrics) {
         this.payOrderMapper = payOrderMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
         this.escrow = escrow;
         this.objectMapper = objectMapper;
-        this.props = props;
         this.delayQueueService = delayQueueService;
         this.notificationService = notificationService;
+        this.metrics = metrics;
     }
 
     /** 预下单：返回渠道支付参数。 */
@@ -61,7 +62,7 @@ public class PayService {
         if (!PayStatus.WAIT.getCode().equals(po.getStatus())) {
             throw new BizException(Code.STATE_NOT_ALLOWED, "订单非待支付状态");
         }
-        return escrow.prepay(po.getPayNo(), po.getAmount());
+        return metrics.timed("pay.prepay", () -> escrow.prepay(po.getPayNo(), po.getAmount()));
     }
 
     /** 支付结果通知（幂等 + 防伪造）：遗留表单式回调（演示/兼容）。 */
@@ -93,15 +94,16 @@ public class PayService {
      * 仅处理 trade_state=SUCCESS；其余状态（如 REFUND/CLOSED）忽略。
      */
     public void notifyV3(String body, String timestamp, String nonce, String serial, String signature) {
-        if (!props.isPayMock()) {
-            boolean ok = escrow.verifySignature(timestamp, nonce, body, signature);
-            if (!ok) {
-                throw new BizException(Code.BIZ_ERROR, "支付回调签名验证失败");
-            }
+        // 真实支付：始终校验微信 v3 节点签名（已移除 mock 旁路，防伪造回调）
+        boolean ok = escrow.verifySignature(timestamp, nonce, body, signature);
+        if (!ok) {
+            metrics.increment("pay.notify.v3.failure");
+            throw new BizException(Code.BIZ_ERROR, "支付回调签名验证失败");
         }
         String resourceJson = extractResource(body);
         java.util.Map<String, Object> decoded = escrow.decryptNotify(resourceJson);
         if (decoded == null) {
+            metrics.increment("pay.notify.v3.failure");
             throw new BizException(Code.BIZ_ERROR, "支付回调解密失败");
         }
         String payNo = (String) decoded.get("out_trade_no");
@@ -110,9 +112,11 @@ public class PayService {
         Long amount = amtObj instanceof Number ? ((Number) amtObj).longValue() : null;
         String tradeState = (String) decoded.get("trade_state");
         if (!"SUCCESS".equals(tradeState)) {
+            metrics.increment("pay.notify.v3.ignored");
             return; // 非支付成功状态不处理
         }
         applyPaid(payNo, transactionId, amount);
+        metrics.increment("pay.notify.v3.success");
     }
 
     /** 幂等落地支付成功（供 notify / notifyV3 复用）。
@@ -131,8 +135,11 @@ public class PayService {
                 .set("transaction_id", transactionId)
                 .set("paid_at", LocalDateTime.now()));
         if (affected == 0) {
-            return; // 已处理（SUCCESS）或不存在：幂等返回，绝不重复写资金流水
+            // 已处理（SUCCESS）或不存在：幂等返回，绝不重复写资金流水
+            metrics.increment("pay.paid.idempotent_skipped");
+            return;
         }
+        metrics.increment("pay.paid");
 
         Order order = orderMapper.selectOne(
                 new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, po.getOrderNo()));
@@ -180,7 +187,7 @@ public class PayService {
 
     /** 发起退款（被 RefundService 调用）。 */
     public void refund(String payNo, Long amount) {
-        String refundId = escrow.refund(payNo, amount);
+        String refundId = metrics.timed("pay.refund", () -> escrow.refund(payNo, amount));
         PayOrder po = payOrderMapper.selectOne(
                 new LambdaQueryWrapper<PayOrder>().eq(PayOrder::getPayNo, payNo));
         if (po == null) {
@@ -192,15 +199,4 @@ public class PayService {
         payOrderMapper.updateById(upd);
     }
 
-    /**
-     * Mock 支付完成（仅 idlefish.pay.mock=true 可用），用于演示链路跑通。
-     * 复用 {@link #notify} 的幂等与验签逻辑，避免重复代码；真实模式禁止手动完成支付。
-     */
-    public void mockComplete(String payNo) {
-        if (!props.isPayMock()) {
-            throw new BizException(Code.FORBIDDEN, "仅 Mock 支付模式可手动完成支付");
-        }
-        String transactionId = "MOCK" + System.nanoTime();
-        notify(payNo, transactionId, null);
-    }
 }

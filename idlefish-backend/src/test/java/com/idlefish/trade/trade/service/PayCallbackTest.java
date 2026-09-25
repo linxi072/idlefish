@@ -11,6 +11,7 @@ import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.common.IdlefishProperties;
+import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.trade.service.DelayQueueService;
 import com.idlefish.trade.trade.service.FundEscrowService;
 import com.idlefish.trade.notify.service.NotificationService;
@@ -53,6 +54,7 @@ class PayCallbackTest {
     @Mock private IdlefishProperties props;
     @Mock private DelayQueueService delayQueueService;
     @Mock private NotificationService notificationService;
+    @Mock private MetricsRegistry metrics;
     @InjectMocks private PayService payService;
 
     private final AtomicReference<String> payStatus = new AtomicReference<>(PayStatus.WAIT.getCode());
@@ -135,7 +137,7 @@ class PayCallbackTest {
     @Test
     @DisplayName("微信 v3 回调：验签通过 + 解密 + 状态过滤后正确落地")
     void wechatV3Callback() {
-        when(props.isPayMock()).thenReturn(false);
+        // 真实支付：v3 回调恒定验签（已移除 mock 旁路）
         when(escrow.verifySignature(any(), any(), any(), any())).thenReturn(true);
         java.util.Map<String, Object> decoded = new java.util.HashMap<>();
         decoded.put("out_trade_no", "PAY1");

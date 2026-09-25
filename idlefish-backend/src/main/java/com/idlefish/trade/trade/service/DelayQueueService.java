@@ -2,8 +2,7 @@ package com.idlefish.trade.trade.service;
 
 /**
  * 延时队列抽象（PRD §D6 延时任务）：
- * - {@link LocalDelayQueueServiceImpl}（idlefish.mq.mock=true 默认）：基于 DB 持久化 + 定时扫描补偿，零外部依赖；
- * - {@link RocketMqDelayServiceImpl}（idlefish.mq.mock=false）：对接阿里云 RocketMQ 延时消息，
+ * - {@link RocketMqDelayServiceImpl}（真实 RocketMQ，默认启用）：对接阿里云 RocketMQ 延时消息，
  *   DB 作为兜底，消费由 /api/mq/consume 推送触发。
  */
 public interface DelayQueueService {

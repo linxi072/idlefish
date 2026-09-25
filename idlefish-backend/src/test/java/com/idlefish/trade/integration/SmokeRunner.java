@@ -244,7 +244,8 @@ public class SmokeRunner {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PayOrder>()
                         .eq(PayOrder::getOrderNo, orderNo));
         check("payOrder created", po != null);
-        mvc.perform(post("/api/pay/mock/" + po.getPayNo())
+        // 生产已移除 Mock 支付：需真实微信 v3 回调（/api/pay/notify/v3）或本地以桩放行验签后走 /api/pay/notify
+        mvc.perform(post("/api/pay/notify").param("payNo", po.getPayNo())
                         .header("Authorization", bearer)).andExpect(status().isOk());
         check("order paid", "paid".equals(orderStatus(orderNo)));
         assertDelayTask("REMIND_SHIP", orderNo);

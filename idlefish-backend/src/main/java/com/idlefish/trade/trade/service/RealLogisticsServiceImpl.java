@@ -9,7 +9,6 @@ import com.idlefish.trade.trade.entity.Logistics;
 import com.idlefish.trade.trade.mapper.LogisticsMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -26,11 +25,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 真实物流（idlefish.logistics.mock=false）：对接快递100 实时查询 API。
+ * 真实物流（真实物流查询，默认启用）：对接快递100 实时查询 API。
  * 采用 MD5(param + customer + key) 签名；网络/解析异常时降级为模拟轨迹，保证发货链路可用。
  */
 @Service
-@ConditionalOnProperty(name = "idlefish.logistics.mock", havingValue = "false")
 public class RealLogisticsServiceImpl implements LogisticService {
 
     private static final Logger log = LoggerFactory.getLogger(RealLogisticsServiceImpl.class);

@@ -8,7 +8,6 @@ import com.idlefish.trade.common.util.SignUtils;
 import com.idlefish.trade.item.dto.AuditResult;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -24,7 +23,7 @@ import java.util.TimeZone;
 import java.util.UUID;
 
 /**
- * 真实内容安全实现（idlefish.audit.mock=false）：
+ * 真实内容安全实现（真实内容安全，默认启用）：
  * 对接阿里云内容安全（绿网）ROA 接口，对文本/图片做智能审核。
  * 采用标准 ROA HMAC-SHA1 签名（与 OSS 同源 RAM 账号），含超时/异常兜底。
  *
@@ -32,7 +31,6 @@ import java.util.UUID;
  * 以及 region（华东默认 cn-shanghai）。沙箱无外网，仅在生产环境开启并对真实凭证联调。
  */
 @Service
-@ConditionalOnProperty(name = "idlefish.audit.mock", havingValue = "false")
 public class RealContentAuditServiceImpl implements ContentAuditService {
 
     private static final String GREEN_HOST = "green.cn-shanghai.aliyuncs.com";

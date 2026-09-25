@@ -12,7 +12,6 @@ import com.idlefish.trade.item.entity.Item;
 import com.idlefish.trade.item.vo.ItemVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -25,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Elasticsearch 检索实现（idlefish.search.mock=false 真实实现）。
+ * Elasticsearch 检索实现（真实 Elasticsearch 实现，默认启用）。
  * 零 SDK 依赖，直接调用 ES REST：
  * - 启动时建索引（PUT /{index}）；
  * - 发布/上架时写入文档（PUT /{index}/_doc/{id}）；
@@ -33,7 +32,6 @@ import java.util.List;
  * 关键生产属性：ES 不可用时优雅降级（记录日志、返回空），不阻断主流程。
  */
 @Service
-@ConditionalOnProperty(name = "idlefish.search.mock", havingValue = "false")
 public class EsSearchServiceImpl implements SearchService {
 
     private static final Logger log = LoggerFactory.getLogger(EsSearchServiceImpl.class);

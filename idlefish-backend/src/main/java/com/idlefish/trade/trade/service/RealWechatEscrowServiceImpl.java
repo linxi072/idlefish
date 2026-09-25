@@ -10,7 +10,6 @@ import com.idlefish.trade.user.entity.User;
 import com.idlefish.trade.user.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -34,7 +33,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 真实微信支付 v3 实现（idlefish.pay.mock=false 启用）。
+ * 真实微信支付 v3 实现（真实微信支付 v3，生产默认启用，已移除 mock 旁路）。
  * 采用零 SDK 方式直接调用微信支付 v3 REST + RSA-SHA256 签名 + AES-256-GCM 解密：
  * - JSAPI 下单（携带 openid）并返回客户端调起支付所需二次签名参数；
  * - 查单 / 退款 / 分账（profitsharing）；
@@ -42,7 +41,6 @@ import java.util.UUID;
  * 所有调用在异常时记录日志并抛出，由上层（PayService）做幂等/补偿，不静默吞错。
  */
 @Service
-@ConditionalOnProperty(name = "idlefish.pay.mock", havingValue = "false")
 public class RealWechatEscrowServiceImpl implements FundEscrowService {
 
     private static final Logger log = LoggerFactory.getLogger(RealWechatEscrowServiceImpl.class);

@@ -89,19 +89,21 @@ Page({
     wx.showLoading({ title: '发起支付' });
     api.prepay({ orderNo: no, payChannel: 'wechat' }).then((r) => {
       if (getApp().globalData.useMock) {
-        // Mock 模式：直接触发后端 mock 完成，走通 待支付→已支付
-        return api.payMockComplete(r.payNo).then(() => {
-          wx.hideLoading();
-          api.track('pay_success', { order_no: no, pay_no: r.payNo });
-          wx.showToast({ title: '支付成功', icon: 'success' });
-          this.reload();
-        });
+        // 演示模式：本地直接视为支付成功（后端已移除 mock 完成端点）
+        wx.hideLoading();
+        api.track('pay_success', { order_no: no, pay_no: r.payNo });
+        wx.showToast({ title: '支付成功', icon: 'success' });
+        this.reload();
+        return;
       }
       return new Promise((resolve, reject) => {
         wx.requestPayment(Object.assign({ success: () => resolve(), fail: (err) => reject(err) }, r.prepayParams));
-      }).then(() => api.payNotify({ orderNo: no, payNo: r.payNo, status: 'paid' }))
-        .then(() => { wx.hideLoading(); this.reload(); })
-        .catch(() => { wx.hideLoading(); wx.showToast({ title: '支付取消', icon: 'none' }); });
+      }).then(() => {
+        wx.hideLoading();
+        // 真实支付：结果由微信异步回调 /api/pay/notify/v3 落地，前端轮询订单状态即可
+        wx.showToast({ title: '支付提交成功', icon: 'success' });
+        this.reload();
+      }).catch(() => { wx.hideLoading(); wx.showToast({ title: '支付取消', icon: 'none' }); });
     }).catch((e) => { wx.hideLoading(); wx.showToast({ title: (e && e.msg) || '支付失败', icon: 'none' }); });
   },
 

@@ -256,7 +256,6 @@ module.exports = {
   },
   prepay(dto) { return delay({ payNo: 'P' + Date.now(), prepayParams: { timeStamp: '1', nonceStr: 'x', package: 'prepay_id=mock', signType: 'MD5', paySign: 'mock' } }); },
   payNotify(dto) { return delay({ ok: true }); },
-  payMockComplete(payNo) { return delay({ ok: true }); },
   listOrders(role) { return delay(orders.filter(o => !role || o.role === role)); },
   getOrder(orderNo) { return delay(orders.find(o => o.orderNo === orderNo) || orders[0]); },
   cancelOrder() { return delay({ ok: true }); },

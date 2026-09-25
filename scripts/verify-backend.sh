@@ -57,8 +57,10 @@ if [ -n "$UP_URL" ]; then
 fi
 rm -f "$TMP"
 
-echo "-- Mock 支付完成端点（Gated：仅 pay.mock=true 可用）--"
-curl -s -X POST 'http://localhost:8080/api/pay/mock/NONEXIST_PAYNO' | python3 -c 'import sys,json;d=json.load(sys.stdin);print("  mock-complete(NONEXIST) -> code=%s msg=%s"%(d.get("code"),d.get("msg")))'
+echo "-- 可观测性端点（零依赖 /actuator）--"
+curl -s http://localhost:8080/actuator/health | python3 -c 'import sys,json;d=json.load(sys.stdin);print("  health -> status=%s"%d.get("status"))'
+curl -s http://localhost:8080/actuator/metrics | python3 -c 'import sys,json;d=json.load(sys.stdin);print("  metrics -> counters=%d timers=%d"%(len(d.get("counters",[])),len(d.get("timers",[]))))'
+echo "  注：支付结果由微信异步回调 /api/pay/notify/v3 落地（生产已移除 mock 完成端点）"
 
 echo "== [5] 关闭 =="
 pkill -f 'idlefish-backend' 2>/dev/null || true
