@@ -51,11 +51,12 @@ public class SearchController {
         return Result.ok(searchService.facets(q));
     }
 
-    /** 首页推荐流（同城优先 + 热度加权，PRD §C2）。 */
+    /** 首页推荐流（F-14.2 个性化：同城优先 + 热度衰减 + 行为加权 + 冷启动保量）。 */
     @GetMapping("/recommend")
     public Result<IPage<ItemVO>> recommend(@RequestParam(required = false) String city,
+                                           @RequestParam(required = false) Long userId,
                                            @RequestParam(defaultValue = "1") int page,
                                            @RequestParam(defaultValue = "10") int size) {
-        return Result.ok(recommendService.feed(city, page, size));
+        return Result.ok(recommendService.feed(city, userId, page, size));
     }
 }
