@@ -88,20 +88,44 @@ public class OrderService {
         Long itemId = dto.getItemId();
         int qty = dto.getQuantity() == null ? 1 : dto.getQuantity();
 
+        OrderCreateVO pending = findPendingOrder(buyerId, itemId);
+        if (pending != null) {
+            return pending;
+        }
+
+        itemService.lockStock(itemId, qty);
+        Item item = itemMapper.selectById(itemId);
+
+        Order o = buildOrder(buyerId, dto, item, qty);
+        orderMapper.insert(o);
+        PayOrder po = buildPayOrder(o);
+        payOrderMapper.insert(po);
+
+        long discount = redeemCouponIfPresent(buyerId, dto, o, po);
+
+        scheduleCloseTask(o.getOrderNo());
+        trackOrderCreate(buyerId, o.getOrderNo(), o.getPayAmount());
+
+        return buildCreateVO(o, discount);
+    }
+
+    /** 查询同买家同商品的待支付订单，存在则包装为创建结果（幂等返回）。 */
+    private OrderCreateVO findPendingOrder(Long buyerId, Long itemId) {
         Order exist = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
                 .eq(Order::getBuyerId, buyerId)
                 .eq(Order::getItemId, itemId)
                 .eq(Order::getStatus, OrderStatus.PENDING_PAY.getCode()));
-        if (exist != null) {
-            OrderCreateVO vo = new OrderCreateVO();
-            vo.setOrderNo(exist.getOrderNo());
-            vo.setAmount(exist.getPayAmount());
-            return vo;
+        if (exist == null) {
+            return null;
         }
+        OrderCreateVO vo = new OrderCreateVO();
+        vo.setOrderNo(exist.getOrderNo());
+        vo.setAmount(exist.getPayAmount());
+        return vo;
+    }
 
-        itemService.lockStock(itemId, qty); // 校验在售 + 扣库存
-
-        Item item = itemMapper.selectById(itemId);
+    /** 组装订单实体（含金额、快照，未落库）。 */
+    private Order buildOrder(Long buyerId, OrderCreateDTO dto, Item item, int qty) {
         Long unitPrice = item.getPrice();
         Long freight = item.getFreight() == null ? 0L : item.getFreight();
         Long total = unitPrice * qty;
@@ -114,8 +138,8 @@ public class OrderService {
         o.setOrderNo(orderNo);
         o.setBuyerId(buyerId);
         o.setSellerId(item.getSellerId());
-        o.setItemId(itemId);
-        o.setSkuSnapshot(itemService.itemSnapshot(itemId));
+        o.setItemId(item.getId());
+        o.setSkuSnapshot(itemService.itemSnapshot(item.getId()));
         o.setQuantity(qty);
         o.setUnitPrice(unitPrice);
         o.setTotalAmount(total);
@@ -125,52 +149,61 @@ public class OrderService {
         o.setAddressSnapshot(addressService.snapshot(dto.getAddressId()));
         o.setRemark(dto.getRemark());
         o.setPayNo(payNo);
-        orderMapper.insert(o);
+        return o;
+    }
 
+    /** 组装支付单实体（未落库）。 */
+    private PayOrder buildPayOrder(Order o) {
         PayOrder po = new PayOrder();
-        po.setPayNo(payNo);
-        po.setOrderNo(orderNo);
-        po.setBuyerId(buyerId);
-        po.setAmount(payAmount);
+        po.setPayNo(o.getPayNo());
+        po.setOrderNo(o.getOrderNo());
+        po.setBuyerId(o.getBuyerId());
+        po.setAmount(o.getPayAmount());
         po.setChannel("wechat");
         po.setStatus(PayStatus.WAIT.getCode());
-        payOrderMapper.insert(po);
+        return po;
+    }
 
-        // F-10 优惠券核销（下单抵扣）：goods 金额 = total，抵扣后重算应付（抵扣不作用于运费）
-        long discount = 0L;
-        if (dto.getUserCouponId() != null) {
-            discount = couponService.redeem(buyerId, dto.getUserCouponId(), orderNo, itemId, total);
-            long finalPay = Math.max(0L, total - discount + freight);
-            Order oUpd = new Order();
-            oUpd.setId(o.getId());
-            oUpd.setPayAmount(finalPay);
-            oUpd.setDiscountAmount(discount);
-            oUpd.setUserCouponId(dto.getUserCouponId());
-            orderMapper.updateById(oUpd);
-            PayOrder poUpd = new PayOrder();
-            poUpd.setId(po.getId());
-            poUpd.setAmount(finalPay);
-            payOrderMapper.updateById(poUpd);
-            payAmount = finalPay;
+    /** F-10 优惠券核销（下单抵扣）：命中则重算应付并回写订单/支付单，返回抵扣额。 */
+    private long redeemCouponIfPresent(Long buyerId, OrderCreateDTO dto, Order o, PayOrder po) {
+        if (dto.getUserCouponId() == null) {
+            return 0L;
         }
+        long total = o.getTotalAmount();
+        long discount = couponService.redeem(buyerId, dto.getUserCouponId(), o.getOrderNo(), o.getItemId(), total);
+        long finalPay = Math.max(0L, total - discount + o.getFreight());
+        o.setPayAmount(finalPay);
+        o.setDiscountAmount(discount);
+        o.setUserCouponId(dto.getUserCouponId());
+        orderMapper.updateById(o);
+        po.setAmount(finalPay);
+        payOrderMapper.updateById(po);
+        return discount;
+    }
 
-        // D6 延时队列：下单后提交 30 分钟关单延时任务（精准到点触发；本地实现或 RocketMQ 均走此路径）
+    /** D6 延时队列：下单后提交 30 分钟关单延时任务（失败不影响主流程，定时扫描兜底）。 */
+    private void scheduleCloseTask(String orderNo) {
         try {
             delayQueueService.submit("ORDER_CLOSE", orderNo, "", 30 * 60);
         } catch (Exception ignore) {
             // 延时任务提交失败不影响下单主流程（定时扫描兜底关单）
         }
+    }
 
-        // D1 埋点：下单事件（携带金额，供设备维度风控 R3 判定；失败不影响主流程）
+    /** D1 埋点：下单事件（携带金额，供设备维度风控 R3 判定；失败不影响主流程）。 */
+    private void trackOrderCreate(Long buyerId, String orderNo, long amount) {
         try {
-            trackService.track(buyerId, "order_create", orderNo, "{\"amount\":" + payAmount + "}");
+            trackService.track(buyerId, "order_create", orderNo, "{\"amount\":" + amount + "}");
         } catch (Exception ignore) {
             // 埋点异常忽略，避免影响下单
         }
+    }
 
+    /** 组装下单创建结果 VO。 */
+    private OrderCreateVO buildCreateVO(Order o, long discount) {
         OrderCreateVO vo = new OrderCreateVO();
-        vo.setOrderNo(orderNo);
-        vo.setAmount(payAmount);
+        vo.setOrderNo(o.getOrderNo());
+        vo.setAmount(o.getPayAmount());
         vo.setDiscountAmount(discount);
         return vo;
     }
@@ -416,6 +449,17 @@ public class OrderService {
 
     private OrderVO toVO(Order o, PayOrder po) {
         OrderVO vo = new OrderVO();
+        fillOrderScalars(o, vo);
+        fillOrderSnapshots(o, vo);
+        vo.setItem(buildItemRef(o, vo));
+        if (po != null) {
+            vo.setPayStatus(po.getStatus());
+        }
+        return vo;
+    }
+
+    /** 填充订单标量字段与金额（分/元）展示字段。 */
+    private void fillOrderScalars(Order o, OrderVO vo) {
         vo.setOrderNo(o.getOrderNo());
         vo.setBuyerId(o.getBuyerId());
         vo.setSellerId(o.getSellerId());
@@ -438,9 +482,10 @@ public class OrderService {
         vo.setRemark(o.getRemark());
         vo.setLogisticsNo(o.getLogisticsNo());
         vo.setCreatedAt(o.getCreatedAt() == null ? null : o.getCreatedAt().format(FMT));
-        if (po != null) {
-            vo.setPayStatus(po.getStatus());
-        }
+    }
+
+    /** 解析 SKU 与收货地址快照（解析失败不影响主流程）。 */
+    private void fillOrderSnapshots(Order o, OrderVO vo) {
         try {
             if (o.getSkuSnapshot() != null) {
                 JsonNode n = objectMapper.readTree(o.getSkuSnapshot());
@@ -458,7 +503,10 @@ public class OrderService {
         } catch (Exception ignored) {
             // 快照解析失败不影响主流程
         }
-        // R-12：构建内嵌商品轻量视图（真实后端模式下前端依赖 o.item.id / o.item.seller.id）
+    }
+
+    /** R-12：构建内嵌商品轻量视图（真实后端模式下前端依赖 o.item.id / o.item.seller.id）。 */
+    private OrderItemVO buildItemRef(Order o, OrderVO vo) {
         OrderItemVO itemVO = new OrderItemVO();
         itemVO.setId(o.getItemId());
         itemVO.setSellerId(o.getSellerId());
@@ -467,7 +515,6 @@ public class OrderService {
         OrderItemVO.SellerRef sellerRef = new OrderItemVO.SellerRef();
         sellerRef.setId(o.getSellerId());
         itemVO.setSeller(sellerRef);
-        vo.setItem(itemVO);
-        return vo;
+        return itemVO;
     }
 }
