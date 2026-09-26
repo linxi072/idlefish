@@ -9,9 +9,12 @@ import com.idlefish.trade.im.mapper.MessageMapper;
 import com.idlefish.trade.im.vo.ConversationVO;
 import com.idlefish.trade.im.vo.MessageVO;
 import com.idlefish.trade.im.ws.WsSessionManager;
+import com.idlefish.trade.common.BizException;
+import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.util.SensitiveWords;
 import com.idlefish.trade.item.dto.AuditResult;
 import com.idlefish.trade.item.service.ContentAuditService;
+import com.idlefish.trade.user.entity.User;
 import com.idlefish.trade.user.service.UserService;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +23,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -53,12 +58,12 @@ public class ImService {
     /** 发送消息（sender→receiver，围绕 itemId）。 */
     public MessageVO send(Long senderId, Long receiverId, Long itemId, String content, String type) {
         if (receiverId == null || receiverId.equals(senderId)) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.PARAM_INVALID, "接收人无效");
+            throw new BizException(Code.PARAM_INVALID, "接收人无效");
         }
         // E3 消息内容审核：命中违规/站外联系方式则拦截发送（机审或阿里云绿网）
         AuditResult audit = contentAuditService.auditText(content);
         if (!audit.isPass()) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.BIZ_ERROR,
+            throw new BizException(Code.BIZ_ERROR,
                     audit.getReason() != null ? audit.getReason() : "消息内容未通过审核");
         }
         String convId = convIdOf(senderId, receiverId, itemId);
@@ -127,6 +132,10 @@ public class ImService {
         List<Conversation> list = conversationMapper.selectList(new LambdaQueryWrapper<Conversation>()
                 .and(w -> w.eq(Conversation::getBuyerId, userId).or().eq(Conversation::getSellerId, userId))
                 .orderByDesc(Conversation::getUpdatedAt));
+        // 批量加载对端用户，避免逐条 getById 的 N+1
+        Map<Long, User> peerMap = userService.mapByIds(
+            list.stream().map(c -> c.getBuyerId().equals(userId) ? c.getSellerId() : c.getBuyerId())
+                .filter(Objects::nonNull).collect(Collectors.toSet()));
         return list.stream().map(c -> {
             ConversationVO vo = new ConversationVO();
             vo.setConvId(c.getConvId());
@@ -136,7 +145,8 @@ public class ImService {
             vo.setLastTime(c.getUpdatedAt() == null ? null : c.getUpdatedAt().format(FMT));
             Long peer = c.getBuyerId().equals(userId) ? c.getSellerId() : c.getBuyerId();
             vo.setPeerId(peer);
-            vo.setPeerName(userService.getById(peer) == null ? "" : userService.getById(peer).getNickname());
+            User peerUser = peerMap.get(peer);
+            vo.setPeerName(peerUser == null ? "" : peerUser.getNickname());
             vo.setUnread(c.getBuyerId().equals(userId) ? c.getBuyerUnread() : c.getSellerUnread());
             return vo;
         }).collect(Collectors.toList());
@@ -147,7 +157,7 @@ public class ImService {
         Conversation conv = conversationMapper.selectOne(
                 new LambdaQueryWrapper<Conversation>().eq(Conversation::getConvId, convId));
         if (conv == null || (!conv.getBuyerId().equals(userId) && !conv.getSellerId().equals(userId))) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.STATE_NOT_ALLOWED, "无权访问该会话");
+            throw new BizException(Code.STATE_NOT_ALLOWED, "无权访问该会话");
         }
         List<Message> msgs = messageMapper.selectList(new LambdaQueryWrapper<Message>()
                 .eq(Message::getConvId, convId).orderByAsc(Message::getCreatedAt));

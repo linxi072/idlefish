@@ -13,6 +13,9 @@ import com.idlefish.trade.user.mapper.UserMapper;
 import com.idlefish.trade.user.vo.UserInfoVO;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -86,6 +89,14 @@ public class UserService {
             throw new BizException(Code.USER_NOT_FOUND);
         }
         return user;
+    }
+
+    /** 批量按 id 加载用户并组装为 Map（用于列表聚合，避免逐条查询产生的 N+1）。缺失 id 自然不出现在结果中。 */
+    public Map<Long, User> mapByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) return Map.of();
+        Map<Long, User> m = new HashMap<>();
+        for (User u : userMapper.selectBatchIds(ids)) m.put(u.getId(), u);
+        return m;
     }
 
     /** 刷新 access token（校验 refresh token 后重新签发一对令牌）。 */

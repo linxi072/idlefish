@@ -10,6 +10,7 @@ import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.enums.OrderStatus;
 import com.idlefish.trade.common.enums.PayStatus;
 import com.idlefish.trade.common.util.IdGenerator;
+import com.idlefish.trade.common.util.MoneyUtil;
 import com.idlefish.trade.item.entity.Item;
 import com.idlefish.trade.item.mapper.ItemMapper;
 import com.idlefish.trade.item.service.ItemService;
@@ -33,6 +34,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -295,10 +298,14 @@ public class OrderService {
             w.eq(Order::getStatus, status);
         }
         w.orderByDesc(Order::getCreatedAt);
-        return orderMapper.selectList(w).stream().map(o -> {
-            PayOrder po = payOrderMapper.selectOne(new LambdaQueryWrapper<PayOrder>().eq(PayOrder::getPayNo, o.getPayNo()));
-            return toVO(o, po);
-        }).collect(Collectors.toList());
+        List<Order> orders = orderMapper.selectList(w);
+        if (orders.isEmpty()) return List.of();
+        // 批量加载支付单，避免逐单 selectOne 的 N+1
+        Map<String, PayOrder> poMap = payOrderMapper.selectList(
+                new LambdaQueryWrapper<PayOrder>().in(PayOrder::getPayNo,
+                        orders.stream().map(Order::getPayNo).filter(Objects::nonNull).collect(Collectors.toSet())))
+                .stream().collect(Collectors.toMap(PayOrder::getPayNo, p -> p, (a, b) -> a));
+        return orders.stream().map(o -> toVO(o, poMap.get(o.getPayNo()))).collect(Collectors.toList());
     }
 
     /** 定时：关闭 30 分钟未支付订单并释放库存。 */
@@ -374,10 +381,6 @@ public class OrderService {
 
     // ---------- 内部工具 ----------
 
-    private Double fenToYuan(Long fen) {
-        return fen == null ? null : fen / 100.0;
-    }
-
     private Order ownedBuyer(Long buyerId, String orderNo) {
         Order o = orderMapper.selectOne(new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, orderNo));
         if (o == null) throw new BizException(Code.ORDER_NOT_FOUND);
@@ -423,11 +426,11 @@ public class OrderService {
         vo.setFreight(o.getFreight());
         vo.setPayAmount(o.getPayAmount());
         vo.setAmount(o.getPayAmount());
-        vo.setUnitPriceYuan(fenToYuan(o.getUnitPrice()));
-        vo.setTotalAmountYuan(fenToYuan(o.getTotalAmount()));
-        vo.setFreightYuan(fenToYuan(o.getFreight()));
-        vo.setPayAmountYuan(fenToYuan(o.getPayAmount()));
-        vo.setAmountYuan(fenToYuan(o.getPayAmount()));
+        vo.setUnitPriceYuan(MoneyUtil.fenToYuan(o.getUnitPrice()));
+        vo.setTotalAmountYuan(MoneyUtil.fenToYuan(o.getTotalAmount()));
+        vo.setFreightYuan(MoneyUtil.fenToYuan(o.getFreight()));
+        vo.setPayAmountYuan(MoneyUtil.fenToYuan(o.getPayAmount()));
+        vo.setAmountYuan(MoneyUtil.fenToYuan(o.getPayAmount()));
         vo.setDiscountAmount(o.getDiscountAmount());
         vo.setCouponId(o.getUserCouponId());
         vo.setDiscountAmountYuan(o.getDiscountAmount() == null ? 0 : o.getDiscountAmount() / 100.0);

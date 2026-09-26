@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.enums.ItemStatus;
+import com.idlefish.trade.common.util.MoneyUtil;
 import com.idlefish.trade.item.dto.ItemEditDTO;
 import com.idlefish.trade.item.dto.ItemPublishDTO;
 import com.idlefish.trade.item.dto.ItemQueryDTO;
@@ -31,8 +32,11 @@ import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 /**
  * 商品服务：发布、内容审核、详情聚合、检索、库存锁、状态流转。
@@ -191,7 +195,7 @@ public class ItemService {
             default: w.orderByDesc(Item::getCreatedAt);
         }
         Page<Item> page = new Page<>(Math.max(q.getPage(), 1), Math.max(q.getSize(), 1));
-        return itemMapper.selectPage(page, w).convert(this::toVO);
+        return toVOPage(itemMapper.selectPage(page, w));
     }
 
     /** 卖家侧商品列表（按状态过滤）。 */
@@ -201,7 +205,14 @@ public class ItemService {
         if (q.getStatus() != null && !q.getStatus().isBlank()) w.eq(Item::getStatus, q.getStatus());
         w.orderByDesc(Item::getCreatedAt);
         Page<Item> page = new Page<>(Math.max(q.getPage(), 1), Math.max(q.getSize(), 1));
-        return itemMapper.selectPage(page, w).convert(this::toVO);
+        return toVOPage(itemMapper.selectPage(page, w));
+    }
+
+    /** 列表分页转 VO：一次性批量加载卖家，避免逐条 getById 的 N+1。 */
+    private IPage<ItemVO> toVOPage(Page<Item> page) {
+        Map<Long, User> sellerMap = userService.mapByIds(
+            page.getRecords().stream().map(Item::getSellerId).filter(Objects::nonNull).collect(Collectors.toSet()));
+        return page.convert(it -> toVO(it, sellerMap.get(it.getSellerId())));
     }
 
     /** 商品详情（聚合卖家 + 类目 + 反序列化图片），并自增浏览量。 */
@@ -343,6 +354,19 @@ public class ItemService {
     }
 
     public ItemVO toVO(Item item) {
+        User seller = null;
+        if (item.getSellerId() != null) {
+            try {
+                seller = userService.getById(item.getSellerId());
+            } catch (BizException ignore) {
+                // 卖家不存在时不阻断
+            }
+        }
+        return toVO(item, seller);
+    }
+
+    /** 列表聚合用：复用预加载的卖家，避免逐条查询产生的 N+1；seller 为 null 时跳过卖家信息。 */
+    private ItemVO toVO(Item item, User seller) {
         ItemVO vo = new ItemVO();
         vo.setId(item.getId());
         vo.setSellerId(item.getSellerId());
@@ -353,9 +377,9 @@ public class ItemService {
         vo.setCover(imgs.isEmpty() ? null : imgs.get(0));
         vo.setPrice(item.getPrice());
         vo.setOriginalPrice(item.getOriginalPrice());
-        vo.setPriceYuan(fenToYuan(item.getPrice()));
-        vo.setOriginalPriceYuan(fenToYuan(item.getOriginalPrice()));
-        vo.setFreightYuan(fenToYuan(item.getFreight()));
+        vo.setPriceYuan(MoneyUtil.fenToYuan(item.getPrice()));
+        vo.setOriginalPriceYuan(MoneyUtil.fenToYuan(item.getOriginalPrice()));
+        vo.setFreightYuan(MoneyUtil.fenToYuan(item.getFreight()));
         vo.setConditionLevel(item.getConditionLevel());
         vo.setStatus(item.getStatus());
         vo.setAuditStatus(item.getAuditStatus());
@@ -365,27 +389,18 @@ public class ItemService {
         vo.setLikeCount(item.getLikeCount());
         vo.setFavCount(item.getFavCount());
         vo.setCreatedAt(item.getCreatedAt() == null ? null : item.getCreatedAt().format(FMT));
-        if (item.getSellerId() != null) {
-            try {
-                User u = userService.getById(item.getSellerId());
-                vo.setSellerName(u.getNickname());
-                vo.setSellerAvatar(u.getAvatar());
-                SellerVO sv = new SellerVO();
-                sv.setId(u.getId());
-                sv.setNickname(u.getNickname());
-                sv.setAvatar(u.getAvatar());
-                sv.setCreditScore(u.getCreditScore());
-                sv.setRealNameVerified(u.getRealNameVerified() == null ? 0 : u.getRealNameVerified());
-                vo.setSeller(sv);
-            } catch (BizException ignore) {
-                // 卖家不存在时不阻断列表
-            }
+        if (seller != null) {
+            vo.setSellerName(seller.getNickname());
+            vo.setSellerAvatar(seller.getAvatar());
+            SellerVO sv = new SellerVO();
+            sv.setId(seller.getId());
+            sv.setNickname(seller.getNickname());
+            sv.setAvatar(seller.getAvatar());
+            sv.setCreditScore(seller.getCreditScore());
+            sv.setRealNameVerified(seller.getRealNameVerified() == null ? 0 : seller.getRealNameVerified());
+            vo.setSeller(sv);
         }
         return vo;
-    }
-
-    private Double fenToYuan(Long fen) {
-        return fen == null ? null : fen / 100.0;
     }
 
     private String toJson(List<String> list) {
