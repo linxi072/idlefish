@@ -124,18 +124,8 @@ public class PayService {
      *  采用「WAIT→SUCCESS 条件更新 + affected 行网关」：仅当支付单仍为 WAIT 时原子置 SUCCESS，
      *  并发重复回调中仅一条受影响、下游（资金流水/通知）仅执行一次，杜绝重复流水资损。 */
     private void applyPaid(String payNo, String transactionId, Long amount) {
-        PayOrder po = payOrderMapper.selectOne(
-                new LambdaQueryWrapper<PayOrder>().eq(PayOrder::getPayNo, payNo));
-        if (po == null) {
-            throw new BizException(Code.ORDER_NOT_FOUND);
-        }
-        int affected = payOrderMapper.update(null, new UpdateWrapper<PayOrder>()
-                .eq("pay_no", payNo)
-                .eq("status", PayStatus.WAIT.getCode())
-                .set("status", PayStatus.SUCCESS.getCode())
-                .set("transaction_id", transactionId)
-                .set("paid_at", LocalDateTime.now()));
-        if (affected == 0) {
+        PayOrder po = requirePayOrder(payNo);
+        if (!tryMarkPaid(payNo, transactionId)) {
             // 已处理（SUCCESS）或不存在：幂等返回，绝不重复写资金流水
             metrics.increment("pay.paid.idempotent_skipped");
             return;
@@ -145,28 +135,63 @@ public class PayService {
         Order order = orderMapper.selectOne(
                 new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, po.getOrderNo()));
         if (order != null && OrderStatus.PENDING_PAY.getCode().equals(order.getStatus())) {
-            Order ou = new Order();
-            ou.setId(order.getId());
-            ou.setStatus(OrderStatus.PAID.getCode());
-            orderMapper.updateById(ou);
-
-            // D6 延时队列：支付成功后提交 72h 未发货提醒延时任务（精准到点触发；本地/RocketMQ 均走此路径）
-            try {
-                delayQueueService.submit("REMIND_SHIP", order.getOrderNo(), "", 72 * 60 * 60);
-            } catch (Exception ignore) {
-                // 延时任务提交失败不影响支付落地（定时扫描兜底提醒）
-            }
-
-            // F-05 闭环：支付成功触达卖家（您有新订单），买卖双向不漏
-            notificationService.notify(order.getSellerId(), NotificationType.ORDER_PAID, po.getOrderNo(),
-                    "你有新订单", "订单 " + po.getOrderNo() + " 已支付成功，请尽快发货");
+            onOrderPaid(order, po);
         }
 
         // 资金托管在平台，买家余额不直接减（演示）
-        fundFlowMapper.insert(FundFlowBuilder.of(po.getOrderNo(), po.getBuyerId(), "OUT", "PAY", po.getAmount())
-                .balanceAfter(0L).build());
+        recordFundFlow(po);
 
         // F-02 通知中心：支付成功触达买家（best-effort，不影响支付主流程）
+        notifyBuyerPaid(po);
+    }
+
+    private PayOrder requirePayOrder(String payNo) {
+        PayOrder po = payOrderMapper.selectOne(
+                new LambdaQueryWrapper<PayOrder>().eq(PayOrder::getPayNo, payNo));
+        if (po == null) {
+            throw new BizException(Code.ORDER_NOT_FOUND);
+        }
+        return po;
+    }
+
+    /** WAIT→SUCCESS 条件更新：仅当支付单仍为 WAIT 时原子置 SUCCESS，返回是否实际生效。 */
+    private boolean tryMarkPaid(String payNo, String transactionId) {
+        int affected = payOrderMapper.update(null, new UpdateWrapper<PayOrder>()
+                .eq("pay_no", payNo)
+                .eq("status", PayStatus.WAIT.getCode())
+                .set("status", PayStatus.SUCCESS.getCode())
+                .set("transaction_id", transactionId)
+                .set("paid_at", LocalDateTime.now()));
+        return affected > 0;
+    }
+
+    /** 订单置已支付，并提交 72h 未发货提醒延时任务、触达卖家。 */
+    private void onOrderPaid(Order order, PayOrder po) {
+        Order ou = new Order();
+        ou.setId(order.getId());
+        ou.setStatus(OrderStatus.PAID.getCode());
+        orderMapper.updateById(ou);
+
+        // D6 延时队列：支付成功后提交 72h 未发货提醒延时任务（精准到点触发；本地/RocketMQ 均走此路径）
+        try {
+            delayQueueService.submit("REMIND_SHIP", order.getOrderNo(), "", 72 * 60 * 60);
+        } catch (Exception ignore) {
+            // 延时任务提交失败不影响支付落地（定时扫描兜底提醒）
+        }
+
+        // F-05 闭环：支付成功触达卖家（您有新订单），买卖双向不漏
+        notificationService.notify(order.getSellerId(), NotificationType.ORDER_PAID, po.getOrderNo(),
+                "你有新订单", "订单 " + po.getOrderNo() + " 已支付成功，请尽快发货");
+    }
+
+    /** 记录平台托管资金流出流水（买家余额不直接减，演示）。 */
+    private void recordFundFlow(PayOrder po) {
+        fundFlowMapper.insert(FundFlowBuilder.of(po.getOrderNo(), po.getBuyerId(), "OUT", "PAY", po.getAmount())
+                .balanceAfter(0L).build());
+    }
+
+    /** F-02 通知中心：支付成功触达买家（best-effort，不影响支付主流程）。 */
+    private void notifyBuyerPaid(PayOrder po) {
         notificationService.notify(po.getBuyerId(), NotificationType.ORDER_PAID, po.getOrderNo(),
                 "支付成功", "您的订单 " + po.getOrderNo() + " 已支付成功，等待卖家发货");
     }
