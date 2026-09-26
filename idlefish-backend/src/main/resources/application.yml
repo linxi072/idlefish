@@ -50,9 +50,6 @@ idlefish:
     # 请求限流骨架；生产经 IDLEFISH_RATELIMIT_ENABLED=true 开启（F-04 安全加固）
     enabled: ${IDLEFISH_RATELIMIT_ENABLED:false}
     permits-per-minute: 200
-  cache:
-    # 缓存实现：local（默认，内存，离线可用，与 local profile 一致）/ redis（生产，需 idlefish.redis 配置，prod profile 构建）
-    type: local
   observability:
     # 零依赖可观测性总开关：HTTP traceId + 请求指标 + 业务指标
     enabled: ${IDLEFISH_OBSERVABILITY_ENABLED:true}

@@ -79,7 +79,6 @@ class ObservabilityControllerHealthTest {
         when(conn.createStatement()).thenReturn(stmt);
 
         IdlefishProperties props = new IdlefishProperties();
-        props.getCache().setType("redis");
         ObservabilityController spy = org.mockito.Mockito.spy(new ObservabilityController(metrics, dataSource, props));
         doReturn(false).when(spy).tcpReachable(anyString(), anyInt(), anyInt());
 

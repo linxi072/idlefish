@@ -95,16 +95,10 @@ public class ObservabilityController {
         return m;
     }
 
-    /** Redis：仅当 idlefish.cache.type=redis 时探测 TCP 可达性，否则本地缓存视为 UP。 */
+    /** Redis：系统唯一缓存组件，始终探测 TCP 可达性。 */
     private Map<String, Object> probeRedis() {
         Map<String, Object> m = new LinkedHashMap<>();
         IdlefishProperties.Redis redis = props.getRedis();
-        String type = props.getCache() == null ? "local" : props.getCache().getType();
-        if (!"redis".equals(type)) {
-            m.put("status", "UP");
-            m.put("detail", "local cache (no redis)");
-            return m;
-        }
         String host = redis == null ? "127.0.0.1" : redis.getHost();
         int port = redis == null ? 6379 : redis.getPort();
         if (tcpReachable(host, port, TCP_TIMEOUT_MS)) {

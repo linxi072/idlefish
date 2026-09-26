@@ -10,8 +10,8 @@ import java.util.List;
 /**
  * 读取 application.yml 中 idlefish.* 业务配置。
  * 外部组件一律使用真实实现：微信支付/分账、微信登录、阿里云 OSS、Elasticsearch、
- * RocketMQ、物流查询、内容审核、短信。仅缓存保留 local/redis 双实现
- * （idlefish.cache.type 切换，local 为离线默认）。
+ * RocketMQ、物流查询、内容审核、短信。缓存统一为 Redis 单一实现
+ * （由 RedisCacheAutoConfig 始终装配，idlefish.redis 配置连接）。
  */
 @Configuration
 @ConfigurationProperties(prefix = "idlefish")
@@ -28,7 +28,6 @@ public class IdlefishProperties {
     private Login login = new Login();
     private Cookie cookie = new Cookie();
     private RateLimit ratelimit = new RateLimit();
-    private Cache cache = new Cache();
     private Redis redis = new Redis();
     private Notify notify = new Notify();
     private Credit credit = new Credit();
@@ -151,12 +150,6 @@ public class IdlefishProperties {
         private boolean enabled = false;
         /** 单 (客户端IP, 接口路径) 每分钟允许的最大请求数。 */
         private long permitsPerMinute = 200L;
-    }
-
-    @Data
-    public static class Cache {
-        /** 缓存实现：local（默认，内存）/ redis（生产，需 idlefish.redis 配置）。 */
-        private String type = "local";
     }
 
     @Data

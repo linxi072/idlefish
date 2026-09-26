@@ -19,8 +19,6 @@ spring:
       data-locations: classpath:db/data-mysql.sql
 
 idlefish:
-  cache:
-    type: redis
   redis:
     host: 127.0.0.1
     port: 6379
