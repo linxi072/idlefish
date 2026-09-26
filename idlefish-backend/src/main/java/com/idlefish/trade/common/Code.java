@@ -36,6 +36,9 @@ public enum Code {
     ACTIVITY_JOIN_LIMIT(30013, "活动参与次数已达上限"),
     GROUP_FULL(30014, "该拼团已满"),
     GROUP_NOT_FOUND(30015, "拼团不存在或已结束"),
+    INVITE_CODE_NOT_FOUND(30016, "邀请码无效"),
+    INVITE_SELF(30017, "不能填写自己的邀请码"),
+    INVITE_ALREADY_BOUND(30018, "您已绑定邀请关系"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

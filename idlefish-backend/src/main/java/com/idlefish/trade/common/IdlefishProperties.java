@@ -33,6 +33,7 @@ public class IdlefishProperties {
     private Credit credit = new Credit();
     private Observability observability = new Observability();
     private Point point = new Point();
+    private Invite invite = new Invite();
 
     @Data
     public static class Jwt {
@@ -262,5 +263,18 @@ public class IdlefishProperties {
         private int signinMaxBonus = 15;
         /** 评价：每笔评价固定积分；提升至 15 激励 UGC 评价 */
         private int reviewFixed = 15;
+    }
+
+    /**
+     * 邀请拉新 / 分销配置（F-13.4）：邀请码、绑定关系、首单返券奖励。
+     */
+    @Data
+    public static class Invite {
+        /** 邀请拉新功能总开关（默认关闭，配置 rewardCouponId 后开启）。 */
+        private boolean enabled = false;
+        /** 首单返券的券模板 ID（Coupon.id）；需运营预先在后台创建。 */
+        private Long rewardCouponId;
+        /** 是否仅首单返券（1=仅首单，防刷；0=每单返，慎用）。 */
+        private int firstOrderOnly = 1;
     }
 }

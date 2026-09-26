@@ -16,6 +16,7 @@ import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.service.DelayQueueService;
 import com.idlefish.trade.marketing.service.PointService;
+import com.idlefish.trade.marketing.invite.service.InviteService;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.context.annotation.Lazy;
@@ -38,12 +39,13 @@ public class PayService {
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
     private final PointService pointService;
+    private final InviteService inviteService;
 
     public PayService(PayOrderMapper payOrderMapper, OrderMapper orderMapper,
                       FundFlowMapper fundFlowMapper, FundEscrowService escrow,
                       ObjectMapper objectMapper,
                       @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
-                      MetricsRegistry metrics, PointService pointService) {
+                      MetricsRegistry metrics, PointService pointService, InviteService inviteService) {
         this.payOrderMapper = payOrderMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
@@ -53,6 +55,7 @@ public class PayService {
         this.notificationService = notificationService;
         this.metrics = metrics;
         this.pointService = pointService;
+        this.inviteService = inviteService;
     }
 
     /** 预下单：返回渠道支付参数。 */
@@ -189,6 +192,12 @@ public class PayService {
         // F-13.1：交易完成（支付成功）买家得积分（best-effort，不影响支付主流程）
         try {
             pointService.earnByTrade(order.getBuyerId(), order.getOrderNo(), po.getAmount());
+        } catch (Exception ignore) {
+        }
+
+        // F-13.4：被邀请人首单支付成功 → 邀请人得返券奖励（best-effort，不影响支付主流程）
+        try {
+            inviteService.rewardFirstOrder(order.getBuyerId());
         } catch (Exception ignore) {
         }
     }
