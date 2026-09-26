@@ -38,7 +38,7 @@ class NotifyChannelTest {
 
     @Test
     void routing_strategy_by_type() {
-        NotificationService svc = new NotificationService(null, List.of());
+        NotificationService svc = new NotificationService(null, List.of(), null, null);
         assertTrue(svc.resolveChannels(NotificationType.REFUND_PLATFORM).contains(ChannelType.SMS));
         assertFalse(svc.resolveChannels(NotificationType.ORDER_PAID).contains(ChannelType.SMS));
         assertTrue(svc.resolveChannels(NotificationType.ORDER_PAID).contains(ChannelType.IN_APP));
@@ -50,7 +50,7 @@ class NotifyChannelTest {
         RecordingChannel inApp = new RecordingChannel(ChannelType.IN_APP);
         RecordingChannel push = new RecordingChannel(ChannelType.PUSH);
         RecordingChannel sms = new RecordingChannel(ChannelType.SMS);
-        NotificationService svc = new NotificationService(null, Arrays.asList(inApp, push, sms));
+        NotificationService svc = new NotificationService(null, Arrays.asList(inApp, push, sms), null, null);
 
         svc.notify(1L, NotificationType.REFUND_PLATFORM, "R1", "平台介入", "内容");
         svc.notify(2L, NotificationType.ORDER_PAID, "O1", "支付成功", "内容");

@@ -11,5 +11,7 @@ package com.idlefish.trade.notify.channel;
 public enum ChannelType {
     IN_APP,
     PUSH,
-    SMS
+    SMS,
+    /** 微信订阅消息（真实推送，F-14.4）：按 NotificationType→templateId 映射在关键节点触达。 */
+    SUBSCRIBE
 }

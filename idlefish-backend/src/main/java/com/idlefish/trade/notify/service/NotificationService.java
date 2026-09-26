@@ -6,9 +6,11 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
+import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.notify.channel.ChannelType;
 import com.idlefish.trade.notify.channel.NotifyChannel;
 import com.idlefish.trade.notify.channel.NotifyMessage;
+import com.idlefish.trade.notify.channel.UserOpenidResolver;
 import com.idlefish.trade.notify.entity.Notification;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.mapper.NotificationMapper;
@@ -18,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -35,10 +38,15 @@ public class NotificationService {
 
     private final NotificationMapper notificationMapper;
     private final List<NotifyChannel> channels;
+    private final UserOpenidResolver openidResolver;
+    private final IdlefishProperties.Notify notifyConfig;
 
-    public NotificationService(NotificationMapper notificationMapper, List<NotifyChannel> channels) {
+    public NotificationService(NotificationMapper notificationMapper, List<NotifyChannel> channels,
+                              UserOpenidResolver openidResolver, IdlefishProperties idlefishProperties) {
         this.notificationMapper = notificationMapper;
         this.channels = channels;
+        this.openidResolver = openidResolver;
+        this.notifyConfig = idlefishProperties == null ? null : idlefishProperties.getNotify();
     }
 
     /**
@@ -51,6 +59,8 @@ public class NotificationService {
         NotifyMessage msg = NotifyMessage.builder()
                 .userId(userId).type(type).bizId(bizId).title(title).content(content)
                 .channels(resolveChannels(type)).build();
+        // F-14.4：订阅消息开启且可解析 openid 且该事件已配置模板时，追加 SUBSCRIBE 渠道（best-effort）
+        maybeAddSubscribe(userId, type, msg);
         for (NotifyChannel ch : channels) {
             if (msg.getChannels() != null && msg.getChannels().contains(ch.type())) {
                 try {
@@ -62,12 +72,34 @@ public class NotificationService {
         }
     }
 
+    /** F-14.4：条件追加微信订阅消息渠道（仅在配置启用 + openid 可解析 + 事件已配模板时）。 */
+    private void maybeAddSubscribe(Long userId, NotificationType type, NotifyMessage msg) {
+        if (notifyConfig == null || notifyConfig.getSubscribe() == null
+                || !notifyConfig.getSubscribe().isEnabled()) {
+            return;
+        }
+        java.util.Map<String, String> templates = notifyConfig.getSubscribe().getTemplates();
+        if (templates == null || !templates.containsKey(type.getCode())) {
+            return;
+        }
+        String openid = openidResolver.resolveOpenid(userId);
+        if (openid == null || openid.isBlank()) {
+            return;
+        }
+        if (msg.getChannels() == null) {
+            msg.setChannels(new ArrayList<>());
+        }
+        if (!msg.getChannels().contains(ChannelType.SUBSCRIBE)) {
+            msg.getChannels().add(ChannelType.SUBSCRIBE);
+        }
+    }
+
     /** 事件类型 → 渠道路由策略。紧急事件（平台介入）追加短信；其余走站内信 + 实时推送。 */
     List<ChannelType> resolveChannels(NotificationType type) {
         if (type == NotificationType.REFUND_PLATFORM || type == NotificationType.SYSTEM_ALERT) {
-            return Arrays.asList(ChannelType.IN_APP, ChannelType.PUSH, ChannelType.SMS);
+            return new ArrayList<>(Arrays.asList(ChannelType.IN_APP, ChannelType.PUSH, ChannelType.SMS));
         }
-        return Arrays.asList(ChannelType.IN_APP, ChannelType.PUSH);
+        return new ArrayList<>(Arrays.asList(ChannelType.IN_APP, ChannelType.PUSH));
     }
 
     /** 我的通知列表（分页，按时间倒序）。 */

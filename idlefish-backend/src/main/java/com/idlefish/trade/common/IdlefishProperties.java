@@ -171,6 +171,8 @@ public class IdlefishProperties {
         private Long alertAdminUserId = 1L;
         /** 真实短信网关配置（smsMode=real 时生效）。 */
         private Sms sms = new Sms();
+        /** 微信订阅消息配置（F-14.4）：开启后按 NotificationType→templateId 在关键节点真实触达。 */
+        private Subscribe subscribe = new Subscribe();
 
         @Data
         public static class Sms {
@@ -181,6 +183,17 @@ public class IdlefishProperties {
             private String accessKey;
             private String secretKey;
             private String endpoint;
+        }
+
+        @Data
+        public static class Subscribe {
+            /** 是否启用微信订阅消息真实推送（默认关闭，配置 templateId 后开启）。 */
+            private boolean enabled = false;
+            /**
+             * 事件类型 code → 微信订阅消息模板 ID 映射（如 order_paid → 模板A）。
+             * 仅命中映射的事件才会真实推送；未配置 templateId 的事件自动跳过，避免报错。
+             */
+            private java.util.Map<String, String> templates = new java.util.HashMap<>();
         }
     }
 

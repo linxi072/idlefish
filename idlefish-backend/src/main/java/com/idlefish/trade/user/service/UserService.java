@@ -11,6 +11,7 @@ import com.idlefish.trade.user.dto.WxSession;
 import com.idlefish.trade.user.entity.User;
 import com.idlefish.trade.user.mapper.UserMapper;
 import com.idlefish.trade.user.vo.UserInfoVO;
+import com.idlefish.trade.notify.channel.UserOpenidResolver;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
@@ -23,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 用户与鉴权服务：微信登录（code→openid，Mock/真实可切换）、令牌签发、手机号绑定（限频 + 加密）。
  */
 @Service
-public class UserService {
+public class UserService implements UserOpenidResolver {
 
     private final UserMapper userMapper;
     private final CryptoUtil cryptoUtil;
@@ -89,6 +90,16 @@ public class UserService {
             throw new BizException(Code.USER_NOT_FOUND);
         }
         return user;
+    }
+
+    /** F-14.4：按用户 ID 解析微信 openid（订阅消息定向触达用）。用户不存在或未取得 openid 返回 null。 */
+    @Override
+    public String resolveOpenid(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        User user = userMapper.selectById(userId);
+        return user == null ? null : user.getWxOpenid();
     }
 
     /** 批量按 id 加载用户并组装为 Map（用于列表聚合，避免逐条查询产生的 N+1）。缺失 id 自然不出现在结果中。 */
