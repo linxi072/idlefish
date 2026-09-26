@@ -171,6 +171,8 @@ public class IdlefishProperties {
     public static class Notify {
         /** 实时 WebSocket 推送是否启用（本地 WS 即真实通道，无需外部凭据）。 */
         private boolean pushEnabled = true;
+        /** 系统告警接收者（管理员账号 userId）；资金对账差异等告警发往此处。 */
+        private Long alertAdminUserId = 1L;
         /** 真实短信网关配置（smsMode=real 时生效）。 */
         private Sms sms = new Sms();
 
@@ -190,6 +192,18 @@ public class IdlefishProperties {
     public static class Observability {
         /** 零依赖可观测性总开关：HTTP traceId + 请求指标 + 业务指标。 */
         private boolean enabled = true;
+        /** 阈值告警总开关（F-12.3）。 */
+        private boolean alertEnabled = true;
+        /** 告警接收者（管理员账号 userId）。 */
+        private Long alertAdminUserId = 1L;
+        /** 慢请求阈值（毫秒，按路由均值评估）。 */
+        private long slowRequestMs = 1000;
+        /** 错误率阈值（5xx / 总请求，超过即告警）。 */
+        private double errorRateThreshold = 0.05;
+        /** 支付验签失败累计阈值（近周期，超过即告警）。 */
+        private long verifyFailureThreshold = 5;
+        /** 同类告警冷却时间（分钟），冷却期内不重复发送。 */
+        private long cooldownMinutes = 30;
     }
 
     @Data

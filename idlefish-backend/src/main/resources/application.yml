@@ -56,6 +56,13 @@ idlefish:
   observability:
     # 零依赖可观测性总开关：HTTP traceId + 请求指标 + 业务指标
     enabled: ${IDLEFISH_OBSERVABILITY_ENABLED:true}
+    # 阈值告警（F-12.3）：慢请求 / 错误率 / 支付验签失败
+    alert-enabled: ${IDLEFISH_OBSERVABILITY_ALERT_ENABLED:true}
+    alert-admin-user-id: ${IDLEFISH_OBSERVABILITY_ALERT_ADMIN:1}
+    slow-request-ms: ${IDLEFISH_OBSERVABILITY_SLOW_MS:1000}
+    error-rate-threshold: ${IDLEFISH_OBSERVABILITY_ERR_RATE:0.05}
+    verify-failure-threshold: ${IDLEFISH_OBSERVABILITY_VERIFY_FAIL:5}
+    cooldown-minutes: ${IDLEFISH_OBSERVABILITY_COOLDOWN:30}
   redis:
     host: 127.0.0.1
     port: 6379
