@@ -32,6 +32,7 @@ public class IdlefishProperties {
     private Notify notify = new Notify();
     private Credit credit = new Credit();
     private Observability observability = new Observability();
+    private Point point = new Point();
 
     @Data
     public static class Jwt {
@@ -221,5 +222,29 @@ public class IdlefishProperties {
         private int riskPerEvent = 5;
         /** 风控扣分封顶 */
         private int riskCap = 30;
+    }
+
+    /**
+     * 积分体系配置（F-13.1）：兑换比例、抵扣上限、各场景获得规则。
+     * 金额单位：分。兑换比例 redeemPointsPerYuan 表示「多少积分抵 1 元（=100 分）」。
+     */
+    @Data
+    public static class Point {
+        /** 积分功能总开关（默认开启） */
+        private boolean enabled = true;
+        /** 抵现：多少积分抵 1 元（100 积分 = 1 元 = 100 分） */
+        private int redeemPointsPerYuan = 100;
+        /** 抵现：积分抵扣金额不超过订单应付的比例（0~1） */
+        private double maxRedeemRatio = 0.5;
+        /** 赚取：交易每 1 元（100 分）得多少积分 */
+        private int earnPointsPerYuan = 1;
+        /** 赚取：单笔交易得积分封顶 */
+        private long tradeMaxPerOrder = 1000;
+        /** 签到：基础积分 */
+        private int signinBase = 5;
+        /** 签到：连续天数额外加成封顶（每天 +1，封顶该值） */
+        private int signinMaxBonus = 10;
+        /** 评价：每笔评价固定积分 */
+        private int reviewFixed = 10;
     }
 }
