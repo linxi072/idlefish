@@ -26,6 +26,7 @@ import com.idlefish.trade.user.service.AddressService;
 import com.idlefish.trade.user.service.CreditService;
 import com.idlefish.trade.risk.service.TrackService;
 import com.idlefish.trade.trade.service.DelayQueueService;
+import com.idlefish.trade.marketing.service.PointService;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.context.annotation.Lazy;
@@ -59,6 +60,7 @@ public class OrderService {
     private final NotificationService notificationService;
     private final CreditService creditService;
     private final com.idlefish.trade.marketing.service.CouponService couponService;
+    private final PointService pointService;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -67,7 +69,8 @@ public class OrderService {
                         AddressService addressService, LogisticService logisticService,
                         SettlementService settlementService, TrackService trackService, ObjectMapper objectMapper,
                         @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
-                        CreditService creditService, com.idlefish.trade.marketing.service.CouponService couponService) {
+                        CreditService creditService, com.idlefish.trade.marketing.service.CouponService couponService,
+                        PointService pointService) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.itemService = itemService;
@@ -81,6 +84,7 @@ public class OrderService {
         this.notificationService = notificationService;
         this.creditService = creditService;
         this.couponService = couponService;
+        this.pointService = pointService;
     }
 
     /** 创建订单（幂等：同买家同商品存在待支付订单则直接返回）。 */
@@ -101,12 +105,13 @@ public class OrderService {
         PayOrder po = buildPayOrder(o);
         payOrderMapper.insert(po);
 
-        long discount = redeemCouponIfPresent(buyerId, dto, o, po);
+        redeemCouponIfPresent(buyerId, dto, o, po);
+        redeemPointIfPresent(buyerId, dto, o, po);
 
         scheduleCloseTask(o.getOrderNo());
         trackOrderCreate(buyerId, o.getOrderNo(), o.getPayAmount());
 
-        return buildCreateVO(o, discount);
+        return buildCreateVO(o);
     }
 
     /** 查询同买家同商品的待支付订单，存在则包装为创建结果（幂等返回）。 */
@@ -199,12 +204,34 @@ public class OrderService {
         }
     }
 
+    /** F-13.1 积分抵现（下单抵扣）：命中则重算应付并回写订单/支付单，返回抵扣额（分）。 */
+    private long redeemPointIfPresent(Long buyerId, OrderCreateDTO dto, Order o, PayOrder po) {
+        if (dto.getUsedPoint() == null || dto.getUsedPoint() <= 0) {
+            return 0L;
+        }
+        // 以优惠券抵扣后的应付为基数；封顶不超过应付
+        long payable = o.getPayAmount();
+        long discount = pointService.redeem(buyerId, dto.getUsedPoint(), o.getOrderNo(), payable);
+        if (discount > 0) {
+            long finalPay = Math.max(0L, payable - discount);
+            o.setPayAmount(finalPay);
+            o.setUsedPoint(dto.getUsedPoint());
+            o.setPointDiscount(discount);
+            orderMapper.updateById(o);
+            po.setAmount(finalPay);
+            payOrderMapper.updateById(po);
+        }
+        return discount;
+    }
+
     /** 组装下单创建结果 VO。 */
-    private OrderCreateVO buildCreateVO(Order o, long discount) {
+    private OrderCreateVO buildCreateVO(Order o) {
         OrderCreateVO vo = new OrderCreateVO();
         vo.setOrderNo(o.getOrderNo());
         vo.setAmount(o.getPayAmount());
-        vo.setDiscountAmount(discount);
+        vo.setDiscountAmount(o.getDiscountAmount());
+        vo.setUsedPoint(o.getUsedPoint());
+        vo.setPointDiscount(o.getPointDiscount());
         return vo;
     }
 
@@ -218,6 +245,7 @@ public class OrderService {
         closePay(o.getPayNo());
         itemService.releaseStock(o.getItemId(), o.getQuantity());
         couponService.releaseByOrder(orderNo);   // F-10：取消释放已核销优惠券
+        pointService.releaseByOrder(orderNo);    // F-13.1：取消释放已抵扣积分
     }
 
     /** 卖家发货。 */
@@ -362,6 +390,7 @@ public class OrderService {
         closePay(o.getPayNo());
         itemService.releaseStock(o.getItemId(), o.getQuantity());
         couponService.releaseByOrder(orderNo);   // F-10：超时关单释放已核销优惠券
+        pointService.releaseByOrder(orderNo);    // F-13.1：超时关单释放已抵扣积分
 
         // F-02 通知中心：超时关单触达买家（best-effort）
         notificationService.notify(o.getBuyerId(), NotificationType.ORDER_CLOSED, orderNo, "订单已关闭",
@@ -478,6 +507,9 @@ public class OrderService {
         vo.setDiscountAmount(o.getDiscountAmount());
         vo.setCouponId(o.getUserCouponId());
         vo.setDiscountAmountYuan(o.getDiscountAmount() == null ? 0 : o.getDiscountAmount() / 100.0);
+        vo.setUsedPoint(o.getUsedPoint());
+        vo.setPointDiscount(o.getPointDiscount());
+        vo.setPointDiscountYuan(o.getPointDiscount() == null ? 0 : o.getPointDiscount() / 100.0);
         vo.setStatus(o.getStatus());
         vo.setRemark(o.getRemark());
         vo.setLogisticsNo(o.getLogisticsNo());

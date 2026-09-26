@@ -24,6 +24,9 @@ public class OrderVO {
     private Long amount;            // 兼容前端：应付总额 = payAmount（单位：分）
     private Long discountAmount;    // 优惠券抵扣（分）
     private Long couponId;          // 使用的用户券 ID
+    private Long usedPoint;         // 使用的积分（F-13.1）
+    private Long pointDiscount;     // 积分抵扣（分，F-13.1）
+    private Double pointDiscountYuan; // 积分抵扣（元，展示用）
     private Double unitPriceYuan;   // 展示用：对应字段/100，单位元（金额单位契约）
     private Double totalAmountYuan;
     private Double freightYuan;

@@ -95,6 +95,8 @@ CREATE TABLE IF NOT EXISTS t_order (
     close_type       VARCHAR(32),
     user_coupon_id   BIGINT,
     discount_amount  BIGINT       DEFAULT 0,
+    used_point       BIGINT       DEFAULT 0,   -- F-13.1：下单使用的积分
+    point_discount   BIGINT       DEFAULT 0,   -- F-13.1：积分抵扣金额（分）
     created_at       DATETIME,
     updated_at       DATETIME,
     UNIQUE KEY uk_order_no (order_no),
@@ -542,4 +544,33 @@ CREATE TABLE IF NOT EXISTS t_user_coupon (
     KEY idx_uc_order (order_no),
     -- 券并发限领兜底：同一用户对同一券唯一，杜绝并发竞态下重复领取（与 per_user_limit 默认 1 一致）
     UNIQUE KEY uk_user_coupon (user_id, coupon_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===== 积分体系（F-13.1）=====
+
+-- 用户积分账户：每用户一行，惰性创建（首次产生积分时落库）
+CREATE TABLE IF NOT EXISTS t_point (
+    id               BIGINT       PRIMARY KEY,
+    user_id          BIGINT       NOT NULL,
+    balance          BIGINT       DEFAULT 0,   -- 可用积分
+    total_earned     BIGINT       DEFAULT 0,   -- 累计获得积分（仅正向增加）
+    version          INT          DEFAULT 0,
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_point_user (user_id),
+    KEY idx_point_balance (user_id, balance)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 积分流水：每笔积分变动（获得/抵扣/释放）落一条
+CREATE TABLE IF NOT EXISTS t_point_log (
+    id               BIGINT       PRIMARY KEY,
+    user_id          BIGINT       NOT NULL,
+    biz_type         VARCHAR(32)  NOT NULL,   -- EARN_SIGNIN/EARN_TRADE/EARN_REVIEW/REDEEM/REDEEM_RELEASED
+    biz_id           VARCHAR(64),             -- 订单号 / 评价 ID / 日期
+    delta            BIGINT,                  -- 积分变动（正=获得，负=抵扣）
+    balance_after    BIGINT,                  -- 变动后余额
+    remark           VARCHAR(255),
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    KEY idx_point_log_user (user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

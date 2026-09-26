@@ -22,6 +22,9 @@ public class OrderCreateDTO {
     /** 优惠券：用户券 ID（t_user_coupon.id），选填；非空则下单时核销抵扣。 */
     private Long userCouponId;
 
+    /** 积分抵现：下单使用的积分（F-13.1），选填；>0 则下单时核验并抵扣。 */
+    private Long usedPoint;
+
     /** 幂等键（客户端生成，防止重复提交；当前仅透传，后端以"同买家同商品待支付"幂等）。 */
     private String idempotentKey;
 
@@ -63,6 +66,14 @@ public class OrderCreateDTO {
 
     public void setUserCouponId(Long userCouponId) {
         this.userCouponId = userCouponId;
+    }
+
+    public Long getUsedPoint() {
+        return usedPoint;
+    }
+
+    public void setUsedPoint(Long usedPoint) {
+        this.usedPoint = usedPoint;
     }
 
     public String getIdempotentKey() {

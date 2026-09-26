@@ -33,6 +33,8 @@ public class Order extends BaseEntity {
     private String closeType;       // timeout / cancel
     private Long userCouponId;      // 使用的用户券 ID（t_user_coupon.id）
     private Long discountAmount;    // 优惠券抵扣金额（分）
+    private Long usedPoint;         // 下单使用的积分（F-13.1）
+    private Long pointDiscount;     // 积分抵扣金额（分，F-13.1）
 
     @Version
     private Integer version;

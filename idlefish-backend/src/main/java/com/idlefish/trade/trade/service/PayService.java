@@ -15,6 +15,7 @@ import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.service.DelayQueueService;
+import com.idlefish.trade.marketing.service.PointService;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.context.annotation.Lazy;
@@ -36,12 +37,13 @@ public class PayService {
     private final DelayQueueService delayQueueService;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
+    private final PointService pointService;
 
     public PayService(PayOrderMapper payOrderMapper, OrderMapper orderMapper,
                       FundFlowMapper fundFlowMapper, FundEscrowService escrow,
                       ObjectMapper objectMapper,
                       @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
-                      MetricsRegistry metrics) {
+                      MetricsRegistry metrics, PointService pointService) {
         this.payOrderMapper = payOrderMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
@@ -50,6 +52,7 @@ public class PayService {
         this.delayQueueService = delayQueueService;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.pointService = pointService;
     }
 
     /** 预下单：返回渠道支付参数。 */
@@ -182,6 +185,12 @@ public class PayService {
         // F-05 闭环：支付成功触达卖家（您有新订单），买卖双向不漏
         notificationService.notify(order.getSellerId(), NotificationType.ORDER_PAID, po.getOrderNo(),
                 "你有新订单", "订单 " + po.getOrderNo() + " 已支付成功，请尽快发货");
+
+        // F-13.1：交易完成（支付成功）买家得积分（best-effort，不影响支付主流程）
+        try {
+            pointService.earnByTrade(order.getBuyerId(), order.getOrderNo(), po.getAmount());
+        } catch (Exception ignore) {
+        }
     }
 
     /** 记录平台托管资金流出流水（买家余额不直接减，演示）。 */

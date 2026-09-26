@@ -13,4 +13,8 @@ public class OrderCreateVO {
     private Long amount;
     /** 优惠券抵扣金额（分），无券为 0 */
     private Long discountAmount;
+    /** 使用的积分（F-13.1），未使用为 0/null */
+    private Long usedPoint;
+    /** 积分抵扣金额（分，F-13.1），未使用为 0 */
+    private Long pointDiscount;
 }

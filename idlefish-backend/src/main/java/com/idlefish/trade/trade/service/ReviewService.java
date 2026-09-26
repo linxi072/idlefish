@@ -12,6 +12,7 @@ import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.ReviewMapper;
 import com.idlefish.trade.trade.vo.ReviewVO;
 import com.idlefish.trade.user.service.CreditService;
+import com.idlefish.trade.marketing.service.PointService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +28,16 @@ public class ReviewService {
     private final OrderMapper orderMapper;
     private final ContentAuditService contentAuditService;
     private final CreditService creditService;
+    private final PointService pointService;
 
     public ReviewService(ReviewMapper reviewMapper, OrderMapper orderMapper,
-                         ContentAuditService contentAuditService, CreditService creditService) {
+                         ContentAuditService contentAuditService, CreditService creditService,
+                         PointService pointService) {
         this.reviewMapper = reviewMapper;
         this.orderMapper = orderMapper;
         this.contentAuditService = contentAuditService;
         this.creditService = creditService;
+        this.pointService = pointService;
     }
 
     /** 提交评价：校验订单已完成、评价人是交易一方、同端同单幂等、内容机审。返回评价 ID。 */
@@ -81,6 +85,7 @@ public class ReviewService {
 
         if (auditPass) {
             creditService.recompute(targetId);
+            pointService.earnByReview(reviewerId, r.getId());   // F-13.1：评价通过得积分
         }
         return r.getId();
     }
@@ -128,6 +133,7 @@ public class ReviewService {
         upd.setStatus(1);
         reviewMapper.updateById(upd);
         creditService.recompute(r.getTargetId());
+        pointService.earnByReview(r.getReviewerId(), r.getId());   // F-13.1：审核通过得积分
     }
 
     /** 审核驳回（管理端）。 */
