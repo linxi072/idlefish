@@ -40,6 +40,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+        <!-- Redis（生产缓存，需联网下载） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
 
         <!-- MyBatis-Plus (Spring Boot 3) -->
         <dependency>
@@ -105,45 +110,13 @@
     </build>
 
     <!--
-      构建 Profile 化说明（离线安全 + 生产就绪）：
-      - local（默认激活）：排除 Redis 实现源文件（不依赖 spring-data-redis），配合 idlefish.cache.type=local
-        使用内存缓存；MySQL 驱动为离线已缓存版本。沙箱离线可 mvn -o 编译/运行/测试，不回归。
-      - prod：引入 spring-boot-starter-data-redis（联网下载），配合 application-prod.yml 的
-        idlefish.cache.type=redis 启用 Redis 缓存。需在本机联网执行 mvn -Pprod 拉取依赖。
-      说明：H2 内存库已彻底移除，本地运行需自备 MySQL 实例（application.yml 已指向 127.0.0.1:3306/idlefish）。
+      构建说明（离线安全 + 生产就绪）：
+      - 缓存架构：系统唯一缓存组件为 Redis（spring-boot-starter-data-redis 已作为普通依赖，
+        离线 .m2 已缓存，可 mvn -o 离线编译）。本地运行需自备 Redis 实例（application.yml 默认 127.0.0.1:6379），
+        不再保留本地内存缓存实现（已从 common/cache 移除 LocalCacheServiceImpl）。
+      - 数据源：MySQL 8.1.0（离线已缓存），本地运行需自备 MySQL 实例（application.yml 默认 127.0.0.1:3306/idlefish）。
+      - Profile：原 local/prod 双 profile 隔离已不再需要，默认构建即包含全部依赖；
+        prod profile 仅用于通过 spring.profiles.active=prod 启动参数切换数据源/SQL 方言，缓存恒为 Redis。
+      说明：H2 内存库已彻底移除。
     -->
-    <profiles>
-        <profile>
-            <id>local</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration>
-                            <!-- 默认（离线）不编译 Redis 实现，避免缺少 spring-data-redis 依赖导致构建失败 -->
-                            <excludes>
-                                <exclude>com/idlefish/trade/common/cache/RedisCacheServiceImpl.java</exclude>
-                                <exclude>com/idlefish/trade/common/cache/RedisCacheAutoConfig.java</exclude>
-                            </excludes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <profile>
-            <id>prod</id>
-            <dependencies>
-                <!-- Redis（生产缓存，需联网下载） -->
-                <dependency>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-data-redis</artifactId>
-                </dependency>
-            </dependencies>
-        </profile>
-    </profiles>
 </project>
