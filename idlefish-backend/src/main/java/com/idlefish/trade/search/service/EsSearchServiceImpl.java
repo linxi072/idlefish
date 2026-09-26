@@ -21,7 +21,9 @@ import org.springframework.web.client.RestTemplate;
 import jakarta.annotation.PostConstruct;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Elasticsearch 检索实现（真实 Elasticsearch 实现，默认启用）。
@@ -87,30 +89,7 @@ public class EsSearchServiceImpl implements SearchService {
             return fallback(q);
         }
         try {
-            ObjectNode bool = objectMapper.createObjectNode().putObject("bool");
-            ArrayNode must = bool.putArray("must");
-            ObjectNode multi = must.addObject().putObject("multi_match");
-            multi.put("query", q.getKeyword());
-            ArrayNode fields = multi.putArray("fields");
-            fields.add("title").add("description");
-            ArrayNode filter = bool.putArray("filter");
-            ObjectNode statusTerm = filter.addObject().putObject("term");
-            statusTerm.putObject("status").put("value", "on_sale");
-            ObjectNode auditTerm = filter.addObject().putObject("term");
-            auditTerm.putObject("auditStatus").put("value", "pass");
-            if (q.getCategoryId() != null) {
-                ObjectNode cat = filter.addObject().putObject("term");
-                cat.putObject("categoryId").put("value", q.getCategoryId());
-            }
-            if (q.getConditionLevel() != null) {
-                ObjectNode cond = filter.addObject().putObject("term");
-                cond.putObject("conditionLevel").put("value", q.getConditionLevel());
-            }
-            if (q.getMinPrice() != null || q.getMaxPrice() != null) {
-                ObjectNode range = filter.addObject().putObject("range").putObject("price");
-                if (q.getMinPrice() != null) range.put("gte", q.getMinPrice());
-                if (q.getMaxPrice() != null) range.put("lte", q.getMaxPrice());
-            }
+            ObjectNode bool = buildBool(q);
 
             ObjectNode sortNode = objectMapper.createObjectNode();
             switch (q.getSort() == null ? "" : q.getSort()) {
@@ -132,6 +111,94 @@ public class EsSearchServiceImpl implements SearchService {
         } catch (Exception e) {
             log.warn("ES 检索失败，降级为空结果: {}", e.getMessage());
             return new Page<>(Math.max(q.getPage(), 1), Math.max(q.getSize(), 1));
+        }
+    }
+
+    /**
+     * 构建检索/聚合共用的 bool 查询（multi_match + 过滤项，F-14.1 新增同城/省份过滤）。
+     * 纯构造、无副作用，离线可单测（见 EsSearchQueryTest）。
+     */
+    ObjectNode buildBool(ItemQueryDTO q) {
+        ObjectNode bool = objectMapper.createObjectNode().putObject("bool");
+        ArrayNode must = bool.putArray("must");
+        if (q.getKeyword() != null && !q.getKeyword().isBlank()) {
+            ObjectNode multi = must.addObject().putObject("multi_match");
+            multi.put("query", q.getKeyword());
+            ArrayNode fields = multi.putArray("fields");
+            fields.add("title").add("description");
+        }
+        ArrayNode filter = bool.putArray("filter");
+        term(filter, "status", "on_sale");
+        term(filter, "auditStatus", "pass");
+        if (q.getCategoryId() != null) {
+            term(filter, "categoryId", q.getCategoryId());
+        }
+        if (q.getConditionLevel() != null) {
+            term(filter, "conditionLevel", q.getConditionLevel());
+        }
+        if (q.getCity() != null && !q.getCity().isBlank()) {
+            term(filter, "city", q.getCity());
+        }
+        if (q.getProvince() != null && !q.getProvince().isBlank()) {
+            term(filter, "province", q.getProvince());
+        }
+        if (q.getMinPrice() != null || q.getMaxPrice() != null) {
+            ObjectNode range = filter.addObject().putObject("range").putObject("price");
+            if (q.getMinPrice() != null) range.put("gte", q.getMinPrice());
+            if (q.getMaxPrice() != null) range.put("lte", q.getMaxPrice());
+        }
+        return bool;
+    }
+
+    private void term(ArrayNode filter, String field, Object value) {
+        ObjectNode t = filter.addObject().putObject("term");
+        if (value instanceof Number) {
+            t.putObject(field).put("value", ((Number) value).longValue());
+        } else {
+            t.putObject(field).put("value", value.toString());
+        }
+    }
+
+    @Override
+    public Map<String, Map<String, Long>> facets(ItemQueryDTO q) {
+        Map<String, Map<String, Long>> result = new LinkedHashMap<>();
+        if (q == null) {
+            q = new ItemQueryDTO();
+        }
+        try {
+            ObjectNode bool = buildBool(q);
+            ObjectNode body = objectMapper.createObjectNode();
+            body.set("query", objectMapper.createObjectNode().set("bool", bool));
+            // 聚合维度：类目 / 成色 / 城市
+            ObjectNode aggs = body.putObject("aggs");
+            for (String dim : new String[]{"categoryId", "conditionLevel", "city"}) {
+                ObjectNode terms = aggs.putObject(dim).putObject("terms");
+                terms.put("field", dim);
+                terms.put("size", 100);
+            }
+            body.put("size", 0); // 聚合查询不需要返回文档
+
+            JsonNode root = postSearch(body);
+            JsonNode aggsNode = root.path("aggregations");
+            for (String dim : new String[]{"categoryId", "conditionLevel", "city"}) {
+                Map<String, Long> entries = new LinkedHashMap<>();
+                JsonNode buckets = aggsNode.path(dim).path("buckets");
+                if (buckets.isArray()) {
+                    for (JsonNode b : buckets) {
+                        String key = b.path("key").asText();
+                        long count = b.path("doc_count").asLong(0L);
+                        entries.put(key, count);
+                    }
+                }
+                result.put(dim, entries);
+            }
+            return result;
+        } catch (Exception e) {
+            log.warn("ES 聚合失败，降级为空: {}", e.getMessage());
+            result.put("categoryId", new LinkedHashMap<>());
+            result.put("conditionLevel", new LinkedHashMap<>());
+            result.put("city", new LinkedHashMap<>());
+            return result;
         }
     }
 

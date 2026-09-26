@@ -11,6 +11,10 @@ public class ItemQueryDTO {
     private Integer conditionLevel;
     private Long minPrice;
     private Long maxPrice;
+    /** 同城筛选：按城市关键字过滤（F-14.1）。 */
+    private String city;
+    /** 省份筛选（F-14.1）。 */
+    private String province;
     private String sort = "new";    // new / price_asc / price_desc / hot
     private Integer page = 1;
     private Integer size = 20;
@@ -61,6 +65,22 @@ public class ItemQueryDTO {
 
     public void setMaxPrice(Long maxPrice) {
         this.maxPrice = maxPrice;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getProvince() {
+        return province;
+    }
+
+    public void setProvince(String province) {
+        this.province = province;
     }
 
     public String getSort() {

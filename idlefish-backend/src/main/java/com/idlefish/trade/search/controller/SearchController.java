@@ -9,6 +9,7 @@ import com.idlefish.trade.search.service.SearchService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 搜索接口（免登录，WebConfig 已放行 /api/search/**）。
@@ -42,6 +43,12 @@ public class SearchController {
     @GetMapping("/fallback")
     public Result<IPage<ItemVO>> fallback(ItemQueryDTO q) {
         return Result.ok(searchService.fallback(q));
+    }
+
+    /** 聚合筛选（F-14.1）：在检索条件基础上返回类目/成色/城市三维度计数，供前端筛选栏展示。 */
+    @GetMapping("/facets")
+    public Result<Map<String, Map<String, Long>>> facets(ItemQueryDTO q) {
+        return Result.ok(searchService.facets(q));
     }
 
     /** 首页推荐流（同城优先 + 热度加权，PRD §C2）。 */
