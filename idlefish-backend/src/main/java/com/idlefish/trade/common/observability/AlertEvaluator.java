@@ -49,6 +49,7 @@ public class AlertEvaluator {
     /** 每 60 秒评估一次；沙箱无 MySQL 上下文时不触发，纯单测直接调用 evaluate()。 */
     @Scheduled(fixedDelay = 60_000)
     public void evaluate() {
+        TraceContext.ensure();
         IdlefishProperties.Observability obs = props.getObservability();
         if (obs == null || !obs.isEnabled() || !obs.isAlertEnabled()) {
             return;

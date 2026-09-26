@@ -1,5 +1,6 @@
 package com.idlefish.trade.trade.schedule;
 
+import com.idlefish.trade.common.observability.TraceContext;
 import com.idlefish.trade.trade.service.OrderService;
 import com.idlefish.trade.trade.service.RefundService;
 import com.idlefish.trade.trade.service.SettlementService;
@@ -21,6 +22,8 @@ import java.util.Map;
  * - T+1 结算到期放款
  * <p>
  * 演示环境以较短周期运行，便于验证；生产可改为分布式调度（XXL-JOB / Scheduled 集群防重）。
+ * 每个调度入口首先调用 {@link TraceContext#ensure()} 生成/复用 traceId，使脱离 HTTP 上下文的
+ * 后台任务日志也能被统一追踪（F-12.4 全链路透传）。
  */
 @Component
 public class TradeScheduler {
@@ -43,6 +46,7 @@ public class TradeScheduler {
     /** 每 60 秒扫描：关闭超时未支付订单。 */
     @Scheduled(fixedDelay = 60_000)
     public void closeExpired() {
+        TraceContext.ensure();
         try {
             orderService.closeExpiredOrders();
         } catch (Exception e) {
@@ -53,6 +57,7 @@ public class TradeScheduler {
     /** 每 5 分钟：提醒超 72h 未发货。 */
     @Scheduled(fixedDelay = 300_000)
     public void remind() {
+        TraceContext.ensure();
         try {
             long n = orderService.remindUnshipped();
             if (n > 0) {
@@ -66,6 +71,7 @@ public class TradeScheduler {
     /** 每 5 分钟：退款单 48h 自动同意 + 5 天平台介入。 */
     @Scheduled(fixedDelay = 300_000)
     public void refundAuto() {
+        TraceContext.ensure();
         try {
             refundService.autoAgree();
             refundService.autoPlatform();
@@ -77,6 +83,7 @@ public class TradeScheduler {
     /** 每 10 分钟：运输中 10 天自动确认收货。 */
     @Scheduled(fixedDelay = 600_000)
     public void autoConfirm() {
+        TraceContext.ensure();
         try {
             orderService.autoConfirmReceive();
         } catch (Exception e) {
@@ -87,6 +94,7 @@ public class TradeScheduler {
     /** 每 2 分钟：T+1 结算到期放款。 */
     @Scheduled(fixedDelay = 120_000)
     public void settleDue() {
+        TraceContext.ensure();
         try {
             settlementService.processDue();
         } catch (Exception e) {
@@ -97,6 +105,7 @@ public class TradeScheduler {
     /** 每日 02:00：资金对账（PRD §F4），差异自动向管理员告警。 */
     @Scheduled(cron = "0 0 2 * * *")
     public void reconcileDaily() {
+        TraceContext.ensure();
         try {
             Map<String, Object> report = reconciliationService.reconcileWithAlert(null);
             if (Boolean.FALSE.equals(report.get("matched"))) {
