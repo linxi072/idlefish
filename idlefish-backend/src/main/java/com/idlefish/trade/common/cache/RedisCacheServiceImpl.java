@@ -7,8 +7,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Redis 缓存实现（生产）：基于 RedisTemplate<String,Object>（JSON 序列化）。
- * 仅在 idlefish.cache.type=redis 时由 RedisCacheAutoConfig 装配，默认（local）不编译/不启用。
+ * Redis 缓存实现：基于 RedisTemplate<String,Object>（JSON 序列化）。
+ * 系统唯一缓存实现，由 RedisCacheAutoConfig 始终装配。
  */
 public class RedisCacheServiceImpl implements CacheService {
 

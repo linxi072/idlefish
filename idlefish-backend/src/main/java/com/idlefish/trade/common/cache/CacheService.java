@@ -3,8 +3,7 @@ package com.idlefish.trade.common.cache;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 统一缓存抽象（F-05/基础设施）：屏蔽本地与 Redis 实现差异。
- * 默认使用本地内存实现（LocalCacheServiceImpl），生产通过 idlefish.cache.type=redis 切换为 Redis 实现。
+ * 统一缓存抽象（F-05/基础设施）：系统唯一缓存抽象，底层统一对接 Redis。
  * 所有读写均为 best-effort 语义：缓存不可用不应影响主业务流程。
  */
 public interface CacheService {
