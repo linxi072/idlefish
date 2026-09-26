@@ -64,7 +64,7 @@ public class NotificationService {
 
     /** 事件类型 → 渠道路由策略。紧急事件（平台介入）追加短信；其余走站内信 + 实时推送。 */
     List<ChannelType> resolveChannels(NotificationType type) {
-        if (type == NotificationType.REFUND_PLATFORM) {
+        if (type == NotificationType.REFUND_PLATFORM || type == NotificationType.SYSTEM_ALERT) {
             return Arrays.asList(ChannelType.IN_APP, ChannelType.PUSH, ChannelType.SMS);
         }
         return Arrays.asList(ChannelType.IN_APP, ChannelType.PUSH);

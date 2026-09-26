@@ -94,11 +94,11 @@ public class TradeScheduler {
         }
     }
 
-    /** 每日 02:00：资金对账（PRD §F4），差异写入日志告警。 */
+    /** 每日 02:00：资金对账（PRD §F4），差异自动向管理员告警。 */
     @Scheduled(cron = "0 0 2 * * *")
     public void reconcileDaily() {
         try {
-            Map<String, Object> report = reconciliationService.reconcile(null);
+            Map<String, Object> report = reconciliationService.reconcileWithAlert(null);
             if (Boolean.FALSE.equals(report.get("matched"))) {
                 log.warn("[scheduler] 资金对账存在差异: {}", report);
             } else {

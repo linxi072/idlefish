@@ -24,7 +24,8 @@ public enum NotificationType {
     WITHDRAW_APPLY("withdraw_apply", "提现申请"),
     WITHDRAW_APPROVE("withdraw_approve", "提现通过"),
     WITHDRAW_REJECT("withdraw_reject", "提现驳回"),
-    COUPON_CLAIMED("coupon_claimed", "优惠券领取");
+    COUPON_CLAIMED("coupon_claimed", "优惠券领取"),
+    SYSTEM_ALERT("system_alert", "系统告警");
 
     private final String code;
     private final String desc;
