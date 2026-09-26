@@ -1,5 +1,7 @@
 package com.idlefish.trade.common.enums;
 
+import com.idlefish.trade.common.BizException;
+import com.idlefish.trade.common.Code;
 import lombok.Getter;
 
 /**
@@ -25,6 +27,6 @@ public enum ReviewRole {
                 return r;
             }
         }
-        throw new IllegalArgumentException("unknown review role: " + code);
+        throw new BizException(Code.PARAM_INVALID, "unknown review role: " + code);
     }
 }

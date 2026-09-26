@@ -1,5 +1,7 @@
 package com.idlefish.trade.common.enums;
 
+import com.idlefish.trade.common.BizException;
+import com.idlefish.trade.common.Code;
 import lombok.Getter;
 
 /**
@@ -30,6 +32,6 @@ public enum OrderStatus {
                 return s;
             }
         }
-        throw new IllegalArgumentException("unknown order status: " + code);
+        throw new BizException(Code.PARAM_INVALID, "unknown order status: " + code);
     }
 }

@@ -52,6 +52,18 @@ public class GlobalExceptionHandler {
         return Result.fail(Code.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Result<Void> handleIllegalArgument(IllegalArgumentException e) {
+        // 参数/枚举非法等：透传原始 message，便于前端与日志定位（避免笼统的“系统繁忙”）
+        return Result.fail(Code.PARAM_INVALID.getCode(), e.getMessage() != null ? e.getMessage() : Code.PARAM_INVALID.getMsg());
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public Result<Void> handleIllegalState(IllegalStateException e) {
+        // 加密/签名/状态机异常等系统级错误：透传 message（如 SignUtils 失败），便于排查
+        return Result.fail(Code.SYSTEM_ERROR.getCode(), e.getMessage() != null ? e.getMessage() : Code.SYSTEM_ERROR.getMsg());
+    }
+
     @ExceptionHandler(Exception.class)
     public Result<Void> handleOther(Exception e, HttpServletRequest request) {
         log.error("unexpected error at {}", request.getRequestURI(), e);

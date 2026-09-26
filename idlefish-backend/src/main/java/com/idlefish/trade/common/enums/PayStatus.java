@@ -1,5 +1,7 @@
 package com.idlefish.trade.common.enums;
 
+import com.idlefish.trade.common.BizException;
+import com.idlefish.trade.common.Code;
 import lombok.Getter;
 
 /**
@@ -27,6 +29,6 @@ public enum PayStatus {
                 return s;
             }
         }
-        throw new IllegalArgumentException("unknown pay status: " + code);
+        throw new BizException(Code.PARAM_INVALID, "unknown pay status: " + code);
     }
 }
