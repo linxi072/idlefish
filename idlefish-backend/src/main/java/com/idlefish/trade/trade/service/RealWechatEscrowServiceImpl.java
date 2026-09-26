@@ -204,6 +204,61 @@ public class RealWechatEscrowServiceImpl implements FundEscrowService {
         return orderId;
     }
 
+    // ---------------- 提现出款（商家转账到零钱） ----------------
+
+    @Override
+    public String transfer(String outBizNo, Long amount, String openid) {
+        IdlefishProperties.Pay p = pay();
+        if (!configured(p)) {
+            // 硬网关：未配置真实商户凭据时，绝不实际出款，安全失败（F-11.3 资金安全底线）。
+            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.CONFIG_MISSING,
+                    "微信商户配置缺失，未实际出款（沙箱/未配置环境）");
+        }
+        // 幂等先查：若已成功出款，直接返回，避免网络超时重试导致重复出款。
+        if (queryTransfer(outBizNo)) {
+            return outBizNo;
+        }
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("appid", p.getAppid());
+        body.put("out_bill_no", outBizNo);
+        body.put("transfer_scene_id", p.getTransferSceneId() != null ? p.getTransferSceneId() : "1000");
+        body.put("openid", openid);
+        ObjectNode amt = body.putObject("amount");
+        amt.put("total", amount);
+        amt.put("currency", "CNY");
+        String url = p.getGateway() + "/v3/fund-app/mch-transfer/transfer-to-balance";
+        String resp = postJson(url, body.toString());
+        JsonNode root = readTree(resp);
+        String billNo = root.path("transfer_bill_no").asText(null);
+        if (billNo == null) {
+            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.FUND_TRANSFER_FAILED,
+                    "微信出款失败: " + resp);
+        }
+        return billNo;
+    }
+
+    @Override
+    public boolean queryTransfer(String outBizNo) {
+        IdlefishProperties.Pay p = pay();
+        if (!configured(p)) {
+            return false;
+        }
+        String url = p.getGateway() + "/v3/fund-app/mch-transfer/transfer-to-balance/out-bill-no/" + outBizNo;
+        try {
+            String resp = get(url);
+            JsonNode root = readTree(resp);
+            return "SUCCESS".equals(root.path("state").asText(null));
+        } catch (Exception e) {
+            log.warn("微信转账查询异常 outBizNo={}: {}", outBizNo, e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean configured(IdlefishProperties.Pay p) {
+        return p.getMchid() != null && p.getAppid() != null && p.getApiV3Key() != null
+                && p.getSerialNo() != null && p.getPrivateKey() != null;
+    }
+
     // ---------------- 回调验签 / 解密 ----------------
 
     @Override

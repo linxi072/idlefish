@@ -45,7 +45,9 @@ public enum Code {
     MQ_ERROR(50003, "消息队列异常"),
     FILE_ERROR(50004, "文件上传异常"),
     WX_LOGIN_ERROR(50005, "微信登录校验失败"),
-    SYSTEM_ERROR(50000, "系统繁忙，请稍后再试");
+    SYSTEM_ERROR(50000, "系统繁忙，请稍后再试"),
+    FUND_TRANSFER_FAILED(50006, "提现出款失败"),
+    CONFIG_MISSING(50007, "外部依赖配置缺失，操作未执行");
 
     private final int code;
     private final String msg;

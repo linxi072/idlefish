@@ -110,6 +110,8 @@ public class IdlefishProperties {
         private String notifyUrl;
         /** 微信支付网关 */
         private String gateway = "https://api.mch.weixin.qq.com";
+        /** 商家转账到零钱场景 ID（微信固定枚举，默认 1000 现金营销）。 */
+        private String transferSceneId = "1000";
     }
 
     @Data

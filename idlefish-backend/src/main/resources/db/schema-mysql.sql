@@ -301,6 +301,8 @@ CREATE TABLE IF NOT EXISTS t_withdrawal (
     account          VARCHAR(128),
     status           VARCHAR(16),
     done_at          DATETIME,
+    transfer_no      VARCHAR(64)  DEFAULT NULL COMMENT '渠道出款单号（微信 transfer_bill_no / out_bill_no）',
+    fail_reason      VARCHAR(255) DEFAULT NULL COMMENT '出款失败原因（审批通过但真实出款失败时记录）',
     created_at       DATETIME,
     updated_at       DATETIME,
     KEY idx_withdrawal_user (user_id, status)

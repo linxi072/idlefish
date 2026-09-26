@@ -34,15 +34,20 @@ public class WithdrawalService {
     private final UserMapper userMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
+    private final FundEscrowService fundEscrowService;
+
+    /** 系统告警接收者（管理员账号 userId）；资金出款失败告警发往此处。 */
+    private static final long ADMIN_ALERT_USER_ID = 1L;
 
     public WithdrawalService(WithdrawalMapper withdrawalMapper, FundFlowMapper fundFlowMapper,
                              UserMapper userMapper, NotificationService notificationService,
-                             MetricsRegistry metrics) {
+                             MetricsRegistry metrics, FundEscrowService fundEscrowService) {
         this.withdrawalMapper = withdrawalMapper;
         this.fundFlowMapper = fundFlowMapper;
         this.userMapper = userMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.fundEscrowService = fundEscrowService;
     }
 
     /** 累计结算入账（SETTLE IN 流水）。 */
@@ -111,8 +116,13 @@ public class WithdrawalService {
         return w;
     }
 
-    /** 审批通过（实际出账）。钱包余额随 Withdrawal 状态(done)自动从可提现中扣除。 */
-    @Transactional
+    /**
+     * 审批通过：调用真实出款（微信商家转账到零钱）。成功则置 done 并写出款流水；
+     * 失败则保持 pending（余额仍冻结未扣减）、记录失败原因、向管理员与用户告警，并抛出以便管理端感知。
+     * 以 "WD"+id 为幂等单号（RealWechatEscrowServiceImpl 内部先查后转），重试安全。
+     * <p>注意：本方法不包裹 @Transactional。出款为外部调用，若失败须确保 failReason 落库（而非随事务回滚）；
+     * 成功路径先置 done 态（资金已实际出账）再写流水，保证状态为权威来源。
+     */
     public Withdrawal approve(Long id) {
         Withdrawal w = withdrawalMapper.selectById(id);
         if (w == null) {
@@ -121,13 +131,35 @@ public class WithdrawalService {
         if (!"pending".equals(w.getStatus())) {
             throw new BizException(Code.STATE_NOT_ALLOWED, "该提现单不可审批");
         }
-        Withdrawal upd = new Withdrawal();
-        upd.setId(id);
-        upd.setStatus("done");
-        upd.setDoneAt(LocalDateTime.now());
-        withdrawalMapper.updateById(upd);
+        String outBizNo = "WD" + w.getId();
+        String openid = resolveOpenid(w.getUserId());
 
-        // 实际出账流水：余额随 Withdrawal 状态(done)自动从可提现中扣除
+        String transferNo;
+        try {
+            transferNo = fundEscrowService.transfer(outBizNo, w.getAmount(), openid);
+        } catch (BizException e) {
+            // 真实出款失败：回滚（保持 pending，资金仍冻结未扣减），记录原因并告警
+            Withdrawal failUpd = new Withdrawal();
+            failUpd.setId(id);
+            failUpd.setStatus("pending");
+            failUpd.setFailReason(truncate(e.getMessage()));
+            withdrawalMapper.updateById(failUpd);
+            metrics.increment("withdraw.transfer.failure");
+            notificationService.notify(ADMIN_ALERT_USER_ID, NotificationType.SYSTEM_ALERT, "WD" + id, "提现出款失败",
+                    "提现单 WD" + id + " 金额 " + (w.getAmount() / 100.0) + " 元出款失败：" + e.getMessage());
+            notificationService.notify(w.getUserId(), NotificationType.WITHDRAW_REJECT, "WD" + id, "提现失败",
+                    "您的提现 " + (w.getAmount() / 100.0) + " 元出款失败，金额已保持冻结，请稍后重试或联系客服");
+            throw e;
+        }
+
+        // 出款成功：先置成功态（资金已实际出账，务必落库），再写流水
+        Withdrawal doneUpd = new Withdrawal();
+        doneUpd.setId(id);
+        doneUpd.setStatus("done");
+        doneUpd.setTransferNo(transferNo);
+        doneUpd.setDoneAt(LocalDateTime.now());
+        withdrawalMapper.updateById(doneUpd);
+
         long balance = withdrawableBalance(w.getUserId());
         FundFlow out = new FundFlow();
         out.setBizNo("WD" + IdGenerator.fundNo());
@@ -140,9 +172,26 @@ public class WithdrawalService {
 
         // F-07 提现通知：审批通过（best-effort）
         notificationService.notify(w.getUserId(), NotificationType.WITHDRAW_APPROVE, "WD" + w.getId(), "提现已通过",
-                "您的提现 " + (w.getAmount() / 100.0) + " 元已审核通过，正在出账");
+                "您的提现 " + (w.getAmount() / 100.0) + " 元已出账至微信零钱");
         metrics.increment("withdraw.approve");
         return withdrawalMapper.selectById(id);
+    }
+
+    /** 解析收款用户 openid（商家转账到零钱必填）。未绑定微信则无法出款。 */
+    private String resolveOpenid(Long userId) {
+        com.idlefish.trade.user.entity.User u = userMapper.selectById(userId);
+        if (u == null || u.getWxOpenid() == null || u.getWxOpenid().isBlank()) {
+            throw new BizException(Code.BIZ_ERROR, "用户未绑定微信 openid，无法出款");
+        }
+        return u.getWxOpenid();
+    }
+
+    /** 失败原因截断至 255 字符，匹配 t_withdrawal.fail_reason 列宽。 */
+    private String truncate(String s) {
+        if (s == null) {
+            return null;
+        }
+        return s.length() > 255 ? s.substring(0, 255) : s;
     }
 
     /** 驳回（解冻：以 UNFREEZE 入金流水冲回冻结金额，余额恢复）。 */

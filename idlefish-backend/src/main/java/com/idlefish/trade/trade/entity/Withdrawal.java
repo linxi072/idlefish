@@ -21,4 +21,6 @@ public class Withdrawal extends BaseEntity {
     private String account;  // 提现账号（脱敏存储）
     private String status;   // pending / approved / rejected / done
     private LocalDateTime doneAt;
+    private String transferNo;  // 渠道出款单号（微信 transfer_bill_no / out_bill_no）
+    private String failReason;  // 出款失败原因（审批通过但真实出款失败时记录）
 }

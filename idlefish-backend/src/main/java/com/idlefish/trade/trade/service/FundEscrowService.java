@@ -39,4 +39,18 @@ public interface FundEscrowService {
      * 未配置平台证书时返回 false（安全失败）。Mock 返回 true。
      */
     boolean verifySignature(String timestamp, String nonce, String body, String signature);
+
+    /**
+     * 真实出款：微信「商家转账到零钱」（transfer to balance）。
+     * 以 outBizNo 为幂等单号，方法内部先查后转，防重复出款。
+     * 商户配置（mchid/appid/apiV3Key/serialNo/privateKey）缺失时抛 {@code BizException(CONFIG_MISSING)}（硬网关：不实际出款）。
+     * 返回渠道转账单号；失败抛 {@code BizException(FUND_TRANSFER_FAILED)}（上层 WithdrawalService 负责回滚与告警）。
+     */
+    String transfer(String outBizNo, Long amount, String openid);
+
+    /**
+     * 查询转账状态（幂等先查用）：返回 true 表示已成功出款（transfer 内部用于防重复）。
+     * 配置缺失或查询异常时返回 false，不抛异常。
+     */
+    boolean queryTransfer(String outBizNo);
 }
