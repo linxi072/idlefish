@@ -26,6 +26,7 @@ import com.idlefish.trade.user.service.AddressService;
 import com.idlefish.trade.user.service.CreditService;
 import com.idlefish.trade.risk.service.TrackService;
 import com.idlefish.trade.trade.service.DelayQueueService;
+import com.idlefish.trade.trade.service.ActivityService;
 import com.idlefish.trade.marketing.service.PointService;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
@@ -61,6 +62,7 @@ public class OrderService {
     private final CreditService creditService;
     private final com.idlefish.trade.marketing.service.CouponService couponService;
     private final PointService pointService;
+    private final ActivityService activityService;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -70,7 +72,7 @@ public class OrderService {
                         SettlementService settlementService, TrackService trackService, ObjectMapper objectMapper,
                         @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
                         CreditService creditService, com.idlefish.trade.marketing.service.CouponService couponService,
-                        PointService pointService) {
+                        PointService pointService, ActivityService activityService) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.itemService = itemService;
@@ -85,6 +87,7 @@ public class OrderService {
         this.creditService = creditService;
         this.couponService = couponService;
         this.pointService = pointService;
+        this.activityService = activityService;
     }
 
     /** 创建订单（幂等：同买家同商品存在待支付订单则直接返回）。 */
@@ -100,7 +103,17 @@ public class OrderService {
         itemService.lockStock(itemId, qty);
         Item item = itemMapper.selectById(itemId);
 
-        Order o = buildOrder(buyerId, dto, item, qty);
+        String orderNo = IdGenerator.orderNo();
+        String payNo = IdGenerator.payNo();
+
+        // F-13.3：活动价覆盖原价（秒杀自包含 / 拼团要求已 join），并锁定活动库存、关联参与记录
+        Long unitPrice = item.getPrice();
+        Long activityId = dto.getActivityId();
+        if (activityId != null) {
+            unitPrice = activityService.beginOrder(activityId, itemId, buyerId, qty, dto.getGroupNo(), orderNo);
+        }
+
+        Order o = buildOrder(buyerId, dto, item, qty, unitPrice, orderNo, payNo);
         orderMapper.insert(o);
         PayOrder po = buildPayOrder(o);
         payOrderMapper.insert(po);
@@ -130,14 +143,10 @@ public class OrderService {
     }
 
     /** 组装订单实体（含金额、快照，未落库）。 */
-    private Order buildOrder(Long buyerId, OrderCreateDTO dto, Item item, int qty) {
-        Long unitPrice = item.getPrice();
+    private Order buildOrder(Long buyerId, OrderCreateDTO dto, Item item, int qty, Long unitPrice, String orderNo, String payNo) {
         Long freight = item.getFreight() == null ? 0L : item.getFreight();
         Long total = unitPrice * qty;
         Long payAmount = total + freight;
-
-        String orderNo = IdGenerator.orderNo();
-        String payNo = IdGenerator.payNo();
 
         Order o = new Order();
         o.setOrderNo(orderNo);
@@ -154,6 +163,7 @@ public class OrderService {
         o.setAddressSnapshot(addressService.snapshot(dto.getAddressId()));
         o.setRemark(dto.getRemark());
         o.setPayNo(payNo);
+        o.setActivityId(dto.getActivityId());
         return o;
     }
 
@@ -246,6 +256,7 @@ public class OrderService {
         itemService.releaseStock(o.getItemId(), o.getQuantity());
         couponService.releaseByOrder(orderNo);   // F-10：取消释放已核销优惠券
         pointService.releaseByOrder(orderNo);    // F-13.1：取消释放已抵扣积分
+        activityService.releaseOnClose(o.getActivityId(), orderNo); // F-13.3：取消释放活动库存
     }
 
     /** 卖家发货。 */
@@ -391,6 +402,7 @@ public class OrderService {
         itemService.releaseStock(o.getItemId(), o.getQuantity());
         couponService.releaseByOrder(orderNo);   // F-10：超时关单释放已核销优惠券
         pointService.releaseByOrder(orderNo);    // F-13.1：超时关单释放已抵扣积分
+        activityService.releaseOnClose(o.getActivityId(), orderNo); // F-13.3：超时关单释放活动库存
 
         // F-02 通知中心：超时关单触达买家（best-effort）
         notificationService.notify(o.getBuyerId(), NotificationType.ORDER_CLOSED, orderNo, "订单已关闭",

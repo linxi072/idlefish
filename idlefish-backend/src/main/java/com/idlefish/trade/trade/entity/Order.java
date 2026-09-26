@@ -35,6 +35,7 @@ public class Order extends BaseEntity {
     private Long discountAmount;    // 优惠券抵扣金额（分）
     private Long usedPoint;         // 下单使用的积分（F-13.1）
     private Long pointDiscount;     // 积分抵扣金额（分，F-13.1）
+    private Long activityId;        // 参与的活动 ID（F-13.3 拼团/秒杀）
 
     @Version
     private Integer version;

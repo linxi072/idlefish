@@ -31,6 +31,11 @@ public enum Code {
     COUPON_INVALID(30008, "优惠券不可用"),
     COUPON_SOLD_OUT(30009, "优惠券已抢光"),
     POINT_NOT_ENOUGH(30010, "积分不足"),
+    ACTIVITY_NOT_FOUND(30011, "活动不存在"),
+    ACTIVITY_NOT_ONGOING(30012, "活动未开始或已结束"),
+    ACTIVITY_JOIN_LIMIT(30013, "活动参与次数已达上限"),
+    GROUP_FULL(30014, "该拼团已满"),
+    GROUP_NOT_FOUND(30015, "拼团不存在或已结束"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS t_order (
     discount_amount  BIGINT       DEFAULT 0,
     used_point       BIGINT       DEFAULT 0,   -- F-13.1：下单使用的积分
     point_discount   BIGINT       DEFAULT 0,   -- F-13.1：积分抵扣金额（分）
+    activity_id      BIGINT,                  -- F-13.3：参与活动 ID（拼团/秒杀）
     created_at       DATETIME,
     updated_at       DATETIME,
     UNIQUE KEY uk_order_no (order_no),
@@ -573,4 +574,58 @@ CREATE TABLE IF NOT EXISTS t_point_log (
     created_at       DATETIME,
     updated_at       DATETIME,
     KEY idx_point_log_user (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===== 促销活动：拼团 / 限时秒杀（F-13.3）=====
+
+-- 促销活动定义：围绕单个商品的限时营销，自带活动库存（独立于商品库存的营销配额）
+CREATE TABLE IF NOT EXISTS t_activity (
+    id                  BIGINT       PRIMARY KEY,
+    item_id             BIGINT       NOT NULL,
+    type                VARCHAR(20)  NOT NULL COMMENT 'SECKILL/GROUP',
+    activity_price      BIGINT       NOT NULL COMMENT '活动价（分）',
+    stock               INT          NOT NULL DEFAULT 0 COMMENT '活动库存',
+    sold_count          INT          NOT NULL DEFAULT 0 COMMENT '已锁定/已售数量',
+    limit_per_user      INT          NOT NULL DEFAULT 1 COMMENT '每人限购（<=0 不限）',
+    group_size          INT          DEFAULT NULL COMMENT '拼团成团人数（GROUP）',
+    group_valid_minutes INT          DEFAULT NULL COMMENT '拼团有效分钟（GROUP）',
+    status              VARCHAR(20)  NOT NULL DEFAULT 'ONGOING' COMMENT 'PENDING/ONGOING/ENDED',
+    start_at            DATETIME     COMMENT '开始时间',
+    end_at              DATETIME     COMMENT '结束时间',
+    created_at          DATETIME,
+    updated_at          DATETIME,
+    KEY idx_activity_item (item_id),
+    KEY idx_activity_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 拼团实例（GROUP 类型）：一次成团记录，人数达标转 SUCCESS，超时未达标转 FAILED
+CREATE TABLE IF NOT EXISTS t_activity_group (
+    id                  BIGINT       PRIMARY KEY,
+    activity_id         BIGINT       NOT NULL,
+    leader_id           BIGINT       NOT NULL COMMENT '团长',
+    current_size        INT          NOT NULL DEFAULT 1 COMMENT '当前参团人数',
+    target_size         INT          NOT NULL DEFAULT 0 COMMENT '成团目标人数',
+    status              VARCHAR(20)  NOT NULL DEFAULT 'OPEN' COMMENT 'OPEN/SUCCESS/FAILED',
+    expire_at           DATETIME     COMMENT '成团截止时间',
+    created_at          DATETIME,
+    updated_at          DATETIME,
+    KEY idx_group_activity (activity_id),
+    KEY idx_group_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 活动参与记录：每个用户每次参与落一条；唯一索引兜底并发重复参与
+CREATE TABLE IF NOT EXISTS t_activity_participant (
+    id                  BIGINT       PRIMARY KEY,
+    activity_id         BIGINT       NOT NULL,
+    user_id             BIGINT       NOT NULL,
+    group_id            BIGINT       DEFAULT NULL COMMENT '所属拼团（GROUP）；秒杀为 NULL',
+    order_no            VARCHAR(64)  DEFAULT NULL COMMENT '关联订单号（下单锁定库存后回写）',
+    status              VARCHAR(20)  NOT NULL DEFAULT 'JOINED' COMMENT 'JOINED/PAID_PENDING/CANCELLED/COMPLETED',
+    qty                 INT          NOT NULL DEFAULT 1,
+    created_at          DATETIME,
+    updated_at          DATETIME,
+    UNIQUE KEY uk_act_user (activity_id, user_id),
+    KEY idx_part_activity (activity_id),
+    KEY idx_part_group (group_id),
+    KEY idx_part_order (order_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

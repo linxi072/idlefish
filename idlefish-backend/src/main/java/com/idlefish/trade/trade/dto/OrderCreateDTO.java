@@ -25,6 +25,12 @@ public class OrderCreateDTO {
     /** 积分抵现：下单使用的积分（F-13.1），选填；>0 则下单时核验并抵扣。 */
     private Long usedPoint;
 
+    /** 参与活动 ID（F-13.3 拼团/秒杀），选填；非空则下单时锁定活动价与活动库存。 */
+    private Long activityId;
+
+    /** 加入的拼团号（F-13.3 GROUP 类型团长 ID 字符串），选填；为空则自建团。 */
+    private String groupNo;
+
     /** 幂等键（客户端生成，防止重复提交；当前仅透传，后端以"同买家同商品待支付"幂等）。 */
     private String idempotentKey;
 
@@ -74,6 +80,22 @@ public class OrderCreateDTO {
 
     public void setUsedPoint(Long usedPoint) {
         this.usedPoint = usedPoint;
+    }
+
+    public Long getActivityId() {
+        return activityId;
+    }
+
+    public void setActivityId(Long activityId) {
+        this.activityId = activityId;
+    }
+
+    public String getGroupNo() {
+        return groupNo;
+    }
+
+    public void setGroupNo(String groupNo) {
+        this.groupNo = groupNo;
     }
 
     public String getIdempotentKey() {
