@@ -232,19 +232,22 @@ public class IdlefishProperties {
     public static class Point {
         /** 积分功能总开关（默认开启） */
         private boolean enabled = true;
-        /** 抵现：多少积分抵 1 元（100 积分 = 1 元 = 100 分） */
+        /**
+         * 抵现：多少积分抵 1 元（100 积分 = 1 元 = 100 分）。
+         * 锚定基准，维持不动以防范积分通胀；运维可调区间 50~200（值越小越保值）。
+         */
         private int redeemPointsPerYuan = 100;
-        /** 抵现：积分抵扣金额不超过订单应付的比例（0~1） */
-        private double maxRedeemRatio = 0.5;
-        /** 赚取：交易每 1 元（100 分）得多少积分 */
-        private int earnPointsPerYuan = 1;
-        /** 赚取：单笔交易得积分封顶 */
-        private long tradeMaxPerOrder = 1000;
-        /** 签到：基础积分 */
-        private int signinBase = 5;
-        /** 签到：连续天数额外加成封顶（每天 +1，封顶该值） */
-        private int signinMaxBonus = 10;
-        /** 评价：每笔评价固定积分 */
-        private int reviewFixed = 10;
+        /** 抵现：积分抵扣金额不超过订单应付的比例（0~1）；0.6 保留 ≥40% 现金支付护毛利 */
+        private double maxRedeemRatio = 0.6;
+        /** 赚取：交易每 1 元（100 分）得多少积分；翻倍至 2 提升获取速率（有效返现 ≈2%） */
+        private int earnPointsPerYuan = 2;
+        /** 赚取：单笔交易得积分封顶；匹配 2× 速率，单笔最多抵 20 元 */
+        private long tradeMaxPerOrder = 2000;
+        /** 签到：基础积分；提升至 10 增强日活吸引力 */
+        private int signinBase = 10;
+        /** 签到：连续天数额外加成封顶（每天 +1，封顶该值）；提升至 15 延长激励曲线 */
+        private int signinMaxBonus = 15;
+        /** 评价：每笔评价固定积分；提升至 15 激励 UGC 评价 */
+        private int reviewFixed = 15;
     }
 }

@@ -98,10 +98,10 @@ class PointServiceTest {
 
         long earned = pointService.earnByTrade(1L, "O1", 10000L);
 
-        assertEquals(100L, earned); // 100 元 → 100 积分
+        assertEquals(200L, earned); // 100 元 ×2 分/元 → 200 积分
         ArgumentCaptor<PointLog> cap = ArgumentCaptor.forClass(PointLog.class);
         verify(pointLogMapper).insert(cap.capture());
-        assertEquals(100L, cap.getValue().getDelta());
+        assertEquals(200L, cap.getValue().getDelta());
         assertEquals(PointService.BIZ_TRADE, cap.getValue().getBizType());
     }
 
