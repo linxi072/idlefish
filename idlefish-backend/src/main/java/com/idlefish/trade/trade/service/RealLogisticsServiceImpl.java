@@ -81,6 +81,16 @@ public class RealLogisticsServiceImpl implements LogisticService {
         }
         Logistics l = logisticsMapper.selectOne(new LambdaQueryWrapper<Logistics>()
                 .eq(Logistics::getLogisticsNo, logisticsNo).last("LIMIT 1"));
+        List<Map<String, String>> remote = queryRemote(logisticsNo, l);
+        if (remote != null && !remote.isEmpty()) {
+            persistDetail(l, remote);
+            return remote;
+        }
+        return buildFallback(logisticsNo, l);
+    }
+
+    /** 调用快递100 实时查询并解析轨迹；网络/解析异常或返回异常时返回空列表（交由降级处理）。 */
+    private List<Map<String, String>> queryRemote(String logisticsNo, Logistics l) {
         try {
             IdlefishProperties.Logistics cfg = props.getLogistics();
             Map<String, Object> paramMap = new LinkedHashMap<>();
@@ -110,20 +120,26 @@ public class RealLogisticsServiceImpl implements LogisticService {
                         list.add(m);
                     }
                 }
-                if (!list.isEmpty()) {
-                    if (l != null) {
-                        l.setDetailJson(toJson(list));
-                        l.setStatus("transport");
-                        logisticsMapper.updateById(l);
-                    }
-                    return list;
-                }
+                return list;
             }
             log.warn("物流商返回异常，降级模拟轨迹: {}", resp);
         } catch (Exception e) {
             log.warn("物流查询失败，降级模拟轨迹: {}", e.getMessage());
         }
-        // 降级
+        return List.of();
+    }
+
+    /** 持久化解析到的轨迹明细（若存在物流记录）。 */
+    private void persistDetail(Logistics l, List<Map<String, String>> list) {
+        if (l != null) {
+            l.setDetailJson(toJson(list));
+            l.setStatus("transport");
+            logisticsMapper.updateById(l);
+        }
+    }
+
+    /** 物流商不可达时的降级模拟轨迹。 */
+    private List<Map<String, String>> buildFallback(String logisticsNo, Logistics l) {
         List<Map<String, String>> fallback = new ArrayList<>();
         fallback.add(of(LocalDateTime.now(), "【" + logisticsNo + "】运输中（物流商暂不可达，模拟轨迹）"));
         if (l != null) {
