@@ -1,0 +1,160 @@
+{
+  "baseUrl": "http://localhost:8080",
+  "setup": {
+    "code": "e2e_buyer_001",
+    "adminUsername": "admin",
+    "adminPassword": "admin123"
+  },
+  "flows": [
+    {
+      "name": "buyerJourney",
+      "description": "买家端到端：登录→用户信息→发布商品→提交审核→建地址→下单→订单详情→收藏→领券→积分余额",
+      "steps": [
+        {
+          "name": "login",
+          "method": "POST",
+          "path": "/api/auth/login",
+          "auth": "none",
+          "body": { "code": "{{code}}" },
+          "expectStatus": 200,
+          "expectFields": ["data.token", "data.refreshToken"],
+          "capture": { "token": "data.token" }
+        },
+        {
+          "name": "userInfo",
+          "method": "GET",
+          "path": "/api/user/info",
+          "auth": "user",
+          "expectStatus": 200,
+          "expectFields": ["data.userId"]
+        },
+        {
+          "name": "publishItem",
+          "method": "POST",
+          "path": "/api/item/publish",
+          "auth": "user",
+          "body": {
+            "categoryId": 1011,
+            "title": "e2e 二手手机 95新",
+            "description": "自测用，无划痕",
+            "price": 13800,
+            "images": ["https://img.example/e2e1.jpg"]
+          },
+          "expectStatus": 200,
+          "expectFields": ["data"],
+          "capture": { "itemId": "data" }
+        },
+        {
+          "name": "submitItem",
+          "method": "POST",
+          "path": "/api/item/{{itemId}}/submit",
+          "auth": "user",
+          "expectStatus": 200,
+          "expectFields": ["data"]
+        },
+        {
+          "name": "createAddress",
+          "method": "POST",
+          "path": "/api/address",
+          "auth": "user",
+          "body": {
+            "receiverName": "测试",
+            "phone": "13800000000",
+            "province": "浙江省",
+            "city": "杭州市",
+            "district": "西湖区",
+            "detail": "文三路 100 号",
+            "isDefault": 1
+          },
+          "expectStatus": 200,
+          "expectFields": ["data"],
+          "capture": { "addressId": "data" }
+        },
+        {
+          "name": "createOrder",
+          "method": "POST",
+          "path": "/api/orders/create",
+          "auth": "user",
+          "body": { "itemId": "{{itemId}}", "quantity": 1, "addressId": "{{addressId}}" },
+          "expectStatus": 200,
+          "expectFields": ["data.orderNo", "data.payAmount"],
+          "capture": { "orderNo": "data.orderNo" }
+        },
+        {
+          "name": "orderDetail",
+          "method": "GET",
+          "path": "/api/orders/{{orderNo}}",
+          "auth": "user",
+          "expectStatus": 200,
+          "expectFields": ["data.orderNo", "data.status"]
+        },
+        {
+          "name": "favoriteToggle",
+          "method": "POST",
+          "path": "/api/favorite/toggle",
+          "auth": "user",
+          "body": { "itemId": "{{itemId}}" },
+          "expectStatus": 200,
+          "expectFields": ["data"]
+        },
+        {
+          "name": "couponClaim",
+          "method": "POST",
+          "path": "/api/coupon/claim",
+          "auth": "user",
+          "body": { "couponId": 1 },
+          "expectStatus": 200,
+          "expectFields": ["data"]
+        },
+        {
+          "name": "pointBalance",
+          "method": "GET",
+          "path": "/api/point/balance",
+          "auth": "user",
+          "expectStatus": 200,
+          "expectFields": ["data.balance"]
+        }
+      ]
+    },
+    {
+      "name": "adminJourney",
+      "description": "运营后台端到端：后台登录→商品审核列表→风控规则库→菜单树",
+      "steps": [
+        {
+          "name": "adminLogin",
+          "method": "POST",
+          "path": "/api/admin/auth/login",
+          "auth": "none",
+          "form": { "username": "{{adminUsername}}", "password": "{{adminPassword}}" },
+          "expectStatus": 200,
+          "expectFields": ["data.token"],
+          "capture": { "adminToken": "data.token" }
+        },
+        {
+          "name": "adminItems",
+          "method": "GET",
+          "path": "/api/admin/items",
+          "auth": "admin",
+          "expectStatus": 200,
+          "expectFields": ["data.total", "data.records"]
+        },
+        {
+          "name": "riskRules",
+          "method": "GET",
+          "path": "/api/admin/risk/rules",
+          "auth": "admin",
+          "expectStatus": 200,
+          "expectFields": ["data"]
+        },
+        {
+          "name": "menuTree",
+          "method": "GET",
+          "path": "/api/admin/system/menu/tree",
+          "auth": "admin",
+          "expectStatus": 200,
+          "expectFields": ["data"]
+        }
+      ]
+    }
+  ]
+}
