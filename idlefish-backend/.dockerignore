@@ -1,0 +1,18 @@
+# 容器构建上下文排除项（与 .gitignore 互补）
+.git
+.gitignore
+.github
+target
+**/target
+.mvn-repo
+.mvn-repo-central
+.mvn-tmp-repo
+.mvn-settings-central.xml
+node_modules
+**/node_modules
+*.md
+docs
+.mvn
+!**/src/main/resources/**
+.idea
+*.iml

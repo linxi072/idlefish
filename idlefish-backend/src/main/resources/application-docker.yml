@@ -1,0 +1,19 @@
+# Docker / 容器化 Profile（--spring.profiles.active=docker）
+# 仅覆盖连接宿主（服务名），其余配置继承 application.yml / application-prod.yml；
+# 不改动主配置，纯新增叠加 profile，符合「新增不删改」约束。
+# 生产凭据仍一律走环境变量（JWT_SECRET / IDLEFISH_PAY_* 等），切勿明文提交。
+
+spring:
+  datasource:
+    # 容器内通过服务名解析 MySQL（docker-compose 服务名为 mysql）
+    url: jdbc:mysql://mysql:3306/idlefish?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: root
+    password: root
+
+idlefish:
+  redis:
+    host: redis          # 容器内通过服务名解析 Redis（服务名为 redis）
+    port: 6379
+    database: 0
+    password:
+    timeout-ms: 3000
