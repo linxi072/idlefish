@@ -1,8 +1,10 @@
 // pc-admin/src/views/role.js —— 系统管理：角色（列表 + 增改 + 分配菜单树）
 import { systemApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Role',
+  mixins: [formatMixin],
   data() {
     return {
       list: [], total: 0, loading: false, keyword: '',
@@ -18,7 +20,8 @@ export default {
         const r = await systemApi.roles({ keyword: this.keyword });
         this.list = r.list || [];
         this.total = r.total;
-      } finally { this.loading = false; }
+      } catch (e) { notifyError(this, e, '加载失败'); }
+      finally { this.loading = false; }
     },
     openAdd() {
       this.isEdit = false;
@@ -41,7 +44,8 @@ export default {
         this.$message.success(this.isEdit ? '已保存' : '已新增角色');
         this.editVisible = false;
         this.load();
-      } finally { this.saving = false; }
+      } catch (e) { notifyError(this, e, '保存失败'); }
+      finally { this.saving = false; }
     },
     async remove(row) {
       if (row.id === 1) { this.$message.warning('超级管理员角色不可删除'); return; }

@@ -1,8 +1,10 @@
 // pc-admin/src/views/users.js —— 用户管理（封禁 / 解封）
 import { adminApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Users',
+  mixins: [formatMixin],
   data() {
     return { list: [], total: 0, loading: false, keyword: '', statusFilter: '' };
   },
@@ -17,7 +19,8 @@ export default {
         const r = await adminApi.users({ keyword: this.keyword, status: this.statusFilter, page: 1, size: 20 });
         this.list = r.list || [];
         this.total = r.total;
-      } finally { this.loading = false; }
+      } catch (e) { notifyError(this, e, '加载失败'); }
+      finally { this.loading = false; }
     },
     masked(phone) { return phone || '-'; },
     async toggleBan(row) {

@@ -1,8 +1,10 @@
 // pc-admin/src/views/coupon.js —— 优惠券运营（F-10 营销：发券管理）
 import { couponApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Coupon',
+  mixins: [formatMixin],
   data() {
     return {
       list: [], total: 0, loading: false,

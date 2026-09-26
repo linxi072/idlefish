@@ -32,7 +32,11 @@ async function req(method, path, data, params) {
   const tk = getToken();
   if (tk) cfg.headers['Authorization'] = 'Bearer ' + tk;
   if (method === 'GET') cfg.params = params || {};
-  else { cfg.data = data || {}; cfg.headers['Content-Type'] = 'application/json'; }
+  else {
+    // 非 GET：第 3 参 data 优先，缺省时回退第 4 参 params（兼容 Login/驳回/发货/封禁/保存类目等把 body 传在 params 的调用）
+    cfg.data = data != null ? data : (params || {});
+    cfg.headers['Content-Type'] = 'application/json';
+  }
   const resp = await http.request(cfg);
   return resp.data.data;
 }

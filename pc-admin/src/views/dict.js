@@ -1,8 +1,10 @@
 // pc-admin/src/views/dict.js —— 系统管理：数据字典（类型 + 明细两级）
 import { systemApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Dict',
+  mixins: [formatMixin],
   data() {
     return {
       types: [], total: 0, loading: false, keyword: '',
@@ -19,7 +21,8 @@ export default {
         const r = await systemApi.dictTypes({ keyword: this.keyword });
         this.types = r.list || [];
         this.total = r.total;
-      } finally { this.loading = false; }
+      } catch (e) { notifyError(this, e, '加载失败'); }
+      finally { this.loading = false; }
     },
     statusTag(s) { return s === 0 ? 'success' : 'info'; },
     statusText(s) { return s === 0 ? '正常' : '停用'; },
@@ -44,7 +47,8 @@ export default {
         this.$message.success(this.isEditType ? '已保存' : '已新增字典类型');
         this.typeVisible = false;
         this.loadTypes();
-      } finally { this.savingType = false; }
+      } catch (e) { notifyError(this, e, '保存失败'); }
+      finally { this.savingType = false; }
     },
     async removeType(row) {
       try { await this.$confirm('确认删除该字典类型？其下明细将一并删除。', '提示', { type: 'warning' }); }
@@ -58,6 +62,7 @@ export default {
       this.activeType = type;
       this.dataLoading = true;
       try { this.dataList = await systemApi.dictData(type); }
+      catch (e) { notifyError(this, e, '加载失败'); }
       finally { this.dataLoading = false; }
     },
     openAddData() {
@@ -88,7 +93,8 @@ export default {
         this.$message.success(this.isEditData ? '已保存' : '已新增字典项');
         this.dataVisible = false;
         this.openData(this.activeType);
-      } finally { this.savingData = false; }
+      } catch (e) { notifyError(this, e, '保存失败'); }
+      finally { this.savingData = false; }
     },
     async removeData(row) {
       try { await this.$confirm('确认删除该字典项？', '提示', { type: 'warning' }); }

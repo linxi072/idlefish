@@ -1,8 +1,10 @@
 // pc-admin/src/views/categories.js —— 类目管理（树 + 新增）
 import { adminApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Categories',
+  mixins: [formatMixin],
   data() {
     return { tree: [], defaultProps: { children: 'children', label: 'name' }, addVisible: false, form: { name: '', parentId: 0 } };
   },

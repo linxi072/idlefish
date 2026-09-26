@@ -1,17 +1,16 @@
 // pc-admin/src/views/items.js —— 商品管理 / 内容审核
 import { adminApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Items',
+  mixins: [formatMixin],
   data() {
     return {
       list: [], total: 0, loading: false, keyword: '', statusFilter: '',
       rejectVisible: false, auditRow: null, reason: '',
       detailRow: null, detailVisible: false, detailLoading: false
     };
-  },
-  computed: {
-    filtered() { return this.list; }
   },
   mounted() { this.load(); },
   methods: {
@@ -54,7 +53,7 @@ export default {
             : (d.status === 'pending_review' ? 'pending' : d.status === 'onsale' ? 'passed' : d.status === 'rejected' ? 'rejected' : d.status)
         };
       } catch (e) {
-        this.$message.error('加载商品详情失败');
+        notifyError(this, e, '加载商品详情失败');
         this.detailVisible = false;
       } finally { this.detailLoading = false; }
     },
@@ -81,14 +80,14 @@ export default {
         <el-form-item><el-button type="primary" @click="load">查询</el-button></el-form-item>
       </el-form>
 
-      <el-table :data="filtered" v-loading="loading" border stripe>
+      <el-table :data="list" v-loading="loading" border stripe>
         <el-table-column label="商品" min-width="220">
           <template #default="{row}">
             <div class="cell-goods"><img :src="'https://picsum.photos/seed/'+row.id+'/80/80'" class="thumb"/>
               <div><div class="g-title">{{ row.title }}</div><div class="g-sub">ID: {{ row.id }}</div></div></div>
           </template>
         </el-table-column>
-        <el-table-column label="价格" width="100"><template #default="{row}">¥{{ (row.price/100).toFixed(2) }}</template></el-table-column>
+        <el-table-column label="价格" width="100"><template #default="{row}">{{ yuan(row.price) }}</template></el-table-column>
         <el-table-column label="类目" prop="categoryName" width="120"></el-table-column>
         <el-table-column label="卖家" width="120"><template #default="{row}">{{ row.sellerId || '-' }}</template></el-table-column>
         <el-table-column label="审核状态" width="120">
@@ -102,7 +101,7 @@ export default {
           </template>
         </el-table-column>
       </el-table>
-      <div style="margin-top:12px">共 {{ filtered.length }} 条</div>
+      <div style="margin-top:12px">共 {{ list.length }} 条</div>
     </el-card>
 
     <el-dialog v-model="rejectVisible" title="驳回商品" width="420px">
@@ -120,7 +119,7 @@ export default {
         </div>
         <el-descriptions :column="2" border size="small">
           <el-descriptions-item label="商品标题">{{ detailRow.title || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="价格">¥{{ ((detailRow.price||0)/100).toFixed(2) }}</el-descriptions-item>
+          <el-descriptions-item label="价格">{{ yuan(detailRow.price) }}</el-descriptions-item>
           <el-descriptions-item label="类目">{{ detailRow.categoryName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="卖家">{{ detailRow.seller || detailRow.sellerId || '-' }}</el-descriptions-item>
           <el-descriptions-item label="审核状态">

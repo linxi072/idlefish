@@ -1,8 +1,10 @@
 // pc-admin/src/views/organization.js —— 系统管理：机构（树形管理）
 import { systemApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Organization',
+  mixins: [formatMixin],
   data() {
     return {
       tree: [], loading: false, defaultProps: { children: 'children', label: 'name' },
@@ -14,6 +16,7 @@ export default {
     async load() {
       this.loading = true;
       try { this.tree = await systemApi.orgTree(); }
+      catch (e) { notifyError(this, e, '加载失败'); }
       finally { this.loading = false; }
     },
     openAdd(node) {
@@ -42,7 +45,8 @@ export default {
         this.$message.success(this.isEdit ? '已保存' : '已新增机构');
         this.editVisible = false;
         this.load();
-      } finally { this.saving = false; }
+      } catch (e) { notifyError(this, e, '保存失败'); }
+      finally { this.saving = false; }
     },
     async remove(node) {
       if (node.children && node.children.length) { this.$message.warning('请先删除子机构'); return; }

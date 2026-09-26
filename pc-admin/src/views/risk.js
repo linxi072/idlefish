@@ -1,8 +1,10 @@
 // pc-admin/src/views/risk.js —— 风控事件 + 审计日志
 import { adminApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Risk',
+  mixins: [formatMixin],
   data() {
     return { tab: 'risk', keyword: '', events: [], logs: [], loading: false };
   },
@@ -27,7 +29,8 @@ export default {
             createdAt: l.createdAt
           }));
         }
-      } finally { this.loading = false; }
+      } catch (e) { notifyError(this, e, '加载失败'); }
+      finally { this.loading = false; }
     },
     onTab(name) { this.tab = name; this.load(); },
     actionTag(a) {

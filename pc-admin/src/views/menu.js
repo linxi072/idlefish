@@ -1,10 +1,12 @@
 // pc-admin/src/views/menu.js —— 系统管理：菜单（树形管理）
 import { systemApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 const TYPE_OPTS = [{ label: '目录', value: 0 }, { label: '菜单', value: 1 }, { label: '按钮', value: 2 }];
 
 export default {
   name: 'Menu',
+  mixins: [formatMixin],
   data() {
     return {
       tree: [], loading: false, defaultProps: { children: 'children', label: 'name' },
@@ -17,6 +19,7 @@ export default {
     async load() {
       this.loading = true;
       try { this.tree = await systemApi.menuTree(); }
+      catch (e) { notifyError(this, e, '加载失败'); }
       finally { this.loading = false; }
     },
     typeTag(t) {
@@ -49,7 +52,8 @@ export default {
         this.$message.success(this.isEdit ? '已保存' : '已新增菜单');
         this.editVisible = false;
         this.load();
-      } finally { this.saving = false; }
+      } catch (e) { notifyError(this, e, '保存失败'); }
+      finally { this.saving = false; }
     },
     async remove(node) {
       if (node.children && node.children.length) { this.$message.warning('请先删除子菜单'); return; }

@@ -1,8 +1,10 @@
 // pc-admin/src/views/notify.js —— 消息中心 / 站内信（F-PC-02，F-02/F-05 前端闭环）
 import { notifyApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Notify',
+  mixins: [formatMixin],
   data() {
     return {
       list: [], total: 0, loading: false, page: 1, size: 20

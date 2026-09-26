@@ -1,10 +1,12 @@
 // pc-admin/src/views/dashboard.js
 import { adminApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 const fmt = (n) => (n || 0).toLocaleString('zh-CN');
 
 export default {
   name: 'Dashboard',
+  mixins: [formatMixin],
   data() {
     return { loading: true, s: {}, hasEcharts: false, chart: null };
   },
@@ -18,7 +20,8 @@ export default {
           this.hasEcharts = true;
           this.$nextTick(() => this.renderChart());
         }
-      } finally { this.loading = false; }
+      } catch (e) { notifyError(this, e, '加载失败'); }
+      finally { this.loading = false; }
     },
     renderChart() {
       if (!this.$refs.trendChart || !window.echarts) return;
@@ -77,6 +80,5 @@ export default {
       </el-col>
     </el-row>
   </div>`,
-  computed: {},
   created() { this.fmt = fmt; }
 };

@@ -1,8 +1,10 @@
 // pc-admin/src/views/attributes.js —— 类目属性模板（F-PC-02）
 import { adminApi, attributeApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Attributes',
+  mixins: [formatMixin],
   data() {
     return {
       categoryOptions: [],           // 类目级联树

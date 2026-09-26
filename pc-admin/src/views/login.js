@@ -1,8 +1,10 @@
 // pc-admin/src/views/login.js —— 登录页（含表单校验）
 import { adminApi, setToken } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Login',
+  mixins: [formatMixin],
   data() {
     return {
       form: { username: 'admin', password: 'admin123' },

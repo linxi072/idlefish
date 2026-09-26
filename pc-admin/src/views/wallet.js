@@ -1,8 +1,10 @@
 // pc-admin/src/views/wallet.js —— 钱包 / 提现管理与资金对账（F-PC-02）
 import { walletApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 export default {
   name: 'Wallet',
+  mixins: [formatMixin],
   data() {
     return {
       // 提现
@@ -22,7 +24,7 @@ export default {
     async loadWithdrawals() {
       this.wdLoading = true;
       try { this.wdList = await walletApi.withdrawals(); }
-      catch (e) { this.$message.error('加载提现列表失败'); }
+      catch (e) { notifyError(this, e, '加载提现列表失败'); }
       finally { this.wdLoading = false; }
     },
     wdTag(s) {
@@ -31,7 +33,6 @@ export default {
     wdText(s) {
       return { pending: '待审核', approved: '已通过', rejected: '已驳回', done: '已打款' }[s] || s;
     },
-    yuan(fen) { return '¥' + ((fen || 0) / 100).toFixed(2); },
     canAudit(w) { return w.status === 'pending'; },
     async approve(w) {
       try {
@@ -41,7 +42,7 @@ export default {
         await walletApi.approveWithdrawal(w.id);
         this.$message.success('已通过，启动出账');
         this.loadWithdrawals();
-      } catch (e) { this.$message.error('操作失败'); }
+      } catch (e) { notifyError(this, e, '操作失败'); }
     },
     async reject(w) {
       try {
@@ -51,12 +52,12 @@ export default {
         await walletApi.rejectWithdrawal(w.id);
         this.$message.warning('已驳回，资金解冻');
         this.loadWithdrawals();
-      } catch (e) { this.$message.error('操作失败'); }
+      } catch (e) { notifyError(this, e, '操作失败'); }
     },
     async loadRecon() {
       this.reconLoading = true;
       try { this.recon = await walletApi.reconciliation(this.reconDay || ''); }
-      catch (e) { this.$message.error('加载对账报表失败'); this.recon = null; }
+      catch (e) { notifyError(this, e, '加载对账报表失败'); this.recon = null; }
       finally { this.reconLoading = false; }
     },
     reconTypeTag(t) { return t === 'refund' ? 'danger' : 'success'; },

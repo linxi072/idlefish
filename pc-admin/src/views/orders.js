@@ -1,5 +1,6 @@
 // pc-admin/src/views/orders.js —— 订单管理（含发货 / 退款处理）
 import { adminApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 const STATUS = {
   pending_pay: '待支付', paid: '已支付', pending_ship: '待发货',
@@ -12,13 +13,11 @@ const TAG = {
 
 export default {
   name: 'Orders',
+  mixins: [formatMixin],
   data() {
     return { list: [], total: 0, loading: false, keyword: '', statusFilter: '', detailRow: null, shipVisible: false, shipForm: { company: '', logisticNo: '' } };
   },
   mounted() { this.load(); },
-  computed: {
-    filtered() { return this.list; }
-  },
   methods: {
     async load() {
       this.loading = true;
@@ -36,7 +35,7 @@ export default {
       try {
         await adminApi.shipOrder(this.detailRow.orderNo, this.shipForm.logisticNo);
         this.$message.success('已标记发货');
-      } catch (e) { this.$message.error((e && e.msg) || '发货失败'); }
+      } catch (e) { notifyError(this, e, '发货失败'); }
       this.shipVisible = false; this.load();
     },
     async refund(row, agree) {
@@ -44,7 +43,7 @@ export default {
       try {
         await adminApi.refundAgree(row.orderNo);
         this.$message.success('已同意退款');
-      } catch (e) { this.$message.error((e && e.msg) || '退款处理失败'); }
+      } catch (e) { notifyError(this, e, '退款处理失败'); }
       this.detailRow = null; this.load();
     }
   },
@@ -62,12 +61,12 @@ export default {
         <el-form-item><el-button type="primary" @click="load">查询</el-button></el-form-item>
       </el-form>
 
-      <el-table :data="filtered" v-loading="loading" border stripe>
+      <el-table :data="list" v-loading="loading" border stripe>
         <el-table-column label="订单号" prop="orderNo" width="180"></el-table-column>
         <el-table-column label="商品" prop="title" min-width="160"></el-table-column>
         <el-table-column label="买家" width="100"><template #default="{row}">{{ row.buyerId || '-' }}</template></el-table-column>
         <el-table-column label="卖家" width="100"><template #default="{row}">{{ row.sellerId || '-' }}</template></el-table-column>
-        <el-table-column label="金额" width="100"><template #default="{row}">¥{{ (row.amount/100).toFixed(2) }}</template></el-table-column>
+        <el-table-column label="金额" width="100"><template #default="{row}">{{ yuan(row.amount) }}</template></el-table-column>
         <el-table-column label="状态" width="110"><template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusText(row.status) }}</el-tag></template></el-table-column>
         <el-table-column label="下单时间" prop="createdAt" width="160"></el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
@@ -85,7 +84,7 @@ export default {
         <el-descriptions-item label="订单号">{{ detailRow.orderNo }}</el-descriptions-item>
         <el-descriptions-item label="商品">{{ detailRow.title }}</el-descriptions-item>
         <el-descriptions-item label="买卖双方">{{ detailRow.buyerId }} → {{ detailRow.sellerId }}</el-descriptions-item>
-        <el-descriptions-item label="金额">¥{{ (detailRow.amount/100).toFixed(2) }}</el-descriptions-item>
+        <el-descriptions-item label="金额">{{ yuan(detailRow.amount) }}</el-descriptions-item>
         <el-descriptions-item label="状态"><el-tag :type="statusTag(detailRow.status)">{{ statusText(detailRow.status) }}</el-tag></el-descriptions-item>
         <el-descriptions-item label="物流" v-if="detailRow.logisticsNo">{{ detailRow.logisticsNo }}</el-descriptions-item>
       </el-descriptions>

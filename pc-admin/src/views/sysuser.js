@@ -1,5 +1,6 @@
 // pc-admin/src/views/sysuser.js —— 系统管理：管理员（列表 + 增改 + 分配角色 + 重置密码）
 import { systemApi } from '../api.js';
+import { formatMixin, notifyError } from '../utils/format.js';
 
 const flattenOrg = (tree, arr = []) => {
   (tree || []).forEach(o => {
@@ -11,6 +12,7 @@ const flattenOrg = (tree, arr = []) => {
 
 export default {
   name: 'SysUser',
+  mixins: [formatMixin],
   data() {
     return {
       list: [], total: 0, loading: false, keyword: '', statusFilter: '',
@@ -33,10 +35,8 @@ export default {
         const r = await systemApi.adminUsers({ keyword: this.keyword, status: this.statusFilter, page: 1, size: 20 });
         this.list = r.list || [];
         this.total = r.total;
-      } finally { this.loading = false; }
+      } catch (e) { notifyError(this, e); } finally { this.loading = false; }
     },
-    statusTag(s) { return s === 0 ? 'success' : 'danger'; },
-    statusText(s) { return s === 0 ? '正常' : '禁用'; },
     openAdd() {
       this.isEdit = false;
       this.form = { username: '', nickname: '', orgId: '', password: '', status: 0, roleIds: [] };
@@ -61,7 +61,7 @@ export default {
         this.$message.success(this.isEdit ? '已保存' : '已新增管理员');
         this.editVisible = false;
         this.load();
-      } finally { this.saving = false; }
+      } catch (e) { notifyError(this, e); } finally { this.saving = false; }
     },
     async remove(row) {
       if (row.id === 1) { this.$message.warning('超级管理员不可删除'); return; }
