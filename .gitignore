@@ -26,3 +26,7 @@ Thumbs.db
 # ============ Node（前端） ============
 node_modules/
 dist/
+
+# ============ 测试产物（生成报告，不入库） ============
+loadtest-report.json
+e2e-report.json
