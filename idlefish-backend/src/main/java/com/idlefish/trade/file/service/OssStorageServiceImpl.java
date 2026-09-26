@@ -1,5 +1,7 @@
 package com.idlefish.trade.file.service;
 
+import com.idlefish.trade.common.BizException;
+import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.common.util.SignUtils;
 import org.slf4j.Logger;
@@ -59,7 +61,7 @@ public class OssStorageServiceImpl implements StorageService {
             restTemplate.put(url, new HttpEntity<>(body, headers));
         } catch (Exception e) {
             log.error("OSS PutObject 失败 key={}", objectKey, e);
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.FILE_ERROR, "OSS 上传失败");
+            throw new BizException(Code.FILE_ERROR, "OSS 上传失败");
         }
         return getAccessUrl(objectKey);
     }
@@ -107,7 +109,7 @@ public class OssStorageServiceImpl implements StorageService {
                 bos.write(buf, 0, n);
             }
         } catch (IOException e) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.FILE_ERROR, "文件读取失败");
+            throw new BizException(Code.FILE_ERROR, "文件读取失败");
         }
         return bos.toByteArray();
     }

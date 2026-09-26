@@ -1,5 +1,7 @@
 package com.idlefish.trade.common.util;
 
+import com.idlefish.trade.common.BizException;
+import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.IdlefishProperties;
 import org.springframework.stereotype.Component;
 
@@ -42,7 +44,7 @@ public class CryptoUtil {
             byte[] enc = cipher.doFinal(plain.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(enc);
         } catch (Exception e) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.SYSTEM_ERROR, "加密失败");
+            throw new BizException(Code.SYSTEM_ERROR, "加密失败");
         }
     }
 
@@ -56,7 +58,7 @@ public class CryptoUtil {
             byte[] dec = cipher.doFinal(Base64.getDecoder().decode(cipherText));
             return new String(dec, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.SYSTEM_ERROR, "解密失败");
+            throw new BizException(Code.SYSTEM_ERROR, "解密失败");
         }
     }
 

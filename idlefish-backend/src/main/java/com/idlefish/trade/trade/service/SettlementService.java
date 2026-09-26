@@ -10,6 +10,7 @@ import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.risk.entity.RiskEvent;
 import com.idlefish.trade.risk.mapper.RiskEventMapper;
 import com.idlefish.trade.trade.entity.FundFlow;
+import com.idlefish.trade.trade.entity.FundFlowBuilder;
 import com.idlefish.trade.trade.entity.Order;
 import com.idlefish.trade.trade.entity.Settlement;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
@@ -139,13 +140,8 @@ public class SettlementService {
                     "订单已结算", "订单 " + s.getOrderNo() + " 已结算，金额 "
                     + (s.getAmount() == null ? 0 : s.getAmount() / 100.0) + " 元已打入可提现");
 
-            FundFlow ff = new FundFlow();
-            ff.setBizNo(s.getSettleNo());
-            ff.setUserId(s.getSellerId());
-            ff.setDirection("IN");
-            ff.setAmount(s.getAmount());
-            ff.setType("SETTLE");
-            ff.setBalanceAfter(s.getAmount());
+            FundFlow ff = FundFlowBuilder.of(s.getSettleNo(), s.getSellerId(), "IN", "SETTLE", s.getAmount())
+                    .balanceAfter(s.getAmount()).build();
             try {
                 fundFlowMapper.insert(ff);
             } catch (DuplicateKeyException e) {

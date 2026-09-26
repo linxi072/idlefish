@@ -1,5 +1,7 @@
 package com.idlefish.trade.risk.service;
 
+import com.idlefish.trade.common.BizException;
+import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.common.web.DeviceContext;
 import com.idlefish.trade.common.web.DeviceContexts;
@@ -37,7 +39,7 @@ public class TrackService {
     /** 显式指定设备上下文的埋点（测试/异步场景用）。 */
     public void track(Long userId, String event, String bizId, String ext, DeviceContext dc) {
         if (!isValidEvent(event)) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.PARAM_INVALID, "未知埋点事件: " + event);
+            throw new BizException(Code.PARAM_INVALID, "未知埋点事件: " + event);
         }
         // 设备指纹采集（仅当开启且具备设备信号）
         if (props.getRisk().isDeviceEnabled() && dc != null && dc.hasDeviceId()) {

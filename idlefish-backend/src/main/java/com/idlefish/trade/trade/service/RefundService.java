@@ -8,7 +8,7 @@ import com.idlefish.trade.common.enums.RefundStatus;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.item.service.ItemService;
 import com.idlefish.trade.trade.dto.RefundApplyDTO;
-import com.idlefish.trade.trade.entity.FundFlow;
+import com.idlefish.trade.trade.entity.FundFlowBuilder;
 import com.idlefish.trade.trade.entity.Order;
 import com.idlefish.trade.trade.entity.Refund;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
@@ -272,14 +272,9 @@ public class RefundService {
         refundMapper.updateById(done);
         metrics.increment("refund.success");
 
-        FundFlow ff = new FundFlow();
-        ff.setBizNo(r.getRefundNo());
-        ff.setUserId(r.getBuyerId());
-        ff.setDirection("IN");
-        ff.setAmount(r.getAmount());
-        ff.setType("REFUND");
-        ff.setBalanceAfter(0L); // 退款为原路退回，不计入钱包余额口径
-        fundFlowMapper.insert(ff);
+        // 退款为原路退回，不计入钱包余额口径
+        fundFlowMapper.insert(FundFlowBuilder.of(r.getRefundNo(), r.getBuyerId(), "IN", "REFUND", r.getAmount())
+                .balanceAfter(0L).build());
 
         // F-02 通知中心：退款成功触达买家（best-effort）
         notificationService.notify(r.getBuyerId(), NotificationType.REFUND_SUCCESS, r.getRefundNo(), "退款成功",

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.idlefish.trade.common.BizException;
+import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.util.CryptoUtil;
 import com.idlefish.trade.user.dto.AddressDTO;
 import com.idlefish.trade.user.entity.Address;
@@ -94,7 +95,7 @@ public class AddressService {
         try {
             return OM.writeValueAsString(m);
         } catch (Exception e) {
-            throw new BizException(com.idlefish.trade.common.Code.SYSTEM_ERROR, "地址快照生成失败");
+            throw new BizException(Code.SYSTEM_ERROR, "地址快照生成失败");
         }
     }
 

@@ -8,6 +8,7 @@ import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.trade.entity.FundFlow;
+import com.idlefish.trade.trade.entity.FundFlowBuilder;
 import com.idlefish.trade.trade.entity.Withdrawal;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.WithdrawalMapper;
@@ -100,17 +101,12 @@ public class WithdrawalService {
         w.setStatus("pending");
         withdrawalMapper.insert(w);
 
-        FundFlow ff = new FundFlow();
-        ff.setBizNo("WD" + IdGenerator.fundNo());
-        ff.setUserId(userId);
-        ff.setDirection("OUT");
-        ff.setAmount(amount);
-        ff.setType("FREEZE");
-        ff.setBalanceAfter(balance - amount);
-        fundFlowMapper.insert(ff);
+        String bizNo = "WD" + IdGenerator.fundNo();
+        fundFlowMapper.insert(FundFlowBuilder.of(bizNo, userId, "OUT", "FREEZE", amount)
+                .balanceAfter(balance - amount).build());
 
         // F-07 提现通知：申请提交（best-effort）
-        notificationService.notify(userId, NotificationType.WITHDRAW_APPLY, ff.getBizNo(), "提现申请已提交",
+        notificationService.notify(userId, NotificationType.WITHDRAW_APPLY, bizNo, "提现申请已提交",
                 "您的提现申请 " + (amount / 100.0) + " 元已提交，等待审核");
         metrics.increment("withdraw.apply");
         return w;
@@ -161,14 +157,8 @@ public class WithdrawalService {
         withdrawalMapper.updateById(doneUpd);
 
         long balance = withdrawableBalance(w.getUserId());
-        FundFlow out = new FundFlow();
-        out.setBizNo("WD" + IdGenerator.fundNo());
-        out.setUserId(w.getUserId());
-        out.setDirection("OUT");
-        out.setAmount(w.getAmount());
-        out.setType("WITHDRAW");
-        out.setBalanceAfter(balance);
-        fundFlowMapper.insert(out);
+        fundFlowMapper.insert(FundFlowBuilder.of("WD" + IdGenerator.fundNo(), w.getUserId(), "OUT", "WITHDRAW", w.getAmount())
+                .balanceAfter(balance).build());
 
         // F-07 提现通知：审批通过（best-effort）
         notificationService.notify(w.getUserId(), NotificationType.WITHDRAW_APPROVE, "WD" + w.getId(), "提现已通过",
@@ -210,14 +200,8 @@ public class WithdrawalService {
         withdrawalMapper.updateById(upd);
 
         long balance = withdrawableBalance(w.getUserId());
-        FundFlow ff = new FundFlow();
-        ff.setBizNo("WD" + IdGenerator.fundNo());
-        ff.setUserId(w.getUserId());
-        ff.setDirection("IN");
-        ff.setAmount(w.getAmount());
-        ff.setType("UNFREEZE");
-        ff.setBalanceAfter(balance);
-        fundFlowMapper.insert(ff);
+        fundFlowMapper.insert(FundFlowBuilder.of("WD" + IdGenerator.fundNo(), w.getUserId(), "IN", "UNFREEZE", w.getAmount())
+                .balanceAfter(balance).build());
 
         // F-07 提现通知：驳回（best-effort）
         notificationService.notify(w.getUserId(), NotificationType.WITHDRAW_REJECT, "WD" + w.getId(), "提现被驳回",

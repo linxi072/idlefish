@@ -1,5 +1,7 @@
 package com.idlefish.trade.common.web;
 
+import com.idlefish.trade.common.BizException;
+import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,7 +30,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         // 双模取令牌：优先 Authorization: Bearer（移动端/小程序），回退到 HttpOnly Cookie（access_token，浏览器端）
         String token = resolveToken(request);
         if (token == null || token.isBlank()) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.UNAUTHORIZED);
+            throw new BizException(Code.UNAUTHORIZED);
         }
         Claims claims = jwtUtil.parse(token);
         LoginUser user = new LoginUser();

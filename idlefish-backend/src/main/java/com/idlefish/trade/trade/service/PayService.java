@@ -8,7 +8,7 @@ import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.enums.OrderStatus;
 import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.common.enums.PayStatus;
-import com.idlefish.trade.trade.entity.FundFlow;
+import com.idlefish.trade.trade.entity.FundFlowBuilder;
 import com.idlefish.trade.trade.entity.Order;
 import com.idlefish.trade.trade.entity.PayOrder;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
@@ -162,14 +162,9 @@ public class PayService {
                     "你有新订单", "订单 " + po.getOrderNo() + " 已支付成功，请尽快发货");
         }
 
-        FundFlow ff = new FundFlow();
-        ff.setBizNo(po.getOrderNo());
-        ff.setUserId(po.getBuyerId());
-        ff.setDirection("OUT");
-        ff.setAmount(po.getAmount());
-        ff.setType("PAY");
-        ff.setBalanceAfter(0L); // 资金托管在平台，买家余额不直接减（演示）
-        fundFlowMapper.insert(ff);
+        // 资金托管在平台，买家余额不直接减（演示）
+        fundFlowMapper.insert(FundFlowBuilder.of(po.getOrderNo(), po.getBuyerId(), "OUT", "PAY", po.getAmount())
+                .balanceAfter(0L).build());
 
         // F-02 通知中心：支付成功触达买家（best-effort，不影响支付主流程）
         notificationService.notify(po.getBuyerId(), NotificationType.ORDER_PAID, po.getOrderNo(),

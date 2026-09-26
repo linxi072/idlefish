@@ -3,6 +3,8 @@ package com.idlefish.trade.trade.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.idlefish.trade.common.BizException;
+import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.common.util.SignUtils;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
@@ -89,7 +91,7 @@ public class RealWechatEscrowServiceImpl implements FundEscrowService {
         JsonNode root = readTree(resp);
         String prepayId = root.path("prepay_id").asText(null);
         if (prepayId == null) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.BIZ_ERROR, "微信下单失败: " + resp);
+            throw new BizException(Code.BIZ_ERROR, "微信下单失败: " + resp);
         }
         return buildClientSign(p, prepayId);
     }
@@ -117,11 +119,11 @@ public class RealWechatEscrowServiceImpl implements FundEscrowService {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.idlefish.trade.trade.entity.PayOrder>()
                         .eq(com.idlefish.trade.trade.entity.PayOrder::getPayNo, payNo));
         if (po == null) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.ORDER_NOT_FOUND, "支付单不存在");
+            throw new BizException(Code.ORDER_NOT_FOUND, "支付单不存在");
         }
         User u = userService.getById(po.getBuyerId());
         if (u == null || u.getWxOpenid() == null || u.getWxOpenid().isBlank()) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.BIZ_ERROR, "买家未绑定微信 openid，无法 JSAPI 支付");
+            throw new BizException(Code.BIZ_ERROR, "买家未绑定微信 openid，无法 JSAPI 支付");
         }
         return u.getWxOpenid();
     }
@@ -151,7 +153,7 @@ public class RealWechatEscrowServiceImpl implements FundEscrowService {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.idlefish.trade.trade.entity.PayOrder>()
                         .eq(com.idlefish.trade.trade.entity.PayOrder::getPayNo, payNo));
         if (po == null) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.ORDER_NOT_FOUND, "支付单不存在");
+            throw new BizException(Code.ORDER_NOT_FOUND, "支付单不存在");
         }
         ObjectNode body = objectMapper.createObjectNode();
         body.put("out_refund_no", "REFUND_" + payNo + "_" + System.nanoTime());
@@ -166,7 +168,7 @@ public class RealWechatEscrowServiceImpl implements FundEscrowService {
         JsonNode root = readTree(resp);
         String refundId = root.path("refund_id").asText(null);
         if (refundId == null) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.BIZ_ERROR, "微信退款失败: " + resp);
+            throw new BizException(Code.BIZ_ERROR, "微信退款失败: " + resp);
         }
         return refundId;
     }
@@ -180,7 +182,7 @@ public class RealWechatEscrowServiceImpl implements FundEscrowService {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.idlefish.trade.trade.entity.PayOrder>()
                         .eq(com.idlefish.trade.trade.entity.PayOrder::getPayNo, payNo));
         if (po == null) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.ORDER_NOT_FOUND, "支付单不存在");
+            throw new BizException(Code.ORDER_NOT_FOUND, "支付单不存在");
         }
         ObjectNode body = objectMapper.createObjectNode();
         body.put("appid", p.getAppid());
@@ -199,7 +201,7 @@ public class RealWechatEscrowServiceImpl implements FundEscrowService {
         JsonNode root = readTree(resp);
         String orderId = root.path("order_id").asText(null);
         if (orderId == null) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.BIZ_ERROR, "微信分账失败: " + resp);
+            throw new BizException(Code.BIZ_ERROR, "微信分账失败: " + resp);
         }
         return orderId;
     }
@@ -211,7 +213,7 @@ public class RealWechatEscrowServiceImpl implements FundEscrowService {
         IdlefishProperties.Pay p = pay();
         if (!configured(p)) {
             // 硬网关：未配置真实商户凭据时，绝不实际出款，安全失败（F-11.3 资金安全底线）。
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.CONFIG_MISSING,
+            throw new BizException(Code.CONFIG_MISSING,
                     "微信商户配置缺失，未实际出款（沙箱/未配置环境）");
         }
         // 幂等先查：若已成功出款，直接返回，避免网络超时重试导致重复出款。
@@ -231,7 +233,7 @@ public class RealWechatEscrowServiceImpl implements FundEscrowService {
         JsonNode root = readTree(resp);
         String billNo = root.path("transfer_bill_no").asText(null);
         if (billNo == null) {
-            throw new com.idlefish.trade.common.BizException(com.idlefish.trade.common.Code.FUND_TRANSFER_FAILED,
+            throw new BizException(Code.FUND_TRANSFER_FAILED,
                     "微信出款失败: " + resp);
         }
         return billNo;

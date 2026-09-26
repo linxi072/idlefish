@@ -2,6 +2,7 @@ package com.idlefish.trade.trade.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.Result;
 import com.idlefish.trade.trade.service.RocketMqDelayServiceImpl;
 import org.springframework.beans.factory.ObjectProvider;
@@ -44,7 +45,7 @@ public class DelayMessageController {
             }
         } catch (Exception e) {
             // 消费失败由 RocketMQ 重试；同时 DB 兜底扫描补偿，确保不丢
-            return Result.fail(com.idlefish.trade.common.Code.BIZ_ERROR.getCode(), "消费失败: " + e.getMessage());
+            return Result.fail(Code.BIZ_ERROR.getCode(), "消费失败: " + e.getMessage());
         }
         return Result.ok();
     }
