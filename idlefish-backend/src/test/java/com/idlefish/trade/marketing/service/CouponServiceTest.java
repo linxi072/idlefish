@@ -8,6 +8,7 @@ import com.idlefish.trade.marketing.entity.Coupon;
 import com.idlefish.trade.marketing.entity.UserCoupon;
 import com.idlefish.trade.marketing.mapper.CouponMapper;
 import com.idlefish.trade.marketing.mapper.UserCouponMapper;
+import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.notify.service.NotificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,7 @@ class CouponServiceTest {
     @Mock private UserCouponMapper userCouponMapper;
     @Mock private ItemMapper itemMapper;
     @Mock private NotificationService notificationService;
+    @Mock private MetricsRegistry metrics;
     @InjectMocks private CouponService service;
 
     private Coupon coupon(String type, long threshold, long reduce, Double rate, Long cap, String scope, Long scopeId) {

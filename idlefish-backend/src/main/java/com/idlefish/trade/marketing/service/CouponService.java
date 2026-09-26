@@ -17,6 +17,7 @@ import com.idlefish.trade.marketing.mapper.UserCouponMapper;
 import com.idlefish.trade.marketing.vo.CouponVO;
 import com.idlefish.trade.marketing.vo.UserCouponVO;
 import com.idlefish.trade.notify.enums.NotificationType;
+import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.stereotype.Service;
 
@@ -51,13 +52,16 @@ public class CouponService {
     private final UserCouponMapper userCouponMapper;
     private final ItemMapper itemMapper;
     private final NotificationService notificationService;
+    private final MetricsRegistry metrics;
 
     public CouponService(CouponMapper couponMapper, UserCouponMapper userCouponMapper,
-                         ItemMapper itemMapper, NotificationService notificationService) {
+                         ItemMapper itemMapper, NotificationService notificationService,
+                         MetricsRegistry metrics) {
         this.couponMapper = couponMapper;
         this.userCouponMapper = userCouponMapper;
         this.itemMapper = itemMapper;
         this.notificationService = notificationService;
+        this.metrics = metrics;
     }
 
     /**
@@ -171,6 +175,7 @@ public class CouponService {
                     "优惠券领取成功", "您已领取「" + coupon.getName() + "」，下单时可抵扣");
         } catch (Exception ignored) {
         }
+        metrics.increment("coupon.claim.success");
         return uc;
     }
 
@@ -245,6 +250,7 @@ public class CouponService {
         uc.setOrderNo(orderNo);
         uc.setUsedAt(LocalDateTime.now());
         userCouponMapper.updateById(uc);
+        metrics.increment("coupon.redeem.success");
         return discount;
     }
 

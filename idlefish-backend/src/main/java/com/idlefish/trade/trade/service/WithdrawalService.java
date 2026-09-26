@@ -5,6 +5,7 @@ import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.notify.enums.NotificationType;
+import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.trade.entity.FundFlow;
 import com.idlefish.trade.trade.entity.Withdrawal;
@@ -32,13 +33,16 @@ public class WithdrawalService {
     private final FundFlowMapper fundFlowMapper;
     private final UserMapper userMapper;
     private final NotificationService notificationService;
+    private final MetricsRegistry metrics;
 
     public WithdrawalService(WithdrawalMapper withdrawalMapper, FundFlowMapper fundFlowMapper,
-                             UserMapper userMapper, NotificationService notificationService) {
+                             UserMapper userMapper, NotificationService notificationService,
+                             MetricsRegistry metrics) {
         this.withdrawalMapper = withdrawalMapper;
         this.fundFlowMapper = fundFlowMapper;
         this.userMapper = userMapper;
         this.notificationService = notificationService;
+        this.metrics = metrics;
     }
 
     /** 累计结算入账（SETTLE IN 流水）。 */
@@ -103,6 +107,7 @@ public class WithdrawalService {
         // F-07 提现通知：申请提交（best-effort）
         notificationService.notify(userId, NotificationType.WITHDRAW_APPLY, ff.getBizNo(), "提现申请已提交",
                 "您的提现申请 " + (amount / 100.0) + " 元已提交，等待审核");
+        metrics.increment("withdraw.apply");
         return w;
     }
 
@@ -136,6 +141,7 @@ public class WithdrawalService {
         // F-07 提现通知：审批通过（best-effort）
         notificationService.notify(w.getUserId(), NotificationType.WITHDRAW_APPROVE, "WD" + w.getId(), "提现已通过",
                 "您的提现 " + (w.getAmount() / 100.0) + " 元已审核通过，正在出账");
+        metrics.increment("withdraw.approve");
         return withdrawalMapper.selectById(id);
     }
 
@@ -167,6 +173,7 @@ public class WithdrawalService {
         // F-07 提现通知：驳回（best-effort）
         notificationService.notify(w.getUserId(), NotificationType.WITHDRAW_REJECT, "WD" + w.getId(), "提现被驳回",
                 "您的提现 " + (w.getAmount() / 100.0) + " 元未通过审核，金额已解冻");
+        metrics.increment("withdraw.reject");
         return w;
     }
 

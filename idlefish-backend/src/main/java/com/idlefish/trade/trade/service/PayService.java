@@ -84,6 +84,7 @@ public class PayService {
         notifyParams.put("amount", amount != null ? String.valueOf(amount) : null);
         boolean verified = escrow.verifyNotify(notifyParams);
         if (!verified) {
+            metrics.increment("pay.notify.verify.failure");
             throw new BizException(Code.BIZ_ERROR, "支付通知验签失败");
         }
         applyPaid(payNo, transactionId, amount);

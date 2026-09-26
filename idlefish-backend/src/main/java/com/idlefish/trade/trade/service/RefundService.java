@@ -17,6 +17,7 @@ import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.mapper.RefundMapper;
 import com.idlefish.trade.trade.vo.RefundVO;
 import com.idlefish.trade.notify.enums.NotificationType;
+import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.stereotype.Service;
 
@@ -37,13 +38,14 @@ public class RefundService {
     private final ItemService itemService;
     private final FundFlowMapper fundFlowMapper;
     private final NotificationService notificationService;
+    private final MetricsRegistry metrics;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public RefundService(RefundMapper refundMapper, OrderMapper orderMapper,
                          PayOrderMapper payOrderMapper, PayService payService,
                          ItemService itemService, FundFlowMapper fundFlowMapper,
-                         NotificationService notificationService) {
+                         NotificationService notificationService, MetricsRegistry metrics) {
         this.refundMapper = refundMapper;
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
@@ -51,6 +53,7 @@ public class RefundService {
         this.itemService = itemService;
         this.fundFlowMapper = fundFlowMapper;
         this.notificationService = notificationService;
+        this.metrics = metrics;
     }
 
     /** 申请退款（幂等：同订单进行中退款单则直接返回）。 */
@@ -92,6 +95,7 @@ public class RefundService {
         // F-02 通知中心：退款申请触达卖家（best-effort）
         notificationService.notify(r.getSellerId(), NotificationType.REFUND_APPLY, r.getRefundNo(), "退款申请",
                 "买家对订单 " + dto.getOrderNo() + " 发起退款申请");
+        metrics.increment("refund.apply");
         return r.getRefundNo();
     }
 
@@ -266,6 +270,7 @@ public class RefundService {
         done.setStatus(RefundStatus.REFUNDED.getCode());
         done.setRefundAt(LocalDateTime.now());
         refundMapper.updateById(done);
+        metrics.increment("refund.success");
 
         FundFlow ff = new FundFlow();
         ff.setBizNo(r.getRefundNo());
