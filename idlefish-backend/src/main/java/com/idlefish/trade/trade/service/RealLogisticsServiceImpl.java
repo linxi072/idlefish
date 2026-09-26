@@ -32,7 +32,7 @@ import java.util.Map;
 public class RealLogisticsServiceImpl implements LogisticService {
 
     private static final Logger log = LoggerFactory.getLogger(RealLogisticsServiceImpl.class);
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     private final IdlefishProperties props;
     private final LogisticsMapper logisticsMapper;

@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 public class ImService {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ImService.class);
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     private final ConversationMapper conversationMapper;
     private final MessageMapper messageMapper;

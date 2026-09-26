@@ -21,7 +21,7 @@ public class ReviewVO {
     private String createdAt;
 
     private static final DateTimeFormatter FMT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     public static ReviewVO from(com.idlefish.trade.trade.entity.Review r) {
         ReviewVO v = new ReviewVO();

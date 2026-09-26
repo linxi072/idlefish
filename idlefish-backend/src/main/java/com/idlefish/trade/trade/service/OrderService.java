@@ -64,7 +64,7 @@ public class OrderService {
     private final PointService pointService;
     private final ActivityService activityService;
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     public OrderService(OrderMapper orderMapper, PayOrderMapper payOrderMapper,
                         ItemService itemService, ItemMapper itemMapper,

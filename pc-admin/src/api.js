@@ -296,3 +296,24 @@ export const couponApi = {
     return Promise.resolve({ ok: true });
   })() : req('POST', '/api/admin/coupon/status', null, { couponId, status })
 };
+
+// 邀请拉新（F-13.4，对齐 InviteController /api/invite/*）
+export const inviteApi = {
+  myCode: (userId) => USE_MOCK
+    ? Promise.resolve({ code: 'INV' + (userId || 0).toString(36).toUpperCase() + 'XK2P' })
+    : req('GET', '/api/invite/code', null, { userId }),
+  bind: (userId, code) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', '/api/invite/bind', null, { userId, code }),
+  invitees: (userId) => USE_MOCK ? Promise.resolve({ list: [], total: 0 })
+    : req('GET', '/api/invite/invitees', null, { userId }).then(pageTo)
+};
+
+// 搜索词运营（F-14.3，对齐 SearchTermController /api/search/term/*）
+export const searchTermApi = {
+  hot: (limit) => USE_MOCK ? Promise.resolve(['iPhone', '华为', '显卡', '自行车'])
+    : req('GET', '/api/search/term/hot', null, { limit: limit || 10 }),
+  history: (userId, limit) => USE_MOCK ? Promise.resolve(['iPhone', '相机'])
+    : req('GET', '/api/search/term/history', null, { userId, limit: limit || 10 }),
+  record: (userId, word) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', '/api/search/term/record', null, { userId, word })
+};

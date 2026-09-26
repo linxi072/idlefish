@@ -1,16 +1,14 @@
 // pc-admin/src/views/coupon.js —— 优惠券运营（F-10 营销：发券管理）
 import { couponApi } from '../api.js';
 import { formatMixin, notifyError } from '../utils/format.js';
+import { listPageMixin, crudDialogMixin } from '../mixins/index.js';
 
 export default {
   name: 'Coupon',
-  mixins: [formatMixin],
+  mixins: [formatMixin, listPageMixin, crudDialogMixin],
   data() {
-    return {
-      list: [], total: 0, loading: false,
-      dialogVisible: false, submitting: false,
-      form: this.emptyForm()
-    };
+    // list/total/loading 由 listPageMixin 提供；dialogVisible/submitting/form 由 crudDialogMixin 提供
+    return {};
   },
   mounted() { this.load(); },
   methods: {
@@ -66,10 +64,6 @@ export default {
       }
       return '';
     },
-    openCreate() {
-      this.form = this.emptyForm();
-      this.dialogVisible = true;
-    },
     async submitCreate() {
       const f = this.form;
       if (!f.name || !f.name.trim()) return this.$message.error('请填写券名称');
@@ -124,7 +118,7 @@ export default {
   template: `
   <div>
     <h2 class="page-title">发券管理
-      <el-button size="small" type="primary" style="margin-left:12px" @click="openCreate">新建优惠券</el-button>
+      <el-button size="small" type="primary" style="margin-left:12px" @click="openCreate(emptyForm())">新建优惠券</el-button>
     </h2>
     <el-card shadow="never">
       <el-table :data="list" v-loading="loading" border stripe>

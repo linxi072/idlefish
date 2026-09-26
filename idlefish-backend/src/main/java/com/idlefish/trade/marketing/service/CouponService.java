@@ -23,7 +23,12 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -118,8 +123,17 @@ public class CouponService {
                 .collect(Collectors.toList());
         int from = Math.min((page - 1) * size, valid.size());
         int to = Math.min(from + size, valid.size());
-        List<CouponVO> vos = valid.subList(from, to).stream()
-                .map(c -> toCenterVO(c, userId)).collect(Collectors.toList());
+        List<Coupon> slice = valid.subList(from, to);
+        // 批量查询当前用户已领券（一次 IN 查询替代逐券 selectCount 的 N+1）
+        Set<Long> claimedIds = new HashSet<>();
+        if (userId != null && !slice.isEmpty()) {
+            List<UserCoupon> owned = userCouponMapper.selectList(new LambdaQueryWrapper<UserCoupon>()
+                    .eq(UserCoupon::getUserId, userId)
+                    .in(UserCoupon::getCouponId, slice.stream().map(Coupon::getId).collect(Collectors.toSet())));
+            owned.forEach(uc -> claimedIds.add(uc.getCouponId()));
+        }
+        List<CouponVO> vos = slice.stream()
+                .map(c -> toCenterVO(c, userId, claimedIds)).collect(Collectors.toList());
         IPage<CouponVO> result = new Page<>(page, size, valid.size());
         result.setRecords(vos);
         return result;
@@ -188,7 +202,10 @@ public class CouponService {
             w.eq(UserCoupon::getStatus, status);
         }
         List<UserCoupon> list = userCouponMapper.selectList(w);
-        return list.stream().map(this::toUserVO).collect(Collectors.toList());
+        // 批量加载券模板，避免逐张 selectById 的 N+1
+        Map<Long, Coupon> couponMap = batchCoupons(list.stream()
+                .map(UserCoupon::getCouponId).filter(Objects::nonNull).collect(Collectors.toSet()));
+        return list.stream().map(uc -> toUserVO(uc, couponMap)).collect(Collectors.toList());
     }
 
     /** 下单可用券：未使用 + 未过期 + 适用该商品 + 满足门槛；附可抵扣金额。 */
@@ -198,16 +215,19 @@ public class CouponService {
                 .eq(UserCoupon::getStatus, UC_UNUSED));
         Item item = itemMapper.selectById(itemId);
         LocalDateTime now = LocalDateTime.now();
+        // 批量加载券模板，避免逐张 selectById 的 N+1
+        Map<Long, Coupon> couponMap = batchCoupons(list.stream()
+                .map(UserCoupon::getCouponId).filter(Objects::nonNull).collect(Collectors.toSet()));
         List<UserCouponVO> result = new ArrayList<>();
         for (UserCoupon uc : list) {
             if (uc.getExpireAt() != null && now.isAfter(uc.getExpireAt())) {
                 continue;
             }
-            Coupon coupon = couponMapper.selectById(uc.getCouponId());
+            Coupon coupon = couponMap.get(uc.getCouponId());
             if (coupon == null || !isScopeApplicable(coupon, item)) {
                 continue;
             }
-            UserCouponVO vo = toUserVO(uc);
+            UserCouponVO vo = toUserVO(uc, couponMap);
             vo.setDiscountAmount(calculateDiscount(coupon, goodsAmount));
             result.add(vo);
         }
@@ -302,6 +322,21 @@ public class CouponService {
         couponMapper.updateById(upd);
     }
 
+    /** 直接发放券给用户（邀请奖励 / 运营定向发放，不经过领券中心）。 */
+    public void grantCoupon(Long userId, Long couponId) {
+        Coupon coupon = couponMapper.selectById(couponId);
+        if (coupon == null) {
+            throw new BizException(Code.BIZ_ERROR, "奖励券模板不存在");
+        }
+        UserCoupon uc = new UserCoupon();
+        uc.setCouponId(couponId);
+        uc.setUserId(userId);
+        uc.setStatus(UC_UNUSED);
+        uc.setExpireAt(coupon.getEndAt());
+        uc.setClaimedAt(LocalDateTime.now());
+        userCouponMapper.insert(uc);
+    }
+
     /** 适用范围校验：ALL 恒成立；CATEGORY 命中商品类目；ITEM 命中商品。 */
     private boolean isScopeApplicable(Coupon coupon, Item item) {
         if (SCOPE_ALL.equals(coupon.getScope())) {
@@ -319,7 +354,7 @@ public class CouponService {
         return false;
     }
 
-    private CouponVO toCenterVO(Coupon c, Long userId) {
+    private CouponVO toCenterVO(Coupon c, Long userId, Set<Long> claimedIds) {
         CouponVO vo = new CouponVO();
         vo.setId(c.getId());
         vo.setName(c.getName());
@@ -336,23 +371,21 @@ public class CouponService {
         vo.setStatus(c.getStatus());
         vo.setStartAt(c.getStartAt());
         vo.setEndAt(c.getEndAt());
-        long owned = userId == null ? 0 : userCouponMapper.selectCount(new LambdaQueryWrapper<UserCoupon>()
-                .eq(UserCoupon::getUserId, userId).eq(UserCoupon::getCouponId, c.getId()));
-        vo.setClaimed(owned > 0);
+        vo.setClaimed(userId != null && claimedIds.contains(c.getId()));
         vo.setClaimable(c.getStatus() != null && c.getStatus().equals(STATUS_ACTIVE)
                 && c.getEndAt() != null && LocalDateTime.now().isBefore(c.getEndAt())
                 && (c.getClaimedCount() == null ? 0 : c.getClaimedCount()) < (c.getTotalCount() == null ? 0 : c.getTotalCount()));
         return vo;
     }
 
-    private UserCouponVO toUserVO(UserCoupon uc) {
+    private UserCouponVO toUserVO(UserCoupon uc, Map<Long, Coupon> couponMap) {
         UserCouponVO vo = new UserCouponVO();
         vo.setId(uc.getId());
         vo.setCouponId(uc.getCouponId());
         vo.setStatus(uc.getStatus());
         vo.setOrderNo(uc.getOrderNo());
         vo.setExpireAt(uc.getExpireAt());
-        Coupon c = couponMapper.selectById(uc.getCouponId());
+        Coupon c = couponMap.get(uc.getCouponId());
         if (c != null) {
             vo.setName(c.getName());
             vo.setType(c.getType());
@@ -364,5 +397,14 @@ public class CouponService {
             vo.setScopeId(c.getScopeId());
         }
         return vo;
+    }
+
+    /** 批量加载券模板（一次 IN 查询替代逐张 selectById 的 N+1）。 */
+    private Map<Long, Coupon> batchCoupons(Set<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return couponMapper.selectBatchIds(ids).stream()
+                .collect(Collectors.toMap(Coupon::getId, c -> c, (a, b) -> a));
     }
 }

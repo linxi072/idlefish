@@ -24,7 +24,7 @@ import java.util.List;
 @Service
 public class FavoriteService {
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     private final FavoriteMapper favoriteMapper;
     private final ItemService itemService;

@@ -37,7 +37,7 @@ public class PointService {
     public static final String BIZ_REDEEM = "REDEEM";
     public static final String BIZ_REDEEM_RELEASED = "REDEEM_RELEASED";
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     private final PointMapper pointMapper;
     private final PointLogMapper pointLogMapper;

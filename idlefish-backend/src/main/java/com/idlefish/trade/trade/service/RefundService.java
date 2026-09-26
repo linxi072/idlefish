@@ -40,7 +40,7 @@ public class RefundService {
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     public RefundService(RefundMapper refundMapper, OrderMapper orderMapper,
                          PayOrderMapper payOrderMapper, PayService payService,

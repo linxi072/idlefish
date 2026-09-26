@@ -57,7 +57,7 @@ public class ItemService {
     /** 单实例应用级库存锁（防超卖）；多实例需改用 Redis 分布式锁。 */
     private final ConcurrentMap<Long, Object> itemLocks = new ConcurrentHashMap<>();
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     public ItemService(ItemMapper itemMapper, CategoryService categoryService,
                        UserService userService, ItemStateMachine stateMachine, ObjectMapper objectMapper,

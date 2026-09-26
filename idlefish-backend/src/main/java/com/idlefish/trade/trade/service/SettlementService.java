@@ -25,7 +25,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 结算服务：交易完成后生成 T+1 结算单；到期放款并记卖家入账流水。
@@ -110,12 +113,17 @@ public class SettlementService {
         List<Settlement> due = settlementMapper.selectList(new LambdaQueryWrapper<Settlement>()
                 .in(Settlement::getStatus, "pending", "frozen")
                 .le(Settlement::getSettleAt, LocalDateTime.now()));
+        // 批量查询风控冻结卖家：一次 IN 查询替代逐单 selectCount 的 N+1
+        Set<Long> frozenSellers = new HashSet<>();
+        if (!due.isEmpty()) {
+            List<RiskEvent> openRisks = riskEventMapper.selectList(new LambdaQueryWrapper<RiskEvent>()
+                    .eq(RiskEvent::getStatus, "open")
+                    .in(RiskEvent::getUserId, due.stream().map(Settlement::getSellerId).collect(Collectors.toSet())));
+            openRisks.forEach(r -> frozenSellers.add(r.getUserId()));
+        }
         for (Settlement s : due) {
             // 风控冻结：卖家存在未处置的高危风控事件 → 冻结结算，暂缓放款
-            long openRisk = riskEventMapper.selectCount(new LambdaQueryWrapper<RiskEvent>()
-                    .eq(RiskEvent::getUserId, s.getSellerId())
-                    .eq(RiskEvent::getStatus, "open"));
-            if (openRisk > 0) {
+            if (frozenSellers.contains(s.getSellerId())) {
                 Settlement freeze = new Settlement();
                 freeze.setStatus("frozen");
                 settlementMapper.update(freeze, new LambdaUpdateWrapper<Settlement>()
