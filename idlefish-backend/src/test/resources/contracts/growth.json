@@ -1,0 +1,126 @@
+{
+  "domain": "growth",
+  "description": "增长运营：券、积分、收藏、邀请",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/coupon/center",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "领券中心"
+    },
+    {
+      "method": "POST",
+      "path": "/api/coupon/claim",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "领取优惠券（并发限领 + 唯一索引兜底）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/coupon/my",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "我的券"
+    },
+    {
+      "method": "GET",
+      "path": "/api/coupon/available",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "可用券（下单抵现候选）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/point/balance",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.balance", "data.totalBalance"],
+      "notes": "积分余额"
+    },
+    {
+      "method": "POST",
+      "path": "/api/point/signin",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "签到得积分"
+    },
+    {
+      "method": "GET",
+      "path": "/api/point/logs",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "积分流水"
+    },
+    {
+      "method": "GET",
+      "path": "/api/point/config",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "积分规则配置"
+    },
+    {
+      "method": "GET",
+      "path": "/api/point/preview",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "下单积分抵现预览"
+    },
+    {
+      "method": "POST",
+      "path": "/api/favorite/toggle",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "收藏/取消收藏（布尔幂等）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorite/check",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "是否收藏"
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorite/list",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "收藏列表"
+    },
+    {
+      "method": "GET",
+      "path": "/api/invite/code",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.code"],
+      "notes": "我的邀请码"
+    },
+    {
+      "method": "POST",
+      "path": "/api/invite/bind",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "绑定邀请关系（自邀自拦截）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/invite/invitees",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "我邀请的人"
+    }
+  ]
+}

@@ -1,0 +1,238 @@
+{
+  "domain": "admin",
+  "description": "运营后台：鉴权、商品审核、用户、风控审计、风控规则、系统、财务、订单、评价、券",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/admin/auth/login",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data.token"],
+      "notes": "后台登录（密码 PBKDF2 哈希校验）；错误密码返回 20001"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/items",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.total", "data.records"],
+      "notes": "商品审核列表，支持 keyword/status 下推"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/items/{itemId}/approve",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "审核通过，写审计日志"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/items/{itemId}/reject",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "审核拒绝"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.total", "data.records"],
+      "notes": "用户列表，支持 keyword 下推"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{userId}/ban",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "封禁用户（联动风控冻结）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/audit-logs",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.total", "data.records"],
+      "notes": "审计日志列表"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/risks",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "风控事件列表"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/risk/rules",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "风控规则库（可配置，热加载）"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/risk/rules",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "保存规则并热加载（无需重启）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/risk/rules/{code}/toggle",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "切换规则启用状态并热加载"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system/menu/tree",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "菜单树"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system/user",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "系统用户列表"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system/role",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "角色列表"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system/organization/tree",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "组织机构树"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system/dict/dropdown",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "字典下拉"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/withdrawals",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "提现审批列表"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/withdrawals/{id}/approve",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "提现审批通过（真实出款，配置硬网关）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/withdrawals/{id}/reject",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "提现驳回（回滚冻结）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reconciliation",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "资金对账结果"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/settlements/{id}/unfreeze",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "结算单解冻"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "订单管理列表"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders/{orderNo}/ship",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "后台代发货"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders/{orderNo}/refund",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "后台介入退款"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reviews",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "评价管理列表"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reviews/{id}/approve",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "评价通过"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reviews/{id}/reject",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "评价驳回"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/coupon/create",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "创建优惠券"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/coupon/status",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "切换券状态"
+    }
+  ]
+}

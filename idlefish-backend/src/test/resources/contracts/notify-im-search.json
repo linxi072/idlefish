@@ -1,0 +1,134 @@
+{
+  "domain": "notify-im-search",
+  "description": "通知、IM、搜索、风控埋点、文件、MQ 消费",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/notify/list",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "通知列表"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notify/unread-count",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "未读计数"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notify/read",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "标记已读"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notify/read-all",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "全部已读，未读归零"
+    },
+    {
+      "method": "POST",
+      "path": "/api/im/send",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "发送 IM 消息"
+    },
+    {
+      "method": "GET",
+      "path": "/api/im/conversations",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "会话列表"
+    },
+    {
+      "method": "GET",
+      "path": "/api/im/messages",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "消息记录"
+    },
+    {
+      "method": "GET",
+      "path": "/api/im/unread",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "IM 未读"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search/query",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ES 检索（无 ES 降级 DB）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search/suggest",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "搜索补全"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search/facets",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "聚合筛选（类目/成色/城市）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search/recommend",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "个性化推荐 feed"
+    },
+    {
+      "method": "POST",
+      "path": "/api/track/{event}",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "行为埋点（风控/推荐输入）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/track/catalog",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "埋点事件目录"
+    },
+    {
+      "method": "POST",
+      "path": "/api/file/upload",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "文件上传，返回 /uploads/ 路径"
+    },
+    {
+      "method": "POST",
+      "path": "/api/mq/consume",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "延时消息消费入口（RocketMQ 兜底）"
+    }
+  ]
+}

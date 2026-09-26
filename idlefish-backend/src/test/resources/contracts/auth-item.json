@@ -1,0 +1,126 @@
+{
+  "domain": "auth-item",
+  "description": "认证、用户、收货地址、商品、类目核心契约（小程序主链路前置）",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data.token", "data.refreshToken", "data.userId"],
+      "notes": "微信 code 登录，返回 JWT 与 refreshToken；Mock 模式 openid==code"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/refresh",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data.token"],
+      "notes": "用 refreshToken 换发新 accessToken"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/info",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.userId", "data.nickname"],
+      "notes": "当前登录用户信息"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/bind-phone",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "绑定手机号"
+    },
+    {
+      "method": "GET",
+      "path": "/api/address",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "收货地址列表（@GetMapping 无路径值回退类路径）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/address",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "新增收货地址（@PostMapping 无路径值回退类路径）"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/address/{id}",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "更新收货地址"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/address/{id}",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "删除收货地址"
+    },
+    {
+      "method": "POST",
+      "path": "/api/address/{id}/default",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "设为默认地址"
+    },
+    {
+      "method": "POST",
+      "path": "/api/item/publish",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "发布商品，价格以分入参"
+    },
+    {
+      "method": "POST",
+      "path": "/api/item/{id}/submit",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "提交审核（触发内容安全 + 风控设备指纹）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/item/detail/{id}",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data.itemId", "data.price", "data.priceYuan"],
+      "notes": "商品详情；金额契约：price(分) + priceYuan(元=price/100)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/item/mine",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "我的发布列表"
+    },
+    {
+      "method": "GET",
+      "path": "/api/item/buyer/list",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "我买到的列表"
+    },
+    {
+      "method": "GET",
+      "path": "/api/category/tree",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "类目树"
+    }
+  ]
+}

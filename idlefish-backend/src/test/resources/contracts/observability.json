@@ -1,0 +1,22 @@
+{
+  "domain": "observability",
+  "description": "零依赖可观测端点（容器探针 / K8s liveness-readiness）",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/actuator/health",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["status"],
+      "notes": "健康检查（MySQL 真实查询 + 配置/TCP 探测；ObservabilityController @Profile(!micrometer)）"
+    },
+    {
+      "method": "GET",
+      "path": "/actuator/metrics",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["counters", "timers"],
+      "notes": "自研 MetricsRegistry 快照（路由维度 QPS/耗时/状态码）"
+    }
+  ]
+}

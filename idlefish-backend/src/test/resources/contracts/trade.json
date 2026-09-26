@@ -1,0 +1,214 @@
+{
+  "domain": "trade",
+  "description": "交易主链路：订单、支付、退款、评价、钱包、活动、议价",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/orders/create",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.orderNo"],
+      "notes": "创建订单；非法入参返回业务码 10002（@Valid 守卫）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/{orderNo}",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.orderNo", "data.status", "data.payAmount"],
+      "notes": "订单详情；payAmount 单位为分"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/{orderNo}/cancel",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "取消订单"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/{orderNo}/ship",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "买家/卖家发货（按角色），写入物流延时任务"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/{orderNo}/confirm",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "确认收货，触发结算 + 分账 + 通知"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/{orderNo}/logistics",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "物流轨迹（真实物流或兜底）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pay/prepay",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.prepayParams", "data.payNo"],
+      "notes": "微信 JSAPI 下单，返回调起支付参数"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pay/notify",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "支付结果回调（生产已去 Mock，需真实微信 v3 或桩放行验签）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pay/notify/v3",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "微信 v3 回调，恒定验签；伪造签名必须被拒"
+    },
+    {
+      "method": "POST",
+      "path": "/api/refunds/apply",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "申请退款；非法入参返回 10002"
+    },
+    {
+      "method": "POST",
+      "path": "/api/refunds/{refundNo}/agree",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "卖家/平台同意退款，状态机守卫"
+    },
+    {
+      "method": "POST",
+      "path": "/api/refunds/{refundNo}/reject",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "拒绝退款（rejected 后不可再 agree/cancel）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/refunds/{refundNo}/cancel",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "撤销退款申请"
+    },
+    {
+      "method": "GET",
+      "path": "/api/refunds/{refundNo}",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.refundNo", "data.status"],
+      "notes": "退款详情"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reviews/submit",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "提交评价（触发评价得积分）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/reviews/item/{itemId}",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "商品评价列表"
+    },
+    {
+      "method": "GET",
+      "path": "/api/reviews/my",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "我的评价"
+    },
+    {
+      "method": "GET",
+      "path": "/api/reviews/received",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "我收到的评价"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/balance",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.balance"],
+      "notes": "钱包余额（分）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/wallet/flows",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "钱包流水"
+    },
+    {
+      "method": "POST",
+      "path": "/api/wallet/withdraw",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "提现申请（审批通过后真实出款，配置硬网关）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/activity/create",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "创建拼团/秒杀活动"
+    },
+    {
+      "method": "GET",
+      "path": "/api/activity/list",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data.records"],
+      "notes": "活动列表"
+    },
+    {
+      "method": "POST",
+      "path": "/api/activity/join",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "参与活动（唯一索引并发兜底）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bargain/create",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "发起议价"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bargain/accept",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "接受议价"
+    }
+  ]
+}
