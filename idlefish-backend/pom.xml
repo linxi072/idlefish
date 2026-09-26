@@ -117,6 +117,54 @@
       - 数据源：MySQL 8.1.0（离线已缓存），本地运行需自备 MySQL 实例（application.yml 默认 127.0.0.1:3306/idlefish）。
       - Profile：原 local/prod 双 profile 隔离已不再需要，默认构建即包含全部依赖；
         prod profile 仅用于通过 spring.profiles.active=prod 启动参数切换数据源/SQL 方言，缓存恒为 Redis。
+      - micrometer profile（F-12.6 可观测性增强）：仅在显式指定 -Pmicrometer 时引入
+        spring-boot-starter-actuator + micrometer-registry-prometheus，并通过 build-helper 将独立的
+        src/main/micrometer/java 源码根纳入编译。该 profile 专属源码（MicrometerMetricsBridge）把零依赖
+        MetricsRegistry 桥接为 /actuator/prometheus 指标。默认离线 mvn -o 不激活此 profile，
+        actuator/micrometer 不在 classpath，离线编译与运行完全不受影响。
       说明：H2 内存库已彻底移除。
     -->
+
+    <!--
+      F-12.6 Micrometer / Prometheus 可观测性增强（需联网下载依赖）。
+      仅 -Pmicrometer 激活；默认构建与离线 mvn -o 不受影响。
+    -->
+    <profiles>
+        <profile>
+            <id>micrometer</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-actuator</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.micrometer</groupId>
+                    <artifactId>micrometer-registry-prometheus</artifactId>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <version>3.5.0</version>
+                        <executions>
+                            <execution>
+                                <id>add-micrometer-sources</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>add-source</goal>
+                                </goals>
+                                <configuration>
+                                    <sources>
+                                        <source>src/main/micrometer/java</source>
+                                    </sources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -1,5 +1,8 @@
 # ============ 构建产物 / 依赖缓存 ============
 .m2/
+.mvn-tmp-repo/
+.mvn-repo-central/
+.mvn-settings-central.xml
 target/
 **/target/
 *.class

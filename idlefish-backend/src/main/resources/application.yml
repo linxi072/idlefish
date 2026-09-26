@@ -36,6 +36,18 @@ logging:
   level:
     root: INFO
 
+# Actuator / Micrometer（F-12.6）：仅在 micrometer profile 激活时引入 actuator 依赖后生效；
+# 默认离线构建无 actuator，以下配置被忽略，不影响编译与运行。
+# /actuator/** 已在 WebConfig 放行鉴权，便于 Prometheus 直接抓取（生产建议网关收敛为内网）。
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
 # 业务自定义配置
 idlefish:
   jwt:

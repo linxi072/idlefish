@@ -2,6 +2,7 @@ package com.idlefish.trade.common.observability;
 
 import com.idlefish.trade.common.IdlefishProperties;
 import javax.sql.DataSource;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +19,11 @@ import java.util.Map;
  * 路径置于 {@code /actuator/**}，已在 WebConfig 中放行鉴权，便于 Prometheus/探活直接抓取。
  * 生产环境建议由网关收敛为内网可访问，避免对外暴露指标细节。
  * <p>
+ * Profile 约束：本端点仅在非 micrometer 模式下生效（{@code @Profile("!micrometer")}）。
+ * 当显式激活 micrometer profile（F-12.6）时，由 Spring Boot Actuator 接管
+ * {@code /actuator/health}、{@code /actuator/metrics} 与新增的 {@code /actuator/prometheus}，
+ * 避免同路径 Ambiguous mapping；业务指标经 MicrometerMetricsBridge 桥接为 Prometheus 格式暴露。
+ * <p>
  * {@code /actuator/health} 在进程级探活基础上扩展依赖探活（F-12.5）：
  * <ul>
  *   <li>MySQL 为关键依赖，探活失败直接判定整体 {@code DOWN}；</li>
@@ -29,6 +35,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/actuator")
+@Profile("!micrometer")
 public class ObservabilityController {
 
     /** TCP 探活连接超时（毫秒）。 */
