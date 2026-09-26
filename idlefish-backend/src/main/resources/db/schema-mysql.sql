@@ -235,6 +235,24 @@ CREATE TABLE IF NOT EXISTS t_risk_event (
     KEY idx_risk_user (user_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS t_risk_rule (
+    id               BIGINT       PRIMARY KEY,
+    code             VARCHAR(32)  NOT NULL COMMENT '规则码，唯一，如 R1_HIGH_PUBLISH',
+    name             VARCHAR(64)  NOT NULL COMMENT '展示名',
+    type             VARCHAR(32)  NOT NULL COMMENT '规则类型，见 RiskRuleType',
+    level            VARCHAR(16)  COMMENT '默认命中等级 low/mid/high',
+    enabled          INT          DEFAULT 1 COMMENT '1 启用 / 0 停用',
+    scope            VARCHAR(16)  COMMENT '维度 user/device',
+    threshold        BIGINT       DEFAULT 0 COMMENT '计数/金额(分)/频次阈值，语义随 type',
+    window_min       INT          DEFAULT 1 COMMENT '统计窗口(分钟)',
+    priority         INT          DEFAULT 0 COMMENT '评估优先级，升序',
+    description      VARCHAR(255),
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_risk_rule_code (code),
+    KEY idx_risk_rule_type (type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS t_audit_log (
     id               BIGINT       PRIMARY KEY,
     operator_id      BIGINT,
