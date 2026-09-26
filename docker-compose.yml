@@ -1,0 +1,130 @@
+# idlefish-backend 一体编排（F-15.3 容器化与发布）
+#
+# 使用：
+#   基础三件套（MySQL + Redis + 后端，开箱即用）：
+#     docker compose up -d
+#   启用 Elasticsearch 检索（生产需 analysis-ik 插件，见下方 es 服务注释）：
+#     docker compose --profile search up -d
+#   启用 RocketMQ 延时队列（需阿里云接入点与消费转发，见 §13.3）：
+#     docker compose --profile mq up -d
+#
+# 凭据：后端敏感配置经 .env 注入（compose 自动加载，文件不入库）。
+# 至少提供 JWT_SECRET；其它 IDLEFISH_PAY_* / IDLEFISH_LOGIN_* 等随发布闸门开启。
+
+services:
+  mysql:
+    image: mysql:8.1
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: idlefish
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ./idlefish-backend
+      dockerfile: Dockerfile
+    # 本地已构建镜像时改用 image 便于复用；二者取一即可
+    # image: idlefish-backend:1.0.0
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      # 以下经 .env 注入（compose 自动加载，文件不入库）；
+      # JWT_SECRET 为必填生产密钥，缺失则用 DEV 默认密钥并告警。
+      JWT_SECRET: ${JWT_SECRET:-}
+      IDLEFISH_LOGIN_MOCK: ${IDLEFISH_LOGIN_MOCK:-false}
+      IDLEFISH_PAY_MOCK: ${IDLEFISH_PAY_MOCK:-false}
+      IDLEFISH_PAY_MCHID: ${IDLEFISH_PAY_MCHID:-}
+      IDLEFISH_PAY_APPID: ${IDLEFISH_PAY_APPID:-}
+      IDLEFISH_PAY_SERIAL: ${IDLEFISH_PAY_SERIAL:-}
+      IDLEFISH_PAY_PRIVATE_KEY: ${IDLEFISH_PAY_PRIVATE_KEY:-}
+      IDLEFISH_PAY_APIV3_KEY: ${IDLEFISH_PAY_APIV3_KEY:-}
+      IDLEFISH_PAY_NOTIFY_URL: ${IDLEFISH_PAY_NOTIFY_URL:-}
+      IDLEFISH_COOKIE_SECURE: ${IDLEFISH_COOKIE_SECURE:-true}
+      IDLEFISH_RATELIMIT_ENABLED: ${IDLEFISH_RATELIMIT_ENABLED:-true}
+      IDLEFISH_OSS_MOCK: ${IDLEFISH_OSS_MOCK:-true}
+      IDLEFISH_SEARCH_MOCK: ${IDLEFISH_SEARCH_MOCK:-true}
+      IDLEFISH_MQ_MOCK: ${IDLEFISH_MQ_MOCK:-true}
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+
+  # ---- 可选：Elasticsearch 商品检索（profile: search） ----
+  # 生产需安装 analysis-ik 插件（EsSearchServiceImpl 用 ik_max_word/ik_smart）；
+  # 标准镜像无 ik，建议基于官方镜像构建带 ik 的自定义镜像后替换 image。
+  es:
+    image: elasticsearch:7.17.10
+    profiles: ["search"]
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ---- 可选：RocketMQ 延时队列（profile: mq） ----
+  # 仅起中间件；真实接入还需阿里云接入点 + 消费转发（见运维手册 §13.3）。
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.3.0
+    profiles: ["mq"]
+    command: ["sh", "mqnamesrv"]
+    ports:
+      - "9876:9876"
+    restart: unless-stopped
+
+  rocketmq-broker:
+    image: apache/rocketmq:5.3.0
+    profiles: ["mq"]
+    command: ["sh", "mqbroker", "-n", "rocketmq-namesrv:9876", "autoCreateTopicEnable=true"]
+    ports:
+      - "10911:10911"
+      - "10909:10909"
+    depends_on:
+      - rocketmq-namesrv
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  redis-data:
+  es-data:
