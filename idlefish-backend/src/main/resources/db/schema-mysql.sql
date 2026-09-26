@@ -629,3 +629,69 @@ CREATE TABLE IF NOT EXISTS t_activity_participant (
     KEY idx_part_group (group_id),
     KEY idx_part_order (order_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===================== F-13.4 邀请拉新 / 分销 =====================
+-- 邀请码：每位用户一个唯一邀请码，供被邀请人绑定
+CREATE TABLE IF NOT EXISTS t_invite_code (
+    id                  BIGINT       PRIMARY KEY,
+    user_id             BIGINT       NOT NULL,
+    code                VARCHAR(32)  NOT NULL COMMENT '邀请码（唯一，大小写不敏感）',
+    created_at          DATETIME,
+    updated_at          DATETIME,
+    UNIQUE KEY uk_code (code),
+    UNIQUE KEY uk_code_user (user_id),
+    KEY idx_code_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 邀请关系：邀请人 → 被邀请人，含首单返券奖励状态
+CREATE TABLE IF NOT EXISTS t_invite_relation (
+    id                  BIGINT       PRIMARY KEY,
+    inviter_id          BIGINT       NOT NULL COMMENT '邀请人',
+    invitee_id          BIGINT       NOT NULL COMMENT '被邀请人',
+    reward_coupon_id    BIGINT       DEFAULT NULL COMMENT '首单奖励券模板 ID',
+    rewarded            TINYINT      NOT NULL DEFAULT 0 COMMENT '0 未奖励 / 1 已奖励',
+    created_at          DATETIME,
+    updated_at          DATETIME,
+    UNIQUE KEY uk_invite_pair (inviter_id, invitee_id),
+    KEY idx_relation_invitee (invitee_id),
+    KEY idx_relation_inviter (inviter_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===================== F-14.3 搜索词运营 =====================
+-- 热搜词：记录用户搜索热度，运营可置为屏蔽
+CREATE TABLE IF NOT EXISTS t_search_hot_word (
+    id                  BIGINT       PRIMARY KEY,
+    word                VARCHAR(64)  NOT NULL,
+    heat                INT          NOT NULL DEFAULT 0,
+    status              VARCHAR(20)  NOT NULL DEFAULT 'ENABLED' COMMENT 'ENABLED/BLOCKED',
+    created_at          DATETIME,
+    updated_at          DATETIME,
+    UNIQUE KEY uk_hot_word (word),
+    KEY idx_hot_heat (heat)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 用户搜索历史
+CREATE TABLE IF NOT EXISTS t_search_history (
+    id                  BIGINT       PRIMARY KEY,
+    user_id             BIGINT       NOT NULL,
+    word                VARCHAR(64)  NOT NULL,
+    created_at          DATETIME,
+    KEY idx_history_user (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 搜索屏蔽词
+CREATE TABLE IF NOT EXISTS t_search_block_word (
+    id                  BIGINT       PRIMARY KEY,
+    word                VARCHAR(64)  NOT NULL COMMENT '归一化后的值（小写、折叠空白）',
+    created_at          DATETIME,
+    UNIQUE KEY uk_block_word (word)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 搜索同义词词典
+CREATE TABLE IF NOT EXISTS t_search_synonym (
+    id                  BIGINT       PRIMARY KEY,
+    word                VARCHAR(64)  NOT NULL,
+    synonym             VARCHAR(64)  NOT NULL,
+    created_at          DATETIME,
+    KEY idx_syn_word (word)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
