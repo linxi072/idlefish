@@ -273,4 +273,30 @@ export function analyticsCondition() {
   ];
 }
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition };
+// 券营销驾驶舱（F-13.5，对齐 AdminCouponAnalyticsController /api/admin/marketing/coupon/*）
+export function couponAnalyticsOverview() {
+  const issuedCount = 3200;
+  const redeemedCount = 1180;
+  const redeemedOrderCount = 1120;
+  const redeemedGmv = 5600000;     // 分
+  const discountCost = 780000;      // 分
+  return {
+    issuedCount,
+    redeemedCount,
+    redemptionRate: issuedCount ? redeemedCount / issuedCount : 0,
+    redeemedOrderCount,
+    redeemedGmv,
+    discountCost,
+    roi: discountCost ? (redeemedGmv - discountCost) / discountCost : 0
+  };
+}
+
+export function couponAnalyticsTypeDist() {
+  return [
+    { type: 'FULL_REDUCTION', count: 1500 },
+    { type: 'NO_THRESHOLD', count: 1200 },
+    { type: 'DISCOUNT', count: 500 }
+  ];
+}
+
+export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, couponAnalyticsOverview, couponAnalyticsTypeDist };

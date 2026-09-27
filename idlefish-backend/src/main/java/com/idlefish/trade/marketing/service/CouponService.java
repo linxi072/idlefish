@@ -269,6 +269,7 @@ public class CouponService {
         uc.setStatus(UC_USED);
         uc.setOrderNo(orderNo);
         uc.setUsedAt(LocalDateTime.now());
+        uc.setDiscountAmount(discount);
         userCouponMapper.updateById(uc);
         metrics.increment("coupon.redeem.success");
         return discount;

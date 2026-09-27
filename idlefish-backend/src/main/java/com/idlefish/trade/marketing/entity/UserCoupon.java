@@ -23,4 +23,5 @@ public class UserCoupon extends BaseEntity {
     private LocalDateTime expireAt;  // 过期时间（领取时快照券 end_at）
     private LocalDateTime claimedAt; // 领取时间
     private LocalDateTime usedAt;    // 核销时间
+    private Long discountAmount;     // 核销优惠金额（分），F-13.5 落库用于营销 ROI
 }

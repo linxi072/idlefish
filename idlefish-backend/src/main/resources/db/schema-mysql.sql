@@ -557,6 +557,7 @@ CREATE TABLE IF NOT EXISTS t_user_coupon (
     expire_at        DATETIME,
     claimed_at       DATETIME,
     used_at          DATETIME,
+    discount_amount  BIGINT       DEFAULT 0,           -- F-13.5：核销时落库的优惠金额（分），用于营销 ROI 计算
     created_at       DATETIME,
     updated_at       DATETIME,
     KEY idx_uc_user (user_id, status),

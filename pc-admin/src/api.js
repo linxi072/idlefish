@@ -331,8 +331,16 @@ export const analyticsApi = {
 };
 
 // 会员等级与权益（F-13.2，对齐 AdminMemberLevelController /api/admin/member/level/*）
-export const memberApi = {
-  listTiers: () => USE_MOCK ? Promise.resolve(mock.memberLevels.slice())
+// 营销驾驶舱（F-13.5，对齐 AdminCouponAnalyticsController /api/admin/marketing/coupon/*）
+export const marketingApi = {
+  overview: () => USE_MOCK ? Promise.resolve(mock.couponAnalyticsOverview())
+    : req('GET', '/api/admin/marketing/coupon/overview'),
+  typeDist: () => USE_MOCK ? Promise.resolve(mock.couponAnalyticsTypeDist())
+    : req('GET', '/api/admin/marketing/coupon/type-dist')
+};
+
+// 会员等级与权益（F-13.2，对齐 AdminMemberLevelController /api/admin/member/level/*）
+export const memberApi = {  listTiers: () => USE_MOCK ? Promise.resolve(mock.memberLevels.slice())
     : req('GET', '/api/admin/member/level/list'),
   saveTier: (d) => USE_MOCK ? (() => {
     const list = mock.memberLevels;

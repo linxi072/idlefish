@@ -236,6 +236,22 @@
     },
     {
       "method": "GET",
+      "path": "/api/admin/marketing/coupon/overview",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.issuedCount", "data.redeemedCount", "data.redemptionRate", "data.redeemedGmv", "data.discountCost", "data.roi"],
+      "notes": "F-13.5 券营销概览：发放量/核销率/核销GMV/优惠成本/ROI"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/marketing/coupon/type-dist",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "F-13.5 券类型发放分布"
+    },
+    {
+      "method": "GET",
       "path": "/api/admin/analytics/overview",
       "auth": "admin",
       "expectStatus": 200,
