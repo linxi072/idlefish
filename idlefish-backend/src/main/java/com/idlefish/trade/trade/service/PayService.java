@@ -17,6 +17,7 @@ import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.service.DelayQueueService;
 import com.idlefish.trade.marketing.service.PointService;
 import com.idlefish.trade.marketing.invite.service.InviteService;
+import com.idlefish.trade.member.service.MemberLevelService;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.context.annotation.Lazy;
@@ -40,12 +41,14 @@ public class PayService {
     private final MetricsRegistry metrics;
     private final PointService pointService;
     private final InviteService inviteService;
+    private final MemberLevelService memberLevelService;
 
     public PayService(PayOrderMapper payOrderMapper, OrderMapper orderMapper,
                       FundFlowMapper fundFlowMapper, FundEscrowService escrow,
                       ObjectMapper objectMapper,
                       @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
-                      MetricsRegistry metrics, PointService pointService, InviteService inviteService) {
+                      MetricsRegistry metrics, PointService pointService, InviteService inviteService,
+                      MemberLevelService memberLevelService) {
         this.payOrderMapper = payOrderMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
@@ -56,6 +59,7 @@ public class PayService {
         this.metrics = metrics;
         this.pointService = pointService;
         this.inviteService = inviteService;
+        this.memberLevelService = memberLevelService;
     }
 
     /** 预下单：返回渠道支付参数。 */
@@ -198,6 +202,13 @@ public class PayService {
         // F-13.4：被邀请人首单支付成功 → 邀请人得返券奖励（best-effort，不影响支付主流程）
         try {
             inviteService.rewardFirstOrder(order.getBuyerId());
+        } catch (Exception ignore) {
+        }
+
+        // F-13.2：交易成功买家得成长值（best-effort，不影响支付主流程）
+        try {
+            memberLevelService.addGrowth(order.getBuyerId(),
+                    com.idlefish.trade.member.MemberLevelCalculator.growthFromTrade(po.getAmount()));
         } catch (Exception ignore) {
         }
     }
