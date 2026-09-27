@@ -233,6 +233,45 @@
       "expectStatus": 200,
       "expectFields": ["data"],
       "notes": "切换券状态"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/overview",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.gmv", "data.refundRate", "data.avgOrderValue", "data.trend"],
+      "notes": "F-15.5 运营概览：GMV/订单/退款率/客单价/趋势"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/funnel",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "F-15.5 转化漏斗：浏览/搜索/收藏/下单/支付及转化率"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/category",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "F-15.5 品类 GMV 分布"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/condition",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "F-15.5 商品成色分布"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/export",
+      "auth": "admin",
+      "expectStatus": 200,
+      "notes": "F-15.5 CSV 导出（type=summary|gmv|funnel|category|condition），返回 text/csv"
     }
   ]
 }
