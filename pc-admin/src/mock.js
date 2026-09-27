@@ -162,4 +162,71 @@ export const coupons = [
   { id: 4, name: 'iPhone专享减100', type: 'FULL_REDUCTION', thresholdAmount: 500000, reduceAmount: 10000, discountRate: 1.0, maxDiscountAmount: 0, scope: 'ITEM', scopeId: 9002, totalCount: 200, claimedCount: 0, perUserLimit: 1, status: 'PAUSED', startAt: '2026-09-01 00:00:00', endAt: '2026-11-30 23:59:59' }
 ];
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons };
+// ===== 运营 BI（F-15.5，金额单位：分；趋势按 days 生成） =====
+function isoDay(offsetDays) {
+  const d = new Date();
+  d.setDate(d.getDate() - offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+export function analyticsOverview(days) {
+  const dayCount = Math.min(Math.max(days || 30, 1), 365);
+  const trend = [];
+  let gmvTotal = 0, paidTotal = 0, orderTotal = 0;
+  for (let i = dayCount - 1; i >= 0; i--) {
+    const day = isoDay(i);
+    const seed = (parseInt(day.replace(/-/g, ''), 10) % 97) + 1;
+    const gmv = 2500000 + seed * 30000;          // 分
+    const paid = Math.round(gmv / 37600);
+    const orderCount = Math.round(paid * 1.04);
+    gmvTotal += gmv; paidTotal += paid; orderTotal += orderCount;
+    trend.push({ day, gmv, paidCount: paid, orderCount });
+  }
+  const refund = Math.round(paidTotal * 0.026);
+  return {
+    gmv: gmvTotal,
+    paidOrderCount: paidTotal,
+    totalOrderCount: orderTotal,
+    refundOrderCount: refund,
+    refundRate: paidTotal ? refund / paidTotal : 0,
+    avgOrderValue: paidTotal ? Math.floor(gmvTotal / paidTotal) : 0,
+    userCount: 1560,
+    itemOnsaleCount: 892,
+    itemTotalCount: 1050,
+    trend
+  };
+}
+
+export function analyticsFunnel() {
+  return [
+    { stage: '商品浏览', count: 128000, stepRate: 1, overallRate: 1 },
+    { stage: '搜索', count: 56000, stepRate: 0.4375, overallRate: 0.4375 },
+    { stage: '收藏', count: 28000, stepRate: 0.5, overallRate: 0.2188 },
+    { stage: '下单', count: 16200, stepRate: 0.5786, overallRate: 0.1266 },
+    { stage: '支付', count: 10400, stepRate: 0.6420, overallRate: 0.0813 }
+  ];
+}
+
+export function analyticsCategory() {
+  return [
+    { categoryId: 111, categoryName: 'iPhone', orderCount: 420, gmv: 21840000 },
+    { categoryId: 121, categoryName: '笔记本', orderCount: 286, gmv: 12012000 },
+    { categoryId: 31, categoryName: '大家电', orderCount: 142, gmv: 8520000 },
+    { categoryId: 122, categoryName: '平板电脑', orderCount: 198, gmv: 6930000 },
+    { categoryId: 21, categoryName: '女装', orderCount: 512, gmv: 5120000 },
+    { categoryId: 23, categoryName: '鞋靴', orderCount: 176, gmv: 2464000 },
+    { categoryId: 41, categoryName: '图书', orderCount: 233, gmv: 1165000 }
+  ];
+}
+
+export function analyticsCondition() {
+  return [
+    { conditionLevel: 1, count: 120 },
+    { conditionLevel: 2, count: 430 },
+    { conditionLevel: 3, count: 300 },
+    { conditionLevel: 4, count: 150 },
+    { conditionLevel: 5, count: 50 }
+  ];
+}
+
+export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition };

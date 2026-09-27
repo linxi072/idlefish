@@ -317,3 +317,40 @@ export const searchTermApi = {
   record: (userId, word) => USE_MOCK ? Promise.resolve({ ok: true })
     : req('POST', '/api/search/term/record', null, { userId, word })
 };
+
+// 运营 BI（F-15.5，对齐 AdminAnalyticsController /api/admin/analytics/*）
+export const analyticsApi = {
+  overview: (days) => USE_MOCK ? Promise.resolve(mock.analyticsOverview(days))
+    : req('GET', '/api/admin/analytics/overview', null, { days }),
+  funnel: (days) => USE_MOCK ? Promise.resolve(mock.analyticsFunnel(days))
+    : req('GET', '/api/admin/analytics/funnel', null, { days }),
+  category: (days) => USE_MOCK ? Promise.resolve(mock.analyticsCategory(days))
+    : req('GET', '/api/admin/analytics/category', null, { days }),
+  condition: () => USE_MOCK ? Promise.resolve(mock.analyticsCondition())
+    : req('GET', '/api/admin/analytics/condition')
+};
+
+// ===== CSV 导出工具（前端侧生成，便于 mock/真实模式统一下载） =====
+export function toCsv(headers, rows) {
+  const esc = (v) => {
+    const s = (v == null ? '' : String(v));
+    return (s.includes(',') || s.includes('"') || s.includes('\n'))
+      ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = [headers.map(esc).join(',')];
+  for (const r of rows) lines.push(r.map(esc).join(','));
+  // 前置 UTF-8 BOM，保证 Excel 正确识别中文
+  return '﻿' + lines.join('\n');
+}
+
+export function downloadCsv(filename, content) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
