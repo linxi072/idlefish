@@ -16,6 +16,7 @@ import Attributes from './views/attributes.js';
 import Notify from './views/notify.js';
 import Coupon from './views/coupon.js';
 import Analytics from './views/analytics.js';
+import Member from './views/member.js';
 import { notifyApi } from './api.js';
 
 const { createApp } = window.Vue;
@@ -35,6 +36,7 @@ const App = {
         { key: 'categories', label: '类目管理', icon: '🗂️' },
         { key: 'risk', label: '风控审计', icon: '🛡️' },
         { key: 'analytics', label: '运营 BI', icon: '📈' },
+        { key: 'member', label: '会员等级', icon: '🏅' },
         { group: '财务与运营', icon: '💰', children: [
           { key: 'wallet', label: '钱包/提现', icon: '💳' },
           { key: 'attributes', label: '属性模板', icon: '🏷️' },
@@ -55,7 +57,7 @@ const App = {
     current() {
       return {
         dashboard: Dashboard, items: Items, orders: Orders,
-        users: Users, categories: Categories, risk: Risk, analytics: Analytics,
+        users: Users, categories: Categories, risk: Risk, analytics: Analytics, member: Member,
         sysuser: SysUser, role: Role, organization: Organization, menu: Menu, dict: Dict,
         wallet: Wallet, attributes: Attributes, notify: Notify, coupon: Coupon
       }[this.active];

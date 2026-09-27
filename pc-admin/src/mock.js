@@ -162,6 +162,50 @@ export const coupons = [
   { id: 4, name: 'iPhone专享减100', type: 'FULL_REDUCTION', thresholdAmount: 500000, reduceAmount: 10000, discountRate: 1.0, maxDiscountAmount: 0, scope: 'ITEM', scopeId: 9002, totalCount: 200, claimedCount: 0, perUserLimit: 1, status: 'PAUSED', startAt: '2026-09-01 00:00:00', endAt: '2026-11-30 23:59:59' }
 ];
 
+// ===== 会员等级与权益（F-13.2，成长值阈值 + 权益：免运费/优先审核/佣金折扣） =====
+export const memberLevels = [
+  { id: 1, levelCode: 'L1', levelName: '注册会员', minGrowth: 0, freeShipping: 0, priorityReview: 0, commissionDiscount: 0, icon: '🥉', color: '#9e9e9e', sortOrder: 1 },
+  { id: 2, levelCode: 'L2', levelName: '青铜会员', minGrowth: 100, freeShipping: 0, priorityReview: 0, commissionDiscount: 0, icon: '🥈', color: '#cd7f32', sortOrder: 2 },
+  { id: 3, levelCode: 'L3', levelName: '白银会员', minGrowth: 500, freeShipping: 1, priorityReview: 0, commissionDiscount: 0, icon: '🥈', color: '#c0c0c0', sortOrder: 3 },
+  { id: 4, levelCode: 'L4', levelName: '黄金会员', minGrowth: 2000, freeShipping: 1, priorityReview: 1, commissionDiscount: 100, icon: '🥇', color: '#ffd700', sortOrder: 4 },
+  { id: 5, levelCode: 'L5', levelName: '钻石会员', minGrowth: 8000, freeShipping: 1, priorityReview: 1, commissionDiscount: 200, icon: '💎', color: '#b9f2ff', sortOrder: 5 }
+];
+
+function resolveLevelByGrowth(g) {
+  const lvl = memberLevels.filter(m => g >= m.minGrowth).pop() || memberLevels[0];
+  const next = memberLevels.find(m => m.minGrowth > g);
+  return { lvl, next };
+}
+
+export function memberMyLevel() {
+  const g = 540;
+  const { lvl, next } = resolveLevelByGrowth(g);
+  return {
+    levelCode: lvl.levelCode, levelName: lvl.levelName, icon: lvl.icon, color: lvl.color,
+    growthValue: g, freeShipping: lvl.freeShipping, priorityReview: lvl.priorityReview,
+    commissionDiscount: lvl.commissionDiscount, nextLevelName: next ? next.levelName : null,
+    growthToNext: next ? next.minGrowth - g : 0,
+    percent: next ? Math.round((g - lvl.minGrowth) / (next.minGrowth - lvl.minGrowth) * 100) : 100
+  };
+}
+
+export function memberGrowthList() {
+  const seeds = [2600, 300, 50, 8200, 540];
+  return users.map((u, i) => {
+    const g = seeds[i % seeds.length];
+    const { lvl, next } = resolveLevelByGrowth(g);
+    return {
+      userId: u.id, nickname: u.nickname, growthValue: g, levelCode: lvl.levelCode,
+      levelName: lvl.levelName, icon: lvl.icon, color: lvl.color,
+      freeShipping: lvl.freeShipping, priorityReview: lvl.priorityReview,
+      commissionDiscount: lvl.commissionDiscount,
+      nextLevelName: next ? next.levelName : null,
+      growthToNext: next ? next.minGrowth - g : 0,
+      percent: next ? Math.round((g - lvl.minGrowth) / (next.minGrowth - lvl.minGrowth) * 100) : 100
+    };
+  });
+}
+
 // ===== 运营 BI（F-15.5，金额单位：分；趋势按 days 生成） =====
 function isoDay(offsetDays) {
   const d = new Date();
@@ -229,4 +273,4 @@ export function analyticsCondition() {
   ];
 }
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition };
+export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition };

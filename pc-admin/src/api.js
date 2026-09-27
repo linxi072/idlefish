@@ -330,6 +330,37 @@ export const analyticsApi = {
     : req('GET', '/api/admin/analytics/condition')
 };
 
+// 会员等级与权益（F-13.2，对齐 AdminMemberLevelController /api/admin/member/level/*）
+export const memberApi = {
+  listTiers: () => USE_MOCK ? Promise.resolve(mock.memberLevels.slice())
+    : req('GET', '/api/admin/member/level/list'),
+  saveTier: (d) => USE_MOCK ? (() => {
+    const list = mock.memberLevels;
+    if (d.id) {
+      const i = list.findIndex(t => t.id === d.id);
+      if (i >= 0) Object.assign(list[i], d);
+    } else {
+      const id = Math.max(0, ...list.map(t => t.id)) + 1;
+      list.push(Object.assign({ id, sortOrder: list.length + 1 }, d));
+    }
+    return Promise.resolve(d.id ? d.id : id);
+  })() : req('POST', '/api/admin/member/level/save', d),
+  deleteTier: (id) => USE_MOCK ? (() => {
+    const i = mock.memberLevels.findIndex(t => t.id === id);
+    if (i >= 0) mock.memberLevels.splice(i, 1);
+    return Promise.resolve({ ok: true });
+  })() : req('POST', '/api/admin/member/level/delete', null, { id }),
+  growthList: (page, size) => USE_MOCK
+    ? (() => {
+        const all = mock.memberGrowthList();
+        const start = (page - 1) * size;
+        return Promise.resolve({ list: all.slice(start, start + size), total: all.length });
+      })()
+    : req('GET', '/api/admin/member/level/growth', null, { page, size }).then(pageTo),
+  mine: () => USE_MOCK ? Promise.resolve(mock.memberMyLevel())
+    : req('GET', '/api/member/level/mine')
+};
+
 // ===== CSV 导出工具（前端侧生成，便于 mock/真实模式统一下载） =====
 export function toCsv(headers, rows) {
   const esc = (v) => {
