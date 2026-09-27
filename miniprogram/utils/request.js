@@ -92,10 +92,15 @@ const http = {
   upload: (filePath, name, formData) => upload(filePath, name, formData)
 };
 
-function upload(filePath, name, formData) {
+// 文件上传：封装 wx.uploadFile，统一鉴权头与响应解析（含 401 续期 + 指数退避重试）
+// attempt 从 1 起，最多 3 次；仅对网络抖动与服务端 5xx 重试，业务错误码不重试
+function upload(filePath, name, formData, attempt) {
+  attempt = attempt || 1;
+  const MAX = 3;
   return new Promise((resolve, reject) => {
     const app = getApp();
     const url = (app.globalData.apiBaseUrl || '') + '/api/file/upload';
+    let refreshed = false;
     const doUpload = () => wx.uploadFile({
       url, filePath, name: name || 'file', formData: formData || {},
       header: (app && app.globalData.token) ? { Authorization: 'Bearer ' + app.globalData.token } : {},
@@ -104,17 +109,25 @@ function upload(filePath, name, formData) {
           try {
             const body = JSON.parse(res.data);
             if (body.code === 0) resolve(body.data);
-            else if ((body.code === 20001 || body.code === 20002) && !upload._retried) {
-              upload._retried = true;
-              refreshToken().then(() => { upload._retried = false; doUpload().then(resolve).catch(reject); })
-                .catch(() => { upload._retried = false; if (app && app.redirectToLogin) app.redirectToLogin(); reject({ code: body.code, msg: body.msg || '请先登录' }); });
+            else if ((body.code === 20001 || body.code === 20002) && !refreshed) {
+              refreshed = true;
+              refreshToken().then(() => doUpload().then(resolve).catch(reject))
+                .catch(() => { if (app && app.redirectToLogin) app.redirectToLogin(); reject({ code: body.code, msg: body.msg || '请先登录' }); });
             } else reject({ code: body.code, msg: body.msg || '上传失败' });
           } catch (e) { reject({ code: -1, msg: '响应解析失败' }); }
+        } else if (res.statusCode >= 500 && attempt < MAX) {
+          setTimeout(() => upload(filePath, name, formData, attempt + 1).then(resolve).catch(reject), 500 * attempt);
         } else {
           reject({ code: res.statusCode, msg: '上传失败(' + res.statusCode + ')' });
         }
       },
-      fail(err) { reject({ code: -1, msg: '上传失败', err }); }
+      fail(err) {
+        if (attempt < MAX) {
+          setTimeout(() => upload(filePath, name, formData, attempt + 1).then(resolve).catch(reject), 500 * attempt);
+        } else {
+          reject({ code: -1, msg: '上传失败', err });
+        }
+      }
     });
     doUpload();
   });

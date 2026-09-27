@@ -1,6 +1,7 @@
 const api = require('../../utils/api.js');
 
 const CONDITIONS = ['全新', '99新', '95新', '9成新', '8成新', '7成新以下'];
+const DRAFT_KEY = 'publish_draft';
 
 Page({
   data: {
@@ -18,20 +19,53 @@ Page({
       });
       walk(tree, '');
       this.setData({ cats: leaves });
+      this.restoreDraft();
     }).catch(() => {});
   },
+  // 发布草稿自动保存：输入/离开时落盘，进入页面尝试恢复，发布成功后清除
+  saveDraft() {
+    const d = this.data;
+    wx.setStorageSync(DRAFT_KEY, {
+      title: d.title, price: d.price, originalPrice: d.originalPrice,
+      description: d.description, location: d.location,
+      condIndex: d.condIndex, catIndex: d.catIndex, catName: d.catName,
+      bargainEnable: d.bargainEnable, images: d.images
+    });
+  },
+  restoreDraft() {
+    const draft = wx.getStorageSync(DRAFT_KEY);
+    if (!draft || (!draft.title && !draft.description && (!draft.images || !draft.images.length))) return;
+    wx.showModal({
+      title: '恢复草稿', content: '检测到未完成的发布草稿，是否恢复？',
+      confirmText: '恢复', cancelText: '放弃',
+      success: (r) => {
+        if (r.confirm) {
+          this.setData({
+            title: draft.title || '', price: draft.price || '', originalPrice: draft.originalPrice || '',
+            description: draft.description || '', location: draft.location || '',
+            condIndex: draft.condIndex || 0, catIndex: draft.catIndex || 0,
+            catName: draft.catName || '请选择类目', bargainEnable: !!draft.bargainEnable,
+            images: draft.images || []
+          });
+        } else { this.clearDraft(); }
+      }
+    });
+  },
+  clearDraft() { wx.removeStorageSync(DRAFT_KEY); },
+  onUnload() { if (!this._published) this.saveDraft(); },
 
-  onTitle(e) { this.setData({ title: e.detail.value }); },
-  onPrice(e) { this.setData({ price: e.detail.value }); },
-  onOriginal(e) { this.setData({ originalPrice: e.detail.value }); },
-  onDesc(e) { this.setData({ description: e.detail.value }); },
-  onLocation(e) { this.setData({ location: e.detail.value }); },
+  onTitle(e) { this.setData({ title: e.detail.value }); this.saveDraft(); },
+  onPrice(e) { this.setData({ price: e.detail.value }); this.saveDraft(); },
+  onOriginal(e) { this.setData({ originalPrice: e.detail.value }); this.saveDraft(); },
+  onDesc(e) { this.setData({ description: e.detail.value }); this.saveDraft(); },
+  onLocation(e) { this.setData({ location: e.detail.value }); this.saveDraft(); },
   onCat(e) {
     const i = Number(e.detail.value);
     this.setData({ catIndex: i, catName: this.data.cats[i].name });
+    this.saveDraft();
   },
-  onCond(e) { this.setData({ condIndex: Number(e.detail.value) }); },
-  onBargain(e) { this.setData({ bargainEnable: e.detail.value }); },
+  onCond(e) { this.setData({ condIndex: Number(e.detail.value) }); this.saveDraft(); },
+  onBargain(e) { this.setData({ bargainEnable: e.detail.value }); this.saveDraft(); },
 
   chooseImage() {
     wx.chooseMedia({
@@ -39,6 +73,7 @@ Page({
       success: (res) => {
         const paths = res.tempFiles.map(f => f.tempFilePath);
         this.setData({ images: this.data.images.concat(paths) });
+        this.saveDraft();
       }
     });
   },
@@ -47,6 +82,7 @@ Page({
     const imgs = this.data.images.slice();
     imgs.splice(i, 1);
     this.setData({ images: imgs });
+    this.saveDraft();
   },
 
   submit() {
@@ -69,6 +105,8 @@ Page({
       };
       return api.publish(payload);
     }).then((r) => {
+      this._published = true;
+      this.clearDraft();
       api.track('item_publish', { item_id: r.id, category_id: payload.categoryId, price: payload.price });
       wx.showToast({ title: '已提交，审核中', icon: 'success' });
       setTimeout(() => wx.navigateBack(), 800);

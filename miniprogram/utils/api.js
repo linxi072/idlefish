@@ -13,6 +13,19 @@ function route(mockFn, realFn) {
   return realFn();
 }
 
+// 图片压缩：缩到 compressedWidth 并降质，节省流量与上传耗时；失败由调用方回退原图
+function compressImage(filePath) {
+  return new Promise((resolve, reject) => {
+    wx.compressImage({
+      src: filePath,
+      quality: 80,
+      compressedWidth: 1280,
+      success: (res) => resolve(res.tempFilePath),
+      fail: (err) => reject(err)
+    });
+  });
+}
+
 const api = {
   // ===== 鉴权 =====
   login(code) { return route(() => mock.login(code), () => http.post('/api/auth/login', { code })); },
@@ -33,8 +46,16 @@ const api = {
   publish(data) { return route(() => mock.publish(data), () => http.post('/api/item/publish', data)); },
   myItems() { return route(() => mock.myItems(), () => http.get('/api/item/mine')); },
 
-  // ===== 图片上传 =====
-  uploadImage(filePath) { return route(() => mock.uploadImage(filePath), () => http.upload(filePath, 'file')); },
+  // ===== 图片上传（真实环境先压缩，压缩失败回退原图；上传含指数退避重试）=====
+  uploadImage(filePath) {
+    return route(
+      () => mock.uploadImage(filePath),
+      () => compressImage(filePath).then(
+        (p) => http.upload(p, 'file'),
+        () => http.upload(filePath, 'file')
+      )
+    );
+  },
 
   // ===== 收藏（真实后端统一用 /toggle 切换，返回 true=已收藏 / false=已取消）=====
   favoriteAdd(itemId) { return route(() => mock.favoriteAdd(itemId), () => http.post('/api/favorite/toggle', { itemId })); },
