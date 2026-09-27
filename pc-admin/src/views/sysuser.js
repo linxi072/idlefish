@@ -1,6 +1,7 @@
 // pc-admin/src/views/sysuser.js —— 系统管理：管理员（列表 + 增改 + 分配角色 + 重置密码）
 import { systemApi } from '../api.js';
 import { formatMixin, notifyError } from '../utils/format.js';
+import { listPageMixin, crudDialogMixin } from '../mixins/index.js';
 
 const flattenOrg = (tree, arr = []) => {
   (tree || []).forEach(o => {
@@ -12,11 +13,12 @@ const flattenOrg = (tree, arr = []) => {
 
 export default {
   name: 'SysUser',
-  mixins: [formatMixin],
+  mixins: [formatMixin, listPageMixin, crudDialogMixin],
   data() {
+    // list/total/loading/keyword 由 listPageMixin 提供；dialogVisible/submitting/form 由 crudDialogMixin 提供
     return {
-      list: [], total: 0, loading: false, keyword: '', statusFilter: '',
-      editVisible: false, isEdit: false, saving: false, form: {},
+      statusFilter: '',
+      isEdit: false,
       orgOptions: [], roleOptions: [],
       roleVisible: false, roleTarget: null, roleChecked: [],
       resetVisible: false, resetTarget: null
@@ -40,7 +42,7 @@ export default {
     openAdd() {
       this.isEdit = false;
       this.form = { username: '', nickname: '', orgId: '', password: '', status: 0, roleIds: [] };
-      this.editVisible = true;
+      this.dialogVisible = true;
       this.$nextTick(() => this.$refs.form && this.$refs.form.clearValidate());
     },
     openEdit(row) {
@@ -49,19 +51,19 @@ export default {
         id: row.id, username: row.username, nickname: row.nickname,
         orgId: row.orgId, status: row.status, roleIds: (row.roleIds || []).slice(), password: ''
       };
-      this.editVisible = true;
+      this.dialogVisible = true;
       this.$nextTick(() => this.$refs.form && this.$refs.form.clearValidate());
     },
     async save() {
       const ok = await this.$refs.form.validate().catch(() => false);
       if (!ok) return;
-      this.saving = true;
+      this.submitting = true;
       try {
         await systemApi.saveAdminUser(this.form);
         this.$message.success(this.isEdit ? '已保存' : '已新增管理员');
-        this.editVisible = false;
+        this.dialogVisible = false;
         this.load();
-      } catch (e) { notifyError(this, e); } finally { this.saving = false; }
+      } catch (e) { notifyError(this, e); } finally { this.submitting = false; }
     },
     async remove(row) {
       if (row.id === 1) { this.$message.warning('超级管理员不可删除'); return; }
@@ -152,7 +154,7 @@ export default {
       <div style="margin-top:12px">共 {{ total }} 条</div>
     </el-card>
 
-    <el-dialog v-model="editVisible" :title="isEdit?'编辑管理员':'新增管理员'" width="480px">
+    <el-dialog v-model="dialogVisible" :title="isEdit?'编辑管理员':'新增管理员'" width="480px">
       <el-form ref="form" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" :disabled="isEdit" placeholder="登录用户名"></el-input>
@@ -179,8 +181,8 @@ export default {
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="editVisible=false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        <el-button @click="dialogVisible=false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="save">保存</el-button>
       </template>
     </el-dialog>
 

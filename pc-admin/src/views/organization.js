@@ -1,14 +1,16 @@
 // pc-admin/src/views/organization.js —— 系统管理：机构（树形管理）
 import { systemApi } from '../api.js';
 import { formatMixin, notifyError } from '../utils/format.js';
+import { listPageMixin, crudDialogMixin } from '../mixins/index.js';
 
 export default {
   name: 'Organization',
-  mixins: [formatMixin],
+  mixins: [formatMixin, listPageMixin, crudDialogMixin],
   data() {
+    // tree/defaultProps 为树结构自有；loading 由 listPageMixin 提供；dialogVisible/submitting/form 由 crudDialogMixin 提供
     return {
-      tree: [], loading: false, defaultProps: { children: 'children', label: 'name' },
-      editVisible: false, isEdit: false, saving: false, form: {}, parentName: ''
+      tree: [], defaultProps: { children: 'children', label: 'name' },
+      isEdit: false, parentName: ''
     };
   },
   mounted() { this.load(); },
@@ -23,7 +25,7 @@ export default {
       this.isEdit = false;
       this.form = { name: '', parentId: node && node.id ? node.id : 0, leader: '', phone: '', status: 0 };
       this.parentName = node && node.name ? node.name : '顶级机构';
-      this.editVisible = true;
+      this.dialogVisible = true;
       this.$nextTick(() => this.$refs.form && this.$refs.form.clearValidate());
     },
     openEdit(node) {
@@ -33,20 +35,20 @@ export default {
         leader: node.leader || '', phone: node.phone || '', status: node.status
       };
       this.parentName = node.parentId === 0 ? '顶级机构' : '上级机构';
-      this.editVisible = true;
+      this.dialogVisible = true;
       this.$nextTick(() => this.$refs.form && this.$refs.form.clearValidate());
     },
     async save() {
       const ok = await this.$refs.form.validate().catch(() => false);
       if (!ok) return;
-      this.saving = true;
+      this.submitting = true;
       try {
         await systemApi.saveOrg(this.form);
         this.$message.success(this.isEdit ? '已保存' : '已新增机构');
-        this.editVisible = false;
+        this.dialogVisible = false;
         this.load();
       } catch (e) { notifyError(this, e, '保存失败'); }
-      finally { this.saving = false; }
+      finally { this.submitting = false; }
     },
     async remove(node) {
       if (node.children && node.children.length) { this.$message.warning('请先删除子机构'); return; }
@@ -86,7 +88,7 @@ export default {
       </el-tree>
     </el-card>
 
-    <el-dialog v-model="editVisible" :title="isEdit?'编辑机构':'新增机构'" width="460px">
+    <el-dialog v-model="dialogVisible" :title="isEdit?'编辑机构':'新增机构'" width="460px">
       <el-form ref="form" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="上级机构"><el-input :value="parentName" disabled></el-input></el-form-item>
         <el-form-item label="机构名称" prop="name"><el-input v-model="form.name" placeholder="如：华东运营中心"></el-input></el-form-item>
@@ -100,8 +102,8 @@ export default {
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="editVisible=false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        <el-button @click="dialogVisible=false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="save">保存</el-button>
       </template>
     </el-dialog>
   </div>`

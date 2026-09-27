@@ -1,14 +1,15 @@
 // pc-admin/src/views/role.js —— 系统管理：角色（列表 + 增改 + 分配菜单树）
 import { systemApi } from '../api.js';
 import { formatMixin, notifyError } from '../utils/format.js';
+import { listPageMixin, crudDialogMixin } from '../mixins/index.js';
 
 export default {
   name: 'Role',
-  mixins: [formatMixin],
+  mixins: [formatMixin, listPageMixin, crudDialogMixin],
   data() {
+    // list/total/loading/keyword 由 listPageMixin 提供；dialogVisible/submitting/form 由 crudDialogMixin 提供
     return {
-      list: [], total: 0, loading: false, keyword: '',
-      editVisible: false, isEdit: false, saving: false, form: {},
+      isEdit: false,
       menuVisible: false, menuTarget: null, menuTreeData: [], menuProps: { children: 'children', label: 'name' }
     };
   },
@@ -26,26 +27,26 @@ export default {
     openAdd() {
       this.isEdit = false;
       this.form = { name: '', code: '', remark: '' };
-      this.editVisible = true;
+      this.dialogVisible = true;
       this.$nextTick(() => this.$refs.form && this.$refs.form.clearValidate());
     },
     openEdit(row) {
       this.isEdit = true;
       this.form = { id: row.id, name: row.name, code: row.code, remark: row.remark };
-      this.editVisible = true;
+      this.dialogVisible = true;
       this.$nextTick(() => this.$refs.form && this.$refs.form.clearValidate());
     },
     async save() {
       const ok = await this.$refs.form.validate().catch(() => false);
       if (!ok) return;
-      this.saving = true;
+      this.submitting = true;
       try {
         await systemApi.saveRole(this.form);
         this.$message.success(this.isEdit ? '已保存' : '已新增角色');
-        this.editVisible = false;
+        this.dialogVisible = false;
         this.load();
       } catch (e) { notifyError(this, e, '保存失败'); }
-      finally { this.saving = false; }
+      finally { this.submitting = false; }
     },
     async remove(row) {
       if (row.id === 1) { this.$message.warning('超级管理员角色不可删除'); return; }
@@ -105,15 +106,15 @@ export default {
       <div style="margin-top:12px">共 {{ total }} 条</div>
     </el-card>
 
-    <el-dialog v-model="editVisible" :title="isEdit?'编辑角色':'新增角色'" width="440px">
+    <el-dialog v-model="dialogVisible" :title="isEdit?'编辑角色':'新增角色'" width="440px">
       <el-form ref="form" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="角色名称" prop="name"><el-input v-model="form.name" placeholder="如：运营"></el-input></el-form-item>
         <el-form-item label="角色编码" prop="code"><el-input v-model="form.code" placeholder="如：OPERATOR"></el-input></el-form-item>
         <el-form-item label="备注" prop="remark"><el-input v-model="form.remark" type="textarea" :rows="2"></el-input></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="editVisible=false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        <el-button @click="dialogVisible=false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="save">保存</el-button>
       </template>
     </el-dialog>
 

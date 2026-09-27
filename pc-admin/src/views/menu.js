@@ -1,16 +1,18 @@
 // pc-admin/src/views/menu.js —— 系统管理：菜单（树形管理）
 import { systemApi } from '../api.js';
 import { formatMixin, notifyError } from '../utils/format.js';
+import { listPageMixin, crudDialogMixin } from '../mixins/index.js';
 
 const TYPE_OPTS = [{ label: '目录', value: 0 }, { label: '菜单', value: 1 }, { label: '按钮', value: 2 }];
 
 export default {
   name: 'Menu',
-  mixins: [formatMixin],
+  mixins: [formatMixin, listPageMixin, crudDialogMixin],
   data() {
+    // tree/defaultProps 为树结构自有；loading 由 listPageMixin 提供；dialogVisible/submitting/form 由 crudDialogMixin 提供
     return {
-      tree: [], loading: false, defaultProps: { children: 'children', label: 'name' },
-      editVisible: false, isEdit: false, saving: false, form: {}, parentName: '',
+      tree: [], defaultProps: { children: 'children', label: 'name' },
+      isEdit: false, parentName: '',
       typeOptions: TYPE_OPTS
     };
   },
@@ -29,7 +31,7 @@ export default {
       this.isEdit = false;
       this.form = { name: '', parentId: node && node.id ? node.id : 0, type: 1, path: '', component: '', perms: '', icon: '', sort: 1 };
       this.parentName = node && node.name ? node.name : '顶级目录';
-      this.editVisible = true;
+      this.dialogVisible = true;
       this.$nextTick(() => this.$refs.form && this.$refs.form.clearValidate());
     },
     openEdit(node) {
@@ -40,20 +42,20 @@ export default {
         icon: node.icon || '', sort: node.sort
       };
       this.parentName = node.parentId === 0 ? '顶级目录' : '上级菜单';
-      this.editVisible = true;
+      this.dialogVisible = true;
       this.$nextTick(() => this.$refs.form && this.$refs.form.clearValidate());
     },
     async save() {
       const ok = await this.$refs.form.validate().catch(() => false);
       if (!ok) return;
-      this.saving = true;
+      this.submitting = true;
       try {
         await systemApi.saveMenu(this.form);
         this.$message.success(this.isEdit ? '已保存' : '已新增菜单');
-        this.editVisible = false;
+        this.dialogVisible = false;
         this.load();
       } catch (e) { notifyError(this, e, '保存失败'); }
-      finally { this.saving = false; }
+      finally { this.submitting = false; }
     },
     async remove(node) {
       if (node.children && node.children.length) { this.$message.warning('请先删除子菜单'); return; }
@@ -97,7 +99,7 @@ export default {
       </el-tree>
     </el-card>
 
-    <el-dialog v-model="editVisible" :title="isEdit?'编辑菜单':'新增菜单'" width="480px">
+    <el-dialog v-model="dialogVisible" :title="isEdit?'编辑菜单':'新增菜单'" width="480px">
       <el-form ref="form" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="上级菜单"><el-input :value="parentName" disabled></el-input></el-form-item>
         <el-form-item label="菜单名称" prop="name"><el-input v-model="form.name" placeholder="如：订单管理"></el-input></el-form-item>
@@ -113,8 +115,8 @@ export default {
         <el-form-item label="排序" prop="sort"><el-input-number v-model="form.sort" :min="0" :max="999"></el-input-number></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="editVisible=false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        <el-button @click="dialogVisible=false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="save">保存</el-button>
       </template>
     </el-dialog>
   </div>`
