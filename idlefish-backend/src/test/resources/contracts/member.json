@@ -1,0 +1,14 @@
+{
+  "domain": "member",
+  "description": "会员等级与权益（F-13.2）：用户端我的等级与权益",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/member/level/mine",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.levelCode", "data.levelName", "data.growthValue", "data.percent"],
+      "notes": "F-13.2 我的会员等级、权益与升级进度"
+    }
+  ]
+}

@@ -713,3 +713,35 @@ CREATE TABLE IF NOT EXISTS t_search_synonym (
     created_at          DATETIME,
     KEY idx_syn_word (word)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===================== F-13.2 会员等级与权益 =====================
+-- 会员等级配置：成长值阈值 + 等级权益（免运费 / 优先审核 / 平台佣金折扣）。
+-- 由运营后台维护（AdminMemberLevelController），应用启动时若为空则种子默认 5 级。
+CREATE TABLE IF NOT EXISTS t_member_level (
+    id                    BIGINT       PRIMARY KEY,
+    level_code            VARCHAR(20)  NOT NULL COMMENT '等级编码（唯一，如 L1..L5）',
+    level_name            VARCHAR(32)  NOT NULL COMMENT '等级名称',
+    min_growth            INT          NOT NULL DEFAULT 0 COMMENT '达到该等级所需成长值（阈值）',
+    free_shipping         TINYINT      NOT NULL DEFAULT 0 COMMENT '0/1 是否免运费',
+    priority_review       TINYINT      NOT NULL DEFAULT 0 COMMENT '0/1 是否优先审核（发布/评价）',
+    commission_discount   INT          NOT NULL DEFAULT 0 COMMENT '平台佣金减免（千分比，0=不减免，100=减10%）',
+    icon                  VARCHAR(64)  DEFAULT NULL COMMENT '前端展示图标（emoji 或图标名）',
+    color                 VARCHAR(16)  DEFAULT NULL COMMENT '主题色',
+    sort_order            INT          NOT NULL DEFAULT 0 COMMENT '展示排序',
+    created_at            DATETIME,
+    updated_at            DATETIME,
+    UNIQUE KEY uk_level_code (level_code),
+    KEY idx_level_sort (sort_order, min_growth)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 用户成长值账户：每个用户一行（惰性创建），记录累计成长值与当前等级
+CREATE TABLE IF NOT EXISTS t_user_growth (
+    id                    BIGINT       PRIMARY KEY,
+    user_id               BIGINT       NOT NULL,
+    growth_value          INT          NOT NULL DEFAULT 0 COMMENT '累计成长值',
+    level_code            VARCHAR(20)  NOT NULL DEFAULT 'L1' COMMENT '当前等级编码',
+    created_at            DATETIME,
+    updated_at            DATETIME,
+    UNIQUE KEY uk_growth_user (user_id),
+    KEY idx_growth_level (level_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

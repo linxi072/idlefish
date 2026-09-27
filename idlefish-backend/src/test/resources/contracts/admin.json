@@ -272,6 +272,37 @@
       "auth": "admin",
       "expectStatus": 200,
       "notes": "F-15.5 CSV 导出（type=summary|gmv|funnel|category|condition），返回 text/csv"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/member/level/list",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "F-13.2 会员等级配置清单"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/member/level/save",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "F-13.2 新增/更新等级配置"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/member/level/delete",
+      "auth": "admin",
+      "expectStatus": 200,
+      "notes": "F-13.2 删除等级配置"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/member/level/growth",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "F-13.2 会员成长值概览（分页）"
     }
   ]
 }
