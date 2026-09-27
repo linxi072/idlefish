@@ -8,7 +8,9 @@ Page({
     // 售后：该订单已有的退款单（用于「查看/处理退款」入口）+ 是否可发起申请
     refund: null, canApply: false,
     // 评价：仅已完成/已关闭订单可评；已评价则入口显示「查看评价」
-    reviewed: false, canEvaluate: false
+    reviewed: false, canEvaluate: false,
+    // 物流轨迹（F-14.5 结构化时间轴；无物流时为 null）
+    logistics: null
   },
 
   onLoad(options) {
@@ -42,7 +44,16 @@ Page({
       this.maybePoll(o.status);
       this.loadRefund();
       this.loadReviewState(o);
+      this.loadLogistics(o);
     }).catch((e) => wx.showToast({ title: (e && e.msg) || '加载失败', icon: 'none' }));
+  },
+
+  // 加载物流轨迹（F-14.5）：有物流单号才拉取时间轴；失败不影响主流程
+  loadLogistics(o) {
+    if (!o || !o.logistics) { this.setData({ logistics: null }); return; }
+    api.logisticsTrack(o.orderNo).then((l) => {
+      this.setData({ logistics: l });
+    }).catch(() => { this.setData({ logistics: null }); });
   },
 
   // 加载该订单的售后单：后端按订单维度查询，取进行中（若无则最新一条）作为入口

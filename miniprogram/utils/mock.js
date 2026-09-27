@@ -261,6 +261,31 @@ module.exports = {
   cancelOrder() { return delay({ ok: true }); },
   confirmOrder() { return delay({ ok: true }); },
   shipOrder(dto) { return delay({ ok: true }); },
+  // ===== 物流轨迹（F-14.5 结构化时间轴，对齐后端 OrderLogisticsVO / LogisticsTimelineBuilder）=====
+  // 未发货订单（logistics 为空）返回空结构；已发货订单按物流公司与订单状态构造时间轴
+  logisticsTrack(orderNo) {
+    const o = orders.find(x => x.orderNo === orderNo);
+    if (!o || !o.logistics) {
+      return delay({ logisticsNo: null, company: null, companyName: '未知', status: 'transport', statusText: '运输中', tracks: [] });
+    }
+    const company = o.logistics.company || '顺丰速运';
+    const logisticNo = o.logistics.logisticNo || 'SF0000000000';
+    const signed = o.status === 'completed';
+    const now = Date.now();
+    const H = 3600 * 1000;
+    const tracks = [
+      { time: fmtTs(now - 0 * H), desc: '您的快件已签收，签收人：本人', type: 'sign' },
+      { time: fmtTs(now - 2 * H), desc: '快件已到达【' + (o.addressSnapshot && o.addressSnapshot.city ? o.addressSnapshot.city : '目的地') + '网点】，正在派送', type: 'transit' },
+      { time: fmtTs(now - 5 * H), desc: '快件已到达【' + (o.addressSnapshot && o.addressSnapshot.city ? o.addressSnapshot.city : '目的地') + '分拨中心】', type: 'transport' },
+      { time: fmtTs(now - 8 * H), desc: '快件已发车，发往下一站', type: 'transport' },
+      { time: fmtTs(now - 12 * H), desc: '【' + logisticNo + '】已揽收', type: 'transport' }
+    ];
+    return delay({
+      logisticsNo: logisticNo, company: 'SF', companyName: company,
+      status: signed ? 'signed' : 'transport', statusText: signed ? '已签收' : '运输中',
+      tracks
+    });
+  },
   // ===== 退款 / 售后（对齐 RefundService 状态机守卫）=====
   applyRefund(dto) {
     // 幂等：同订单存在进行中退款单则直接返回（对齐 RefundService.apply）

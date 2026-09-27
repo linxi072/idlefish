@@ -103,6 +103,9 @@ export const adminApi = {
   orderDetail: (orderNo) => USE_MOCK ? Promise.resolve(mock.orders[0]) : req('GET', `/api/admin/orders/${orderNo}`),
   shipOrder: (orderNo, logisticsNo) => USE_MOCK ? Promise.resolve({ ok: true })
     : req('POST', `/api/admin/orders/${orderNo}/ship`, null, { logisticsNo }),
+  // 物流轨迹（F-14.5 结构化时间轴：companyName/statusText/tracks[]，tracks 节点含 type 着色）
+  logisticsTrack: (orderNo) => USE_MOCK ? Promise.resolve(mock.logisticsTrack(orderNo))
+    : req('GET', `/api/admin/orders/${orderNo}/logistics`),
   refundAgree: (orderNo) => USE_MOCK ? Promise.resolve({ ok: true })
     : req('POST', `/api/admin/orders/${orderNo}/refund`),
   users: (options) => {

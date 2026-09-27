@@ -7,6 +7,7 @@ import com.idlefish.trade.admin.web.CurrentAdmin;
 import com.idlefish.trade.common.Result;
 import com.idlefish.trade.trade.entity.Order;
 import com.idlefish.trade.trade.service.OrderService;
+import com.idlefish.trade.trade.vo.OrderLogisticsVO;
 import com.idlefish.trade.trade.service.RefundService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,5 +63,11 @@ public class AdminOrderController {
     public Result<Void> refund(@CurrentAdmin AdminUser admin, @PathVariable String orderNo) {
         refundService.adminAgree(orderNo);
         return Result.ok();
+    }
+
+    /** 后台物流轨迹查询（结构化时间轴，运营排查订单物流）。 */
+    @GetMapping("/orders/{orderNo}/logistics")
+    public Result<OrderLogisticsVO> orderLogistics(@CurrentAdmin AdminUser admin, @PathVariable String orderNo) {
+        return Result.ok(orderService.logisticsTrack(orderNo));
     }
 }

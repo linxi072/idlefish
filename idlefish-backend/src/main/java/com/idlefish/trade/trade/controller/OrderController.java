@@ -6,6 +6,7 @@ import com.idlefish.trade.common.web.LoginUser;
 import com.idlefish.trade.trade.dto.OrderCreateDTO;
 import com.idlefish.trade.trade.service.OrderService;
 import com.idlefish.trade.trade.vo.OrderVO;
+import com.idlefish.trade.trade.vo.OrderLogisticsVO;
 import com.idlefish.trade.trade.vo.OrderCreateVO;
 import org.springframework.web.bind.annotation.*;
 
@@ -70,9 +71,9 @@ public class OrderController {
         return Result.ok(orderService.list(loginUser.getUserId(), role, status));
     }
 
-    /** 物流轨迹查询。 */
+    /** 物流轨迹查询（结构化时间轴）。 */
     @GetMapping("/{orderNo}/logistics")
-    public Result<java.util.List<java.util.Map<String, String>>> logistics(@PathVariable String orderNo) {
+    public Result<OrderLogisticsVO> logistics(@PathVariable String orderNo) {
         return Result.ok(orderService.logisticsTrack(orderNo));
     }
 }

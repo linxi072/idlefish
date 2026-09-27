@@ -47,8 +47,8 @@
       "path": "/api/orders/{orderNo}/logistics",
       "auth": "user",
       "expectStatus": 200,
-      "expectFields": ["data"],
-      "notes": "物流轨迹（真实物流或兜底）"
+      "expectFields": ["data.logisticsNo", "data.companyName", "data.statusText", "data.tracks"],
+      "notes": "F-14.5 物流轨迹结构化时间轴（含节点类型 sign/exception/transit/transport）"
     },
     {
       "method": "POST",

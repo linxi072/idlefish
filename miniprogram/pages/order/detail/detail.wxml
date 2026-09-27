@@ -35,8 +35,28 @@
     <view class="addr-detail">{{order.addressSnapshot.province}}{{order.addressSnapshot.city}}{{order.addressSnapshot.district}} {{order.addressSnapshot.detail}}</view>
   </view>
 
-  <!-- 物流 -->
-  <view class="card logistics" wx:if="{{order.logistics}}">
+  <!-- 物流（F-14.5 结构化时间轴） -->
+  <view class="card logistics" wx:if="{{logistics && logistics.tracks.length}}">
+    <view class="lg-head">
+      <view class="addr-top">🚚 物流信息</view>
+      <view class="lg-meta">
+        <text class="lg-company">{{logistics.companyName}}</text>
+        <text class="lg-no">运单号：{{logistics.logisticsNo}}</text>
+        <text class="lg-status lg-{{logistics.status}}">{{logistics.statusText}}</text>
+      </view>
+    </view>
+    <view class="timeline">
+      <view class="tl-item" wx:for="{{logistics.tracks}}" wx:key="time">
+        <view class="tl-dot tl-{{item.type}}"></view>
+        <view class="tl-body">
+          <view class="tl-desc">{{item.desc}}</view>
+          <view class="tl-time">{{item.time}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+  <!-- 已发货但暂无轨迹时的降级展示 -->
+  <view class="card logistics" wx:elif="{{order.logistics}}">
     <view class="addr-top">🚚 物流信息</view>
     <view class="addr-detail">{{order.logistics.company}} · {{order.logistics.logisticNo}}</view>
   </view>

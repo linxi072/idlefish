@@ -15,7 +15,7 @@ export default {
   name: 'Orders',
   mixins: [formatMixin],
   data() {
-    return { list: [], total: 0, loading: false, keyword: '', statusFilter: '', detailRow: null, shipVisible: false, shipForm: { company: '', logisticNo: '' } };
+    return { list: [], total: 0, loading: false, keyword: '', statusFilter: '', detailRow: null, logistics: null, shipVisible: false, shipForm: { company: '', logisticNo: '' } };
   },
   mounted() { this.load(); },
   methods: {
@@ -29,7 +29,17 @@ export default {
     },
     statusText(c) { return STATUS[c] || c; },
     statusTag(c) { return TAG[c] || 'info'; },
-    view(row) { this.detailRow = row; },
+    view(row) { this.detailRow = row; this.loadLogistics(row); },
+    async loadLogistics(row) {
+      this.logistics = null;
+      if (!row || !row.logisticsNo && !row.logistic) return;
+      try {
+        const l = await adminApi.logisticsTrack(row.orderNo);
+        this.logistics = l && l.tracks && l.tracks.length ? l : null;
+      } catch (e) {
+        this.logistics = null;
+      }
+    },
     openShip(row) { this.detailRow = row; this.shipVisible = true; this.shipForm = { company: '顺丰速运', logisticNo: '' }; },
     async doShip() {
       try {
@@ -86,8 +96,24 @@ export default {
         <el-descriptions-item label="买卖双方">{{ detailRow.buyerId }} → {{ detailRow.sellerId }}</el-descriptions-item>
         <el-descriptions-item label="金额">{{ yuan(detailRow.amount) }}</el-descriptions-item>
         <el-descriptions-item label="状态"><el-tag :type="statusTag(detailRow.status)">{{ statusText(detailRow.status) }}</el-tag></el-descriptions-item>
-        <el-descriptions-item label="物流" v-if="detailRow.logisticsNo">{{ detailRow.logisticsNo }}</el-descriptions-item>
+        <el-descriptions-item label="物流单号" v-if="detailRow.logisticsNo && !logistics">{{ detailRow.logisticsNo }}</el-descriptions-item>
       </el-descriptions>
+      <div v-if="logistics" class="lg-block">
+        <div class="lg-meta">
+          <span class="lg-company">{{ logistics.companyName }}</span>
+          <span class="lg-no">运单号：{{ logistics.logisticsNo }}</span>
+          <span class="lg-status" :class="'lg-' + logistics.status">{{ logistics.statusText }}</span>
+        </div>
+        <ul class="timeline">
+          <li v-for="(t, i) in logistics.tracks" :key="i" class="tl-item">
+            <span class="tl-dot" :class="'tl-' + t.type"></span>
+            <div class="tl-body">
+              <div class="tl-desc">{{ t.desc }}</div>
+              <div class="tl-time">{{ t.time }}</div>
+            </div>
+          </li>
+        </ul>
+      </div>
       <template #footer v-if="detailRow && detailRow.status==='refunding'">
         <el-button type="success" @click="refund(detailRow,true)">同意退款</el-button>
         <el-button type="danger" @click="refund(detailRow,false)">驳回退款</el-button>

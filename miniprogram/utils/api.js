@@ -67,6 +67,8 @@ const api = {
   cancelOrder(orderNo) { return route(() => mock.cancelOrder(), () => http.post('/api/orders/' + orderNo + '/cancel')); },
   confirmOrder(orderNo) { return route(() => mock.confirmOrder(), () => http.post('/api/orders/' + orderNo + '/confirm')); },
   shipOrder(orderNo, data) { return route(() => mock.shipOrder(data), () => http.post('/api/orders/' + orderNo + '/ship', data)); },
+  // 物流轨迹（结构化时间轴：companyName/statusText/tracks[]，tracks 节点含 type 着色）
+  logisticsTrack(orderNo) { return route(() => mock.logisticsTrack(orderNo), () => http.get('/api/orders/' + orderNo + '/logistics')); },
 
   // ===== 退款 / 售后（后端 base: /api/refunds —— 注意是复数 refunds）=====
   applyRefund(data) { return route(() => mock.applyRefund(data), () => http.post('/api/refunds/apply', data)); },

@@ -273,6 +273,28 @@ export function analyticsCondition() {
   ];
 }
 
+// 物流轨迹（F-14.5 结构化时间轴，对齐后端 OrderLogisticsVO / LogisticsTimelineBuilder）
+// 无物流单号订单返回空结构；已发货订单按物流状态构造时间轴
+export function logisticsTrack(orderNo) {
+  const o = orders.find(x => x.orderNo === orderNo);
+  if (!o || !o.logistic) {
+    return { logisticsNo: null, company: null, companyName: '未知', status: 'transport', statusText: '运输中', tracks: [] };
+  }
+  const signed = o.status === 'completed';
+  const tracks = [
+    { time: '2026-09-20 18:00', desc: '您的快件已签收，签收人：本人', type: 'sign' },
+    { time: '2026-09-20 14:00', desc: '快件已到达【目的地网点】，正在派送', type: 'transit' },
+    { time: '2026-09-20 09:00', desc: '快件已到达【分拨中心】', type: 'transport' },
+    { time: '2026-09-19 21:00', desc: '快件已发车，发往下一站', type: 'transport' },
+    { time: '2026-09-19 18:00', desc: '【SF1234567890】已揽收', type: 'transport' }
+  ];
+  return {
+    logisticsNo: 'SF1234567890', company: 'SF', companyName: '顺丰速运',
+    status: signed ? 'signed' : 'transport', statusText: signed ? '已签收' : '运输中',
+    tracks
+  };
+}
+
 // 券营销驾驶舱（F-13.5，对齐 AdminCouponAnalyticsController /api/admin/marketing/coupon/*）
 export function couponAnalyticsOverview() {
   const issuedCount = 3200;
@@ -299,4 +321,4 @@ export function couponAnalyticsTypeDist() {
   ];
 }
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, couponAnalyticsOverview, couponAnalyticsTypeDist };
+export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist };

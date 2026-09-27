@@ -29,3 +29,24 @@
 .p-textarea { width: 100%; height: 160rpx; border: 2rpx solid #E5E7EB; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx; margin-bottom: 20rpx; }
 .p-btns { display: flex; }
 .p-btn { flex: 1; margin: 0 10rpx; }
+
+/* ===== F-14.5 物流时间轴 ===== */
+.lg-head { margin-bottom: 16rpx; }
+.lg-meta { display: flex; align-items: center; flex-wrap: wrap; font-size: 24rpx; color: var(--t2); }
+.lg-company { font-weight: 600; color: var(--t1); margin-right: 16rpx; }
+.lg-no { margin-right: 16rpx; }
+.lg-status { padding: 2rpx 14rpx; border-radius: 20rpx; font-size: 22rpx; }
+.lg-transport { background: #E6F4FF; color: #1677FF; }
+.lg-signed { background: #E8F8EE; color: #18A058; }
+.lg-exception { background: #FDECEC; color: #E52E2E; }
+.timeline { border-left: 2rpx solid #E5E7EB; margin-left: 10rpx; padding-left: 24rpx; }
+.tl-item { position: relative; padding: 14rpx 0; }
+.tl-dot { position: absolute; left: -33rpx; top: 22rpx; width: 18rpx; height: 18rpx; border-radius: 50%; background: #C9CDD4; }
+.tl-transport { background: #1677FF; }
+.tl-transit { background: #FFB300; }
+.tl-sign { background: #18A058; }
+.tl-exception { background: #E52E2E; }
+.tl-unknown { background: #C9CDD4; }
+.tl-body { display: flex; flex-direction: column; }
+.tl-desc { font-size: 26rpx; color: var(--t1); line-height: 1.5; }
+.tl-time { font-size: 22rpx; color: var(--t2); margin-top: 6rpx; }

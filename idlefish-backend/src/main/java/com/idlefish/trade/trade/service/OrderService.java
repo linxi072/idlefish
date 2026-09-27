@@ -15,12 +15,15 @@ import com.idlefish.trade.item.entity.Item;
 import com.idlefish.trade.item.mapper.ItemMapper;
 import com.idlefish.trade.item.service.ItemService;
 import com.idlefish.trade.trade.dto.OrderCreateDTO;
+import com.idlefish.trade.trade.entity.Logistics;
 import com.idlefish.trade.trade.entity.Order;
 import com.idlefish.trade.trade.entity.PayOrder;
+import com.idlefish.trade.trade.mapper.LogisticsMapper;
 import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.vo.OrderCreateVO;
 import com.idlefish.trade.trade.vo.OrderItemVO;
+import com.idlefish.trade.trade.vo.OrderLogisticsVO;
 import com.idlefish.trade.trade.vo.OrderVO;
 import com.idlefish.trade.user.service.AddressService;
 import com.idlefish.trade.user.service.CreditService;
@@ -50,6 +53,7 @@ public class OrderService {
 
     private final OrderMapper orderMapper;
     private final PayOrderMapper payOrderMapper;
+    private final LogisticsMapper logisticsMapper;
     private final ItemService itemService;
     private final ItemMapper itemMapper;
     private final AddressService addressService;
@@ -66,7 +70,7 @@ public class OrderService {
 
     private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
-    public OrderService(OrderMapper orderMapper, PayOrderMapper payOrderMapper,
+    public OrderService(OrderMapper orderMapper, PayOrderMapper payOrderMapper, LogisticsMapper logisticsMapper,
                         ItemService itemService, ItemMapper itemMapper,
                         AddressService addressService, LogisticService logisticService,
                         SettlementService settlementService, TrackService trackService, ObjectMapper objectMapper,
@@ -75,6 +79,7 @@ public class OrderService {
                         PointService pointService, ActivityService activityService) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
+        this.logisticsMapper = logisticsMapper;
         this.itemService = itemService;
         this.itemMapper = itemMapper;
         this.addressService = addressService;
@@ -333,13 +338,29 @@ public class OrderService {
         logisticService.persistShip(orderNo, no, "SF");
     }
 
-    /** 物流轨迹查询（买家/卖家均可，按订单号取物流单号）。 */
-    public java.util.List<java.util.Map<String, String>> logisticsTrack(String orderNo) {
+    /** 物流轨迹查询（买家/卖家/后台均可，按订单号取物流单号，组装结构化时间轴）。 */
+    public OrderLogisticsVO logisticsTrack(String orderNo) {
         Order o = getByOrderNo(orderNo);
         if (o.getLogisticsNo() == null || o.getLogisticsNo().isBlank()) {
-            return java.util.List.of();
+            // 未发货：返回空结构（无单号、无轨迹），前端据此隐藏时间轴
+            OrderLogisticsVO empty = new OrderLogisticsVO();
+            empty.setLogisticsNo(null);
+            empty.setCompany(null);
+            empty.setCompanyName("未知");
+            empty.setStatus("transport");
+            empty.setStatusText("运输中");
+            empty.setTracks(java.util.List.of());
+            return empty;
         }
-        return logisticService.track(o.getLogisticsNo());
+        // 取物流公司 / 状态（logisticService.track 内部已按单号取记录并回写，此处仅补充展示信息）
+        Logistics l = logisticsMapper.selectOne(new LambdaQueryWrapper<Logistics>()
+                .eq(Logistics::getLogisticsNo, o.getLogisticsNo()).last("LIMIT 1"));
+        String company = l != null ? l.getCompany() : null;
+        String status = l != null ? l.getStatus() : "transport";
+        java.util.List<java.util.Map<String, String>> raw = logisticService.track(o.getLogisticsNo());
+        OrderLogisticsVO vo = LogisticsTimelineBuilder.build(raw, company, status);
+        vo.setLogisticsNo(o.getLogisticsNo());
+        return vo;
     }
 
     private Order getByOrderNo(String orderNo) {

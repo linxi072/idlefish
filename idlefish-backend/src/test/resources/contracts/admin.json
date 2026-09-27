@@ -196,6 +196,14 @@
     },
     {
       "method": "GET",
+      "path": "/api/admin/orders/{orderNo}/logistics",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.logisticsNo", "data.companyName", "data.statusText", "data.tracks"],
+      "notes": "F-14.5 后台物流轨迹结构化时间轴"
+    },
+    {
+      "method": "GET",
       "path": "/api/admin/reviews",
       "auth": "admin",
       "expectStatus": 200,
