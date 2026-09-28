@@ -39,6 +39,9 @@ public enum Code {
     INVITE_CODE_NOT_FOUND(30016, "邀请码无效"),
     INVITE_SELF(30017, "不能填写自己的邀请码"),
     INVITE_ALREADY_BOUND(30018, "您已绑定邀请关系"),
+    DISPUTE_NOT_FOUND(30019, "维权工单不存在"),
+    DISPUTE_STATE_NOT_ALLOWED(30020, "当前工单状态不允许该操作"),
+    DISPUTE_EXISTS(30021, "该订单存在未结维权工单"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

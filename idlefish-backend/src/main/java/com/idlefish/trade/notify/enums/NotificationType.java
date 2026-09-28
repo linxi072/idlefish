@@ -26,6 +26,9 @@ public enum NotificationType {
     WITHDRAW_REJECT("withdraw_reject", "提现驳回"),
     COUPON_CLAIMED("coupon_claimed", "优惠券领取"),
     POINT_EARNED("point_earned", "积分到账"),
+    DISPUTE_CREATED("dispute_created", "维权发起"),
+    DISPUTE_PLATFORM("dispute_platform", "维权平台介入"),
+    DISPUTE_RESOLVED("dispute_resolved", "维权裁决"),
     SYSTEM_ALERT("system_alert", "系统告警");
 
     private final String code;

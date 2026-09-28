@@ -35,4 +35,9 @@ public class IdGenerator {
     public static String fundNo() {
         return next("FD");
     }
+
+    /** 维权工单号（F-17）。 */
+    public static String disputeNo() {
+        return next("DP");
+    }
 }

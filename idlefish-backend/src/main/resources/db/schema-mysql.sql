@@ -746,3 +746,32 @@ CREATE TABLE IF NOT EXISTS t_user_growth (
     UNIQUE KEY uk_growth_user (user_id),
     KEY idx_growth_level (level_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===================== F-17 售后维权工单 =====================
+-- 维权工单：买家发起争议 → 卖家举证 → 平台介入 → 裁决。
+-- 裁决仅落库「裁决结果与裁决退款金额」，实际资金动作交由既有退款链路（F-07/F-08）执行，避免重复出款资损。
+CREATE TABLE IF NOT EXISTS t_dispute (
+    id                    BIGINT       PRIMARY KEY,
+    dispute_no            VARCHAR(32)  NOT NULL COMMENT '工单号（唯一，DP 前缀）',
+    order_no              VARCHAR(64)  NOT NULL COMMENT '关联订单号',
+    buyer_id              BIGINT       NOT NULL COMMENT '申请人（买家）',
+    seller_id             BIGINT       NOT NULL COMMENT '被申诉方（卖家）',
+    type                  VARCHAR(20)  NOT NULL COMMENT '争议类型：REFUND_REJECTED/NOT_RECEIVED/DAMAGED/NOT_AS_DESC',
+    expectation           VARCHAR(20)  NOT NULL COMMENT '诉求：REFUND 仅退款 / RETURN_REFUND 退货退款',
+    reason                VARCHAR(255) DEFAULT '' COMMENT '原因描述',
+    amount                BIGINT       NOT NULL DEFAULT 0 COMMENT '争议金额（分）',
+    status                VARCHAR(20)  NOT NULL COMMENT 'PENDING/SELLER_REPLIED/PLATFORM/RESOLVED/CLOSED/CANCELED',
+    buyer_evidence        TEXT         COMMENT '买家举证（图片 URL，逗号分隔）',
+    seller_evidence       TEXT         COMMENT '卖家举证（图片 URL，逗号分隔）',
+    result                VARCHAR(20)  DEFAULT NULL COMMENT '裁决结果：BUYER_WIN/SELLER_WIN/PARTIAL',
+    platform_remark       VARCHAR(255) DEFAULT NULL COMMENT '平台裁决说明',
+    refund_amount         BIGINT       NOT NULL DEFAULT 0 COMMENT '裁决退款金额（分），0=不支持退款',
+    handled_at            DATETIME     DEFAULT NULL COMMENT '处理/裁决时间',
+    created_at            DATETIME,
+    updated_at            DATETIME,
+    UNIQUE KEY uk_dispute_no (dispute_no),
+    KEY idx_dispute_order (order_no),
+    KEY idx_dispute_buyer (buyer_id),
+    KEY idx_dispute_seller (seller_id),
+    KEY idx_dispute_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
