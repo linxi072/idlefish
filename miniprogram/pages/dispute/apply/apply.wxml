@@ -1,0 +1,42 @@
+<view class="da" wx:if="{{order || !eligible}}">
+  <view class="card goods" wx:if="{{order}}">
+    <image class="g-img" src="{{order.item.img}}" mode="aspectFill" />
+    <view class="g-info">
+      <view class="g-title ellipsis-2">{{order.item.title}}</view>
+      <view class="g-price">¥{{maxText}}</view>
+    </view>
+  </view>
+
+  <view class="ineligible" wx:if="{{!eligible}}">{{ineligibleTip || '当前订单不可发起维权'}}</view>
+
+  <block wx:if="{{eligible}}">
+    <view class="card">
+      <view class="sec-title">争议类型</view>
+      <view class="chips">
+        <view class="chip {{type===item.value?'on':''}}" wx:for="{{types}}" wx:key="value" data-type="{{item.value}}" bindtap="onType">{{item.label}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="sec-title">维权诉求</view>
+      <view class="chips">
+        <view class="chip {{expectation===item.value?'on':''}}" wx:for="{{expects}}" wx:key="value" data-expect="{{item.value}}" bindtap="onExpect">{{item.label}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="field">
+        <text class="label">维权金额（元）</text>
+        <input class="input" type="digit" value="{{amount}}" placeholder="留空默认全额 ¥{{maxText}}" data-k="amount" bindinput="onAmount" bindblur="onAmountBlur" />
+        <view class="fillall" bindtap="onFillAll">全额</view>
+      </view>
+      <view class="field col">
+        <text class="label">维权说明</text>
+        <textarea class="textarea" value="{{reason}}" maxlength="{{reasonMax}}" placeholder="请描述争议事实，便于平台裁定" bindinput="onReason" />
+        <view class="counter">{{reasonLen}}/{{reasonMax}}</view>
+      </view>
+    </view>
+
+    <button class="btn btn-block submit" loading="{{submitting}}" bindtap="submit">提交维权</button>
+  </block>
+</view>

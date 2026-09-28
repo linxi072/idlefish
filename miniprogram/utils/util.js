@@ -152,11 +152,40 @@ function couponScopeText(s) { return COUPON_SCOPE[s] || '全场通用'; }
 const COUPON_STATUS = { UNUSED: '未使用', USED: '已使用', EXPIRED: '已过期' };
 function couponStatusText(s) { return COUPON_STATUS[s] || s; }
 
+// ===== 售后维权（F-17 dispute，对齐 DisputeStateMachine / DisputeService 常量）=====
+// 维权状态中文
+const DISPUTE_STATUS = {
+  PENDING: '待卖家举证', SELLER_REPLIED: '卖家已举证', PLATFORM: '平台介入中',
+  RESOLVED: '已裁决', CANCELED: '已撤销', CLOSED: '已关闭'
+};
+function disputeStatusText(s) { return DISPUTE_STATUS[s] || s; }
+
+// 争议类型中文
+const DISPUTE_TYPE = {
+  REFUND_REJECTED: '退款被拒', NOT_RECEIVED: '未收到货',
+  DAMAGED: '商品破损', NOT_AS_DESC: '与描述不符'
+};
+function disputeTypeText(t) { return DISPUTE_TYPE[t] || t; }
+
+// 维权诉求中文
+const DISPUTE_EXPECT = { REFUND: '仅退款', RETURN_REFUND: '退货退款' };
+function disputeExpectText(e) { return DISPUTE_EXPECT[e] || e; }
+
+// 裁决结果中文
+const DISPUTE_RESULT = { BUYER_WIN: '买家胜诉', SELLER_WIN: '卖家胜诉', PARTIAL: '部分支持' };
+function disputeResultText(r) { return DISPUTE_RESULT[r] || r; }
+
+// 维权终态：已裁决/已撤销/已关闭（不可再平台介入/撤销/举证）
+const DISPUTE_TERMINAL = { RESOLVED: true, CANCELED: true, CLOSED: true };
+function isDisputeTerminal(code) { return !!DISPUTE_TERMINAL[code]; }
+
 module.exports = {
   formatPrice, formatTime, fromNow, statusText,
   ITEM_STATUS, ORDER_STATUS, REFUND_STATUS,
   REFUND_TYPE, isRefundTerminal, refundStepIndex, canApplyRefund, yuanToFen,
   REVIEW_ROLE, reviewRoleLabel, canEvaluate, orderRoleToReviewRole, ratingArray,
   NOTIFY_TYPE, notifyTypeText, notifyIcon,
-  COUPON_TYPE, couponTypeText, couponDesc, couponScopeText, couponStatusText
+  COUPON_TYPE, couponTypeText, couponDesc, couponScopeText, couponStatusText,
+  DISPUTE_STATUS, DISPUTE_TYPE, DISPUTE_EXPECT, DISPUTE_RESULT,
+  disputeStatusText, disputeTypeText, disputeExpectText, disputeResultText, isDisputeTerminal
 };

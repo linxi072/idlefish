@@ -11,6 +11,7 @@ Page({
       { icon: '💰', name: '我的钱包', url: '/pages/wallet/index/index' },
       { icon: '🎟️', name: '优惠券', url: '/pages/coupon/my/my' },
       { icon: '⭐', name: '我的评价', url: '/pages/evaluate/list/list' },
+      { icon: '⚖️', name: '我的维权', url: '/pages/dispute/list/list' },
       { icon: '🔔', name: '系统通知', url: '/pages/notification/notification', badge: true },
       { icon: '📍', name: '收货地址', url: '/pages/address/address' },
       { icon: '💬', name: '消息中心', url: '/pages/message/message' },

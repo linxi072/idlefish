@@ -1,0 +1,23 @@
+.dl { padding: 24rpx; }
+.empty { text-align: center; padding: 120rpx 40rpx; }
+.empty-emoji { font-size: 96rpx; }
+.empty-text { font-size: 30rpx; color: #555; margin-top: 20rpx; }
+.empty-sub { font-size: 24rpx; color: #aaa; margin-top: 12rpx; }
+.card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.item .row { display: flex; align-items: center; }
+.top { justify-content: space-between; margin-bottom: 14rpx; }
+.no { font-size: 24rpx; color: #999; }
+.status { font-size: 26rpx; font-weight: 600; }
+.s-PENDING { color: #fa8c16; }
+.s-SELLER_REPLIED { color: #1890ff; }
+.s-PLATFORM { color: #722ed1; }
+.s-RESOLVED { color: #52c41a; }
+.s-CANCELED { color: #999; }
+.s-CLOSED { color: #666; }
+.tag { font-size: 24rpx; color: #555; background: #f4f5f7; border-radius: 8rpx; padding: 6rpx 14rpx; }
+.expect { font-size: 24rpx; color: #888; margin-left: 16rpx; }
+.amount { margin-left: auto; font-size: 30rpx; color: #ff6022; font-weight: 600; }
+.sub { margin-top: 12rpx; font-size: 24rpx; color: #aaa; }
+.order { margin-right: auto; }
+.reason { margin-top: 12rpx; font-size: 26rpx; color: #666; line-height: 1.5; }
+.loading { text-align: center; color: #999; font-size: 24rpx; padding: 24rpx; }

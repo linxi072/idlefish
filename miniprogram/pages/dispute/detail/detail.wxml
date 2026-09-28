@@ -1,0 +1,50 @@
+<view class="dd" wx:if="{{dispute}}">
+  <!-- 状态条 -->
+  <view class="status-banner s-{{dispute.status}}">
+    <view class="sb-title">{{dispute.statusT}}</view>
+    <view class="sb-sub">{{specialText || '维权处理中'}}</view>
+  </view>
+
+  <!-- 工单信息 -->
+  <view class="card meta">
+    <view class="a-row"><text>工单号</text><text class="t2">{{dispute.disputeNo}}</text></view>
+    <view class="a-row"><text>关联订单</text><text class="t2">{{dispute.orderNo}}</text></view>
+    <view class="a-row"><text>争议类型</text><text class="t2">{{dispute.typeT}}</text></view>
+    <view class="a-row"><text>维权诉求</text><text class="t2">{{dispute.expectT}}</text></view>
+    <view class="a-row"><text>争议金额</text><text class="t2 price">¥{{dispute.amountText}}</text></view>
+    <view class="a-row"><text>发起时间</text><text class="t2">{{dispute.timeT}}</text></view>
+    <view class="a-row"><text>我的身份</text><text class="t2">{{roleText}}</text></view>
+  </view>
+
+  <!-- 维权说明 -->
+  <view class="card">
+    <view class="sec-title">维权说明</view>
+    <view class="desc">{{dispute.reason || '（未填写）'}}</view>
+  </view>
+
+  <!-- 卖家举证 -->
+  <view class="card" wx:if="{{dispute.sellerEvidence}}">
+    <view class="sec-title">卖家举证</view>
+    <view class="desc">{{dispute.sellerEvidence}}</view>
+  </view>
+
+  <!-- 裁决结果 -->
+  <view class="card result" wx:if="{{dispute.status==='RESOLVED' || dispute.status==='CLOSED'}}">
+    <view class="sec-title">裁决结果</view>
+    <view class="desc">{{dispute.resultT}}</view>
+    <view class="a-row"><text>裁决退款</text><text class="t2 price">¥{{dispute.refundText}}</text></view>
+    <view class="desc remark" wx:if="{{dispute.platformRemark}}">{{dispute.platformRemark}}</view>
+  </view>
+
+  <!-- 底部操作 -->
+  <view class="action-bar">
+    <view class="btn btn-ghost ab" bindtap="contact">联系对方</view>
+    <view class="btn btn-ghost ab" bindtap="goOrder">查看订单</view>
+    <view class="btn btn-ghost ab" wx:if="{{canSellerReply}}" bindtap="sellerReply">卖家举证</view>
+    <view class="btn btn-ghost ab" wx:if="{{canApplyPlatform}}" bindtap="applyPlatform">申请平台介入</view>
+    <view class="btn btn-red ab" wx:if="{{canCancel}}" bindtap="cancelDispute">撤销维权</view>
+  </view>
+</view>
+
+<view class="loading" wx:elif="{{loading}}">加载中…</view>
+<view class="empty" wx:else>{{errorTip || '工单不存在'}}</view>

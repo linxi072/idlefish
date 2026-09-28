@@ -103,6 +103,30 @@ const api = {
   platformRefund(refundNo) { return route(() => mock.platformRefund(refundNo), () => http.post('/api/refunds/platform/' + refundNo)); },
   cancelRefund(refundNo) { return route(() => mock.cancelRefund(refundNo), () => http.post('/api/refunds/' + refundNo + '/cancel')); },
 
+  // ===== 售后维权（F-17 后端 base: /api/dispute，对齐 DisputeController / DisputeService，金额单位：分）=====
+  // 发起维权：返回 { id }（真实后端 Result.ok(Long)，归一化为 {id:Number}）
+  createDispute(data) {
+    return route(
+      () => mock.createDispute(data),
+      () => http.post('/api/dispute/create', data).then((res) => ({ id: (res && res.id) || res }))
+    );
+  },
+  // 我的维权（买家或卖家视角，分页）：IPage → {records,total}
+  myDisputes(page, size) {
+    return route(
+      () => mock.myDisputes(page, size),
+      () => http.get('/api/dispute/my?page=' + (page || 1) + '&size=' + (size || 20))
+        .then((p) => ({ records: (p && p.records) || [], total: (p && p.total) || 0 }))
+    );
+  },
+  disputeDetail(id) { return route(() => mock.disputeDetail(id), () => http.get('/api/dispute/detail?id=' + id)); },
+  // 申请平台介入（买卖双方均可）：id 走 query
+  disputeApplyPlatform(id) { return route(() => mock.disputeApplyPlatform(id), () => http.post('/api/dispute/apply-platform?id=' + id)); },
+  // 买家撤销（平台介入后不可撤销）：id 走 query
+  disputeCancel(id) { return route(() => mock.disputeCancel(id), () => http.post('/api/dispute/cancel?id=' + id)); },
+  // 卖家举证（PENDING → SELLER_REPLIED）：id 走 query，evidence 走 query
+  disputeSellerReply(id, evidence) { return route(() => mock.disputeSellerReply(id, evidence), () => http.post('/api/dispute/seller-reply?id=' + id + '&evidence=' + encodeURIComponent(evidence || ''))); },
+
   // ===== 评价 / 信用（后端 base: /api/reviews，对齐 ReviewController / ReviewSubmitDTO）=====
   // 提交评价：orderNo + rating(1-5,必填) + content(≤512,选填) + anonymous(0/1)
   submitReview(data) { return route(() => mock.submitReview(data), () => http.post('/api/reviews/submit', data)); },

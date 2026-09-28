@@ -86,6 +86,12 @@ const refunds = [
   { refundNo: 'RF20260919001', orderNo: 'NO20260919003', buyerId: 1003, sellerId: me.id, type: 'return_refund', amount: 5200, reason: '买家要求退货，屏幕有暗点', status: 'wait_seller', logisticsNo: '', createdAt: Date.now() - 3600 * 1000 * 6 }
 ];
 
+// 本地维权工单集合（mock 模式，模拟 DisputeService / DisputeStateMachine；金额单位：分）
+// 预置一条「我是买家」待卖家举证工单，便于演示维权详情、平台介入与撤销流程
+const disputes = [
+  { id: 1, disputeNo: 'DP20260920001', orderNo: 'NO20260920002', buyerId: me.id, sellerId: 1002, type: 'DAMAGED', expectation: 'REFUND', reason: '收到商品有明显划痕，与描述不符', amount: 4200, status: 'PENDING', buyerEvidence: '', sellerEvidence: '', result: '', platformRemark: '', refundAmount: 0, createdAt: fmtTs(Date.now() - 3600 * 1000 * 3) }
+];
+
 // 本地评价集合（mock 模式，模拟 ReviewService 互评 + 内容机审）
 // 预置：2 条「我发出的」（买家评卖家 / 卖家评买家）+ 1 条「我收到的」，便于演示双向与评价展示
 function fmtTs(ts) {
@@ -175,6 +181,10 @@ function maskAccount(account) {
 }
 // 评价类失败（同机制）
 function failReview(msg) {
+  return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
+}
+// 维权类失败（同机制，对齐 DisputeService 状态机守卫）
+function failDispute(msg) {
   return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
 }
 // 议价类失败（同机制）
@@ -349,6 +359,55 @@ module.exports = {
     if (!r) return failRefund('退款单不存在');
     if (refundTerminal(r.status)) return failRefund('当前状态不可撤销');
     r.status = 'canceled';
+    return delay({ ok: true });
+  },
+  // ===== 售后维权（F-17 对齐 DisputeService 状态机守卫）=====
+  createDispute(dto) {
+    // 幂等：同订单存在未结工单则直接返回（对齐 DisputeService.create 守卫）
+    const exist = disputes.find(d => d.orderNo === dto.orderNo && ['PENDING', 'SELLER_REPLIED', 'PLATFORM'].indexOf(d.status) >= 0);
+    if (exist) return delay({ id: exist.id });
+    const o = orders.find(x => x.orderNo === dto.orderNo);
+    const d = {
+      id: Date.now(), disputeNo: 'DP' + Date.now(), orderNo: dto.orderNo,
+      buyerId: me.id, sellerId: (o && o.item && o.item.seller && o.item.seller.id) || 1001,
+      type: dto.type, expectation: dto.expectation, reason: dto.reason || '',
+      amount: dto.amount || (o ? o.amount : 0), status: 'PENDING',
+      buyerEvidence: dto.buyerEvidence || '', sellerEvidence: '', result: '', platformRemark: '', refundAmount: 0,
+      createdAt: fmtTs(Date.now())
+    };
+    disputes.push(d);
+    return delay({ id: d.id });
+  },
+  myDisputes(page, size) {
+    const sorted = disputes.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const total = sorted.length;
+    const start = (page - 1) * size;
+    return delay({ records: sorted.slice(start, start + size).map(d => Object.assign({}, d)), total });
+  },
+  disputeDetail(id) {
+    const d = disputes.find(x => x.id === Number(id));
+    return delay(d ? Object.assign({}, d) : null);
+  },
+  disputeApplyPlatform(id) {
+    const d = disputes.find(x => x.id === Number(id));
+    if (!d) return failDispute('维权工单不存在');
+    if (d.status !== 'PENDING' && d.status !== 'SELLER_REPLIED') return failDispute('当前状态不可申请平台介入');
+    d.status = 'PLATFORM';
+    return delay({ ok: true });
+  },
+  disputeCancel(id) {
+    const d = disputes.find(x => x.id === Number(id));
+    if (!d) return failDispute('维权工单不存在');
+    if (d.status !== 'PENDING' && d.status !== 'SELLER_REPLIED') return failDispute('当前状态不可撤销');
+    d.status = 'CANCELED';
+    return delay({ ok: true });
+  },
+  disputeSellerReply(id, evidence) {
+    const d = disputes.find(x => x.id === Number(id));
+    if (!d) return failDispute('维权工单不存在');
+    if (d.status !== 'PENDING') return failDispute('当前状态不可举证');
+    d.sellerEvidence = evidence || '';
+    d.status = 'SELLER_REPLIED';
     return delay({ ok: true });
   },
   // ===== 图片上传（mock 返回占位图地址）=====

@@ -7,6 +7,8 @@ Page({
     showShip: false, shipForm: { company: '', logisticNo: '' },
     // 售后：该订单已有的退款单（用于「查看/处理退款」入口）+ 是否可发起申请
     refund: null, canApply: false,
+    // 维权：买家可在订单非终态时发起维权（后端同订单仅允许一个未结工单）
+    canDispute: false,
     // 评价：仅已完成/已关闭订单可评；已评价则入口显示「查看评价」
     reviewed: false, canEvaluate: false,
     // 物流轨迹（F-14.5 结构化时间轴；无物流时为 null）
@@ -45,6 +47,8 @@ Page({
       this.loadRefund();
       this.loadReviewState(o);
       this.loadLogistics(o);
+      // 维权入口：仅订单买家、且订单非待支付/已关闭时可发起（后端会拦截同订单重复工单）
+      this.setData({ canDispute: o.role === 'buyer' && o.status !== 'pending_pay' && o.status !== 'closed' });
     }).catch((e) => wx.showToast({ title: (e && e.msg) || '加载失败', icon: 'none' }));
   },
 
@@ -154,6 +158,14 @@ Page({
     if (!r) return;
     const role = (this.data.order && this.data.order.role) || '';
     wx.navigateTo({ url: '/pages/refund/detail/detail?refundNo=' + r.refundNo + '&role=' + role });
+  },
+
+  // 发起维权入口（F-17 三端闭环：小程序发起 → 后端工单 → 后台裁决）
+  goDisputeApply() {
+    if (!this.data.canDispute) {
+      return wx.showToast({ title: '当前订单状态不支持发起维权', icon: 'none' });
+    }
+    wx.navigateTo({ url: '/pages/dispute/apply/apply?orderNo=' + this.data.orderNo });
   },
 
   // 评价入口状态：仅已完成/已关闭订单可评；调 myReviews 判定该订单该角色是否已评

@@ -1,0 +1,28 @@
+<view class="dl">
+  <view class="empty" wx:if="{{!loading && list.length===0}}">
+    <view class="empty-emoji">⚖️</view>
+    <view class="empty-text">暂无维权工单</view>
+    <view class="empty-sub">交易纠纷可在订单详情发起维权</view>
+  </view>
+
+  <view class="list" wx:if="{{list.length>0}}">
+    <view class="card item" wx:for="{{list}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
+      <view class="row top">
+        <text class="no">工单号 {{item.disputeNo}}</text>
+        <text class="status s-{{item.status}}">{{item.statusT}}</text>
+      </view>
+      <view class="row">
+        <text class="tag">{{item.typeT}}</text>
+        <text class="expect">{{item.expectation==='REFUND'?'仅退款':'退货退款'}}</text>
+        <text class="amount">¥{{item.amountText}}</text>
+      </view>
+      <view class="row sub">
+        <text class="order">订单 {{item.orderNo}}</text>
+        <text class="time">{{item.timeT}}</text>
+      </view>
+      <view class="row reason">{{item.reason}}</view>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+</view>
