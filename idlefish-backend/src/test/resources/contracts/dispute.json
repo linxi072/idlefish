@@ -1,0 +1,86 @@
+{
+  "domain": "dispute",
+  "description": "售后维权工单（F-17）：用户端发起/举证/申请平台介入/撤销/查询 + 运营后台分页/详情/裁决/关闭",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/dispute/create",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "F-17 买家发起维权，返回工单 ID"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dispute/seller-reply",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": [],
+      "notes": "F-17 卖家举证（PENDING → SELLER_REPLIED）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dispute/apply-platform",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": [],
+      "notes": "F-17 申请平台介入（买卖双方均可）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dispute/cancel",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": [],
+      "notes": "F-17 买家撤销（平台介入后不可撤销）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dispute/my",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "F-17 我的维权工单分页（买家或卖家视角）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dispute/detail",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.disputeNo", "data.status"],
+      "notes": "F-17 工单详情（仅买卖双方可见）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/dispute/list",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "F-17 后台工单分页（status/keyword 可选）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/dispute/detail",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.disputeNo", "data.status"],
+      "notes": "F-17 后台工单详情"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/dispute/resolve",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": [],
+      "notes": "F-17 平台裁决：仅落库裁决结果与裁决退款金额，实际退款由既有退款链路执行"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/dispute/close",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": [],
+      "notes": "F-17 归档关闭（RESOLVED/CANCELED → CLOSED）"
+    }
+  ]
+}

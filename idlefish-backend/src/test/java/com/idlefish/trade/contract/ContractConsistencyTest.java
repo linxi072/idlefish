@@ -99,7 +99,8 @@ class ContractConsistencyTest {
         // 显式清单：避免 getResources("contracts") 误匹配依赖 jar 内的同名资源
         String[] files = {
                 "auth-item.json", "trade.json", "growth.json",
-                "notify-im-search.json", "admin.json", "observability.json", "member.json"
+                "notify-im-search.json", "admin.json", "observability.json", "member.json",
+                "dispute.json"
         };
         List<JsonNode> list = new ArrayList<>();
         for (String f : files) {
