@@ -3,6 +3,7 @@ import Login from './views/login.js';
 import Dashboard from './views/dashboard.js';
 import Items from './views/items.js';
 import Orders from './views/orders.js';
+import Dispute from './views/dispute.js';
 import Users from './views/users.js';
 import Categories from './views/categories.js';
 import Risk from './views/risk.js';
@@ -33,6 +34,7 @@ const App = {
         { key: 'dashboard', label: '控制台', icon: '📊' },
         { key: 'items', label: '商品审核', icon: '🛍️' },
         { key: 'orders', label: '订单管理', icon: '📦' },
+        { key: 'dispute', label: '维权工单', icon: '⚖️' },
         { key: 'users', label: '用户管理', icon: '👤' },
         { key: 'categories', label: '类目管理', icon: '🗂️' },
         { key: 'risk', label: '风控审计', icon: '🛡️' },
@@ -58,7 +60,7 @@ const App = {
   computed: {
     current() {
       return {
-        dashboard: Dashboard, items: Items, orders: Orders,
+        dashboard: Dashboard, items: Items, orders: Orders, dispute: Dispute,
         users: Users, categories: Categories, risk: Risk, analytics: Analytics, marketing: Marketing, member: Member,
         sysuser: SysUser, role: Role, organization: Organization, menu: Menu, dict: Dict,
         wallet: Wallet, attributes: Attributes, notify: Notify, coupon: Coupon

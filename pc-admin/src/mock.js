@@ -321,4 +321,32 @@ export function couponAnalyticsTypeDist() {
   ];
 }
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist };
+// 售后维权工单（F-17，对齐 AdminDisputeController /api/admin/dispute/*）
+const disputes = [
+  { id: 1, disputeNo: 'DP20260926001', orderNo: 'NO20260920001', buyerId: 10001, sellerId: 10002,
+    type: 'NOT_AS_DESC', expectation: 'RETURN_REFUND', reason: '商品与描述不符，屏幕存在划痕',
+    amount: 128000, status: 'PLATFORM', buyerEvidence: '', sellerEvidence: '', result: null,
+    platformRemark: '', refundAmount: 0, createdAt: '2026-09-26 10:12' },
+  { id: 2, disputeNo: 'DP20260926002', orderNo: 'NO20260921002', buyerId: 10003, sellerId: 10004,
+    type: 'NOT_RECEIVED', expectation: 'REFUND', reason: '卖家已发货但物流长时间未更新',
+    amount: 45900, status: 'SELLER_REPLIED', buyerEvidence: '', sellerEvidence: '已提供发货凭证',
+    result: null, platformRemark: '', refundAmount: 0, createdAt: '2026-09-26 15:30' },
+  { id: 3, disputeNo: 'DP20260927001', orderNo: 'NO20260922003', buyerId: 10005, sellerId: 10002,
+    type: 'DAMAGED', expectation: 'REFUND', reason: '收到的商品边角破损',
+    amount: 8900, status: 'RESOLVED', buyerEvidence: '', sellerEvidence: '',
+    result: 'BUYER_WIN', platformRemark: '支持买家，全额退款', refundAmount: 8900, createdAt: '2026-09-27 09:05' },
+  { id: 4, disputeNo: 'DP20260927002', orderNo: 'NO20260922004', buyerId: 10001, sellerId: 10006,
+    type: 'REFUND_REJECTED', expectation: 'REFUND', reason: '退款申请被卖家拒绝',
+    amount: 23900, status: 'PENDING', buyerEvidence: '', sellerEvidence: '',
+    result: null, platformRemark: '', refundAmount: 0, createdAt: '2026-09-27 14:20' },
+  { id: 5, disputeNo: 'DP20260927003', orderNo: 'NO20260923005', buyerId: 10007, sellerId: 10004,
+    type: 'NOT_AS_DESC', expectation: 'REFUND', reason: '颜色与页面展示不一致',
+    amount: 15900, status: 'CANCELED', buyerEvidence: '', sellerEvidence: '',
+    result: null, platformRemark: '', refundAmount: 0, createdAt: '2026-09-27 18:40' }
+];
+
+export function disputeList() {
+  return disputes;
+}
+
+export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList };
