@@ -389,4 +389,15 @@ export function searchTermSynonyms() {
   ];
 }
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList, recommend, inviteRelations, searchTermSynonyms };
+export function searchTermHotWords() {
+  return [
+    { word: 'iPhone', heat: 320, status: 'ENABLED' },
+    { word: '华为', heat: 280, status: 'ENABLED' },
+    { word: '显卡', heat: 210, status: 'ENABLED' },
+    { word: '相机', heat: 150, status: 'ENABLED' },
+    { word: '发票', heat: 95, status: 'BLOCKED' },
+    { word: '代开发票', heat: 60, status: 'BLOCKED' }
+  ];
+}
+
+export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList, recommend, inviteRelations, searchTermSynonyms, searchTermHotWords };

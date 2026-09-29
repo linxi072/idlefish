@@ -344,7 +344,12 @@ export const searchTermApi = {
   unblockWord: (word) => USE_MOCK ? Promise.resolve({ ok: true })
     : req('POST', '/api/admin/search-term/unblock', null, { word }),
   setHotWordStatus: (word, status) => USE_MOCK ? Promise.resolve({ ok: true })
-    : req('POST', '/api/admin/search-term/hotword/status', null, { word, status })
+    : req('POST', '/api/admin/search-term/hotword/status', null, { word, status }),
+  // —— 管理侧只读端点（F-14.3 补全）——
+  blockWords: () => USE_MOCK ? Promise.resolve(['赌博', '发票', '代开发票', '博彩', '私彩'])
+    : req('GET', '/api/admin/search-term/block-words', null, {}),
+  hotWords: () => USE_MOCK ? Promise.resolve(mock.searchTermHotWords())
+    : req('GET', '/api/admin/search-term/hot-words', null, {})
 };
 
 // 运营 BI（F-15.5，对齐 AdminAnalyticsController /api/admin/analytics/*）
