@@ -1,51 +1,13 @@
-// pc-admin/src/api.js —— 运营后台接口层（USE_MOCK 时走本地 mock，否则走真实后端）
-import axios from 'axios';
+// pc-admin/src/api.js —— 运营后台接口层聚合入口（视图层导入路径不变）
+// 公共内核见 ./api-core.js；按域拆分见 ./api/*.api.js（invite/recommend/search-term），
+// 其余运营域仍聚合于此文件。视图层依旧 from './api.js' 导入，无需改动。
+export * from './api-core.js';
+export { inviteApi } from './api/invite.api.js';
+export { recommendApi } from './api/recommend.api.js';
+export { searchTermApi } from './api/search-term.api.js';
+
 import mock from './mock.js';
-
-export const USE_MOCK = true;
-export const BASE = 'http://localhost:8080';
-const TOKEN_KEY = 'idlefish_admin_token';
-
-export function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
-export function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
-export function clearToken() { localStorage.removeItem(TOKEN_KEY); }
-
-// 统一 HTTP 实例（R-15：401/过期集中处理 —— 清除令牌并回到登录页）
-const http = axios.create({ baseURL: BASE, timeout: 15000 });
-http.interceptors.response.use(
-  (resp) => {
-    const body = resp.data;
-    if (body && typeof body === 'object' && body.code !== undefined && body.code !== 0) {
-      if (body.code === 20001 || body.code === 20002) {
-        clearToken();
-        if (typeof window !== 'undefined') window.location.reload();
-      }
-      return Promise.reject({ code: body.code, msg: body.msg || '请求失败' });
-    }
-    return resp;
-  },
-  (err) => Promise.reject(err)
-);
-
-async function req(method, path, data, params) {
-  const cfg = { method, url: path, headers: {} };
-  const tk = getToken();
-  if (tk) cfg.headers['Authorization'] = 'Bearer ' + tk;
-  if (method === 'GET') cfg.params = params || {};
-  else {
-    // 非 GET：第 3 参 data 优先，缺省时回退第 4 参 params（兼容 Login/驳回/发货/封禁/保存类目等把 body 传在 params 的调用）
-    cfg.data = data != null ? data : (params || {});
-    cfg.headers['Content-Type'] = 'application/json';
-  }
-  const resp = await http.request(cfg);
-  return resp.data.data;
-}
-
-// IPage 归一化为 { list, total }（R-16：后端分页返回 records/total）
-function pageTo(p) {
-  if (!p) return { list: [], total: 0 };
-  return { list: p.records || [], total: p.total || 0 };
-}
+import { req, USE_MOCK, pageTo } from './api-core.js';
 
 export const adminApi = {
   login: (username, password) => USE_MOCK
@@ -300,57 +262,10 @@ export const couponApi = {
   })() : req('POST', '/api/admin/coupon/status', null, { couponId, status })
 };
 
-// 邀请拉新（F-13.4，对齐 InviteController /api/invite/*）
-// 注：后端 /code 返回 Result<String>，/invitees 返回 Result<List<InviteRelation>>（非 IPage），
-// 故真实分支分别归一为 {code} 与 {list,total}，不能用 pageTo（无 records 字段）。
-export const inviteApi = {
-  myCode: (userId) => USE_MOCK
-    ? Promise.resolve({ code: 'INV' + (userId || 0).toString(36).toUpperCase() + 'XK2P' })
-    : req('GET', '/api/invite/code', null, { userId }).then(c => ({ code: typeof c === 'string' ? c : (c && c.code) || '' })),
-  bind: (userId, code) => USE_MOCK ? Promise.resolve({ ok: true })
-    : req('POST', '/api/invite/bind', null, { userId, code }),
-  invitees: (userId) => USE_MOCK
-    ? (() => {
-        const list = mock.inviteRelations.filter(r => r.inviterId === (userId || 2001));
-        return Promise.resolve({ list, total: list.length });
-      })()
-    : req('GET', '/api/invite/invitees', null, { userId }).then(r => ({ list: r || [], total: (r || []).length }))
-};
-
-// 首页推荐预览（F-14.2，对齐 SearchController /api/search/recommend，免登录）
-// 买家端推荐流：同城优先 + 热度半衰期衰减 + 行为加权 + 冷启动保量（后端 RecommendService.feed）
-export const recommendApi = {
-  recommend: (city, userId, page, size) => USE_MOCK
-    ? Promise.resolve(mock.recommend(city, page, size))
-    : req('GET', '/api/search/recommend', null, { city, userId, page, size }).then(pageTo)
-};
-
-// 搜索词运营（F-14.3，对齐 SearchTermController /api/search/term/* 与 SearchTermAdminController /api/admin/search-term/*）
-export const searchTermApi = {
-  // —— 用户侧 ——
-  hot: (limit) => USE_MOCK ? Promise.resolve(['iPhone', '华为', '显卡', '自行车', '相机', '游戏机'])
-    : req('GET', '/api/search/term/hot', null, { limit: limit || 10 }),
-  history: (userId, limit) => USE_MOCK ? Promise.resolve(['iPhone', '相机', '显卡'])
-    : req('GET', '/api/search/term/history', null, { userId, limit: limit || 10 }),
-  record: (userId, word) => USE_MOCK ? Promise.resolve({ ok: true })
-    : req('POST', '/api/search/term/record', null, { userId, word }),
-  // —— 管理侧（运营后台）——
-  synonyms: () => USE_MOCK ? Promise.resolve(mock.searchTermSynonyms())
-    : req('GET', '/api/admin/search-term/synonyms', null, {}),
-  addSynonym: (word, synonym) => USE_MOCK ? Promise.resolve({ ok: true })
-    : req('POST', '/api/admin/search-term/synonym', null, { word, synonym }),
-  blockWord: (word) => USE_MOCK ? Promise.resolve({ ok: true })
-    : req('POST', '/api/admin/search-term/block', null, { word }),
-  unblockWord: (word) => USE_MOCK ? Promise.resolve({ ok: true })
-    : req('POST', '/api/admin/search-term/unblock', null, { word }),
-  setHotWordStatus: (word, status) => USE_MOCK ? Promise.resolve({ ok: true })
-    : req('POST', '/api/admin/search-term/hotword/status', null, { word, status }),
-  // —— 管理侧只读端点（F-14.3 补全）——
-  blockWords: () => USE_MOCK ? Promise.resolve(['赌博', '发票', '代开发票', '博彩', '私彩'])
-    : req('GET', '/api/admin/search-term/block-words', null, {}),
-  hotWords: () => USE_MOCK ? Promise.resolve(mock.searchTermHotWords())
-    : req('GET', '/api/admin/search-term/hot-words', null, {})
-};
+// 以下三个域已按域拆分至 ./api/{invite,recommend,search-term}.api.js，并通过顶部 re-export 聚合，视图层无需改动。
+// 邀请拉新域（invite.api.js）
+// 首页推荐域（recommend.api.js）
+// 搜索词运营域（search-term.api.js）
 
 // 运营 BI（F-15.5，对齐 AdminAnalyticsController /api/admin/analytics/*）
 export const analyticsApi = {

@@ -1,4 +1,34 @@
 // api.js —— 统一接口层：useMock 时走本地 mock，否则走真实后端 REST
+//
+// 轻量类型约束（#5）：小程序 CommonJS 不引入 TS 构建，以 JSDoc 表达契约形状。
+// 真实模式经 http.* 调用，成功时解析后端统一信封 Result 并返回其 data 字段：
+//   Result = { code:number(0=成功), msg?:string, data?:* }；本文件 api.* 方法返回值即 data。
+// 金额单位：全链路「分」。完整契约以 idlefish-backend/src/test/resources/contracts/*.json 为准。
+/**
+ * 后端统一响应信封。
+ * @typedef {Object} Result
+ * @property {number} code 业务码（0=成功，非 0=失败）
+ * @property {string} [msg] 提示信息
+ * @property {*} [data] 业务数据负载（api.* 方法返回此字段）
+ */
+/**
+ * 主端点字段对照（节选，data 形状；完整见后端契约 JSON）：
+ *  - POST /api/auth/login { code }                -> { token, role, nickname, userId }
+ *  - GET  /api/user/info                          -> User{ id, nickname, avatar, phone }
+ *  - GET  /api/category/tree                       -> Category[]（树）
+ *  - GET  /api/search?keyword&city&page&size       -> PageData<Item>
+ *  - GET  /api/item/detail/:id                     -> Item{ id, title, priceFen, images[], seller }
+ *  - POST /api/item/publish                        -> { itemId }
+ *  - GET  /api/order/list?status&page&size         -> PageData<Order>
+ *  - GET  /api/coupon/center?page&size             -> PageData<CouponVO>
+ *  - POST /api/coupon/claim { couponId }           -> { userCouponId }
+ *  - GET  /api/wallet/balance                      -> { balanceFen }
+ *  - POST /api/wallet/withdraw { amountFen }        -> { withdrawalId }
+ *  - GET  /api/notify/list?page&size               -> PageData<Notification>
+ *  - GET  /api/invite/code?userId                  -> { code }
+ *  - GET  /api/search/recommend?city&userId&page&size -> PageData<Item>
+ * PageData = { list: Array<*>, total: number }
+ */
 const http = require('./request.js');
 const mock = require('./mock.js');
 const store = require('./store.js');
