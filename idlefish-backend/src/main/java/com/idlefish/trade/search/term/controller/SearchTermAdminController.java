@@ -1,6 +1,7 @@
 package com.idlefish.trade.search.term.controller;
 
 import com.idlefish.trade.common.Result;
+import com.idlefish.trade.search.term.entity.SearchHotWord;
 import com.idlefish.trade.search.term.entity.SearchSynonym;
 import com.idlefish.trade.search.term.service.SearchTermService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,5 +57,17 @@ public class SearchTermAdminController {
     public Result<Boolean> hotWordStatus(@RequestParam String word, @RequestParam String status) {
         searchTermService.setHotWordStatus(word, status);
         return Result.ok(true);
+    }
+
+    /** 全部屏蔽词列表（运营查看，F-14.3 补全只读端点）。 */
+    @GetMapping("/block-words")
+    public Result<List<String>> blockWords() {
+        return Result.ok(searchTermService.blockWords());
+    }
+
+    /** 全量热搜词（含 ENABLED/BLOCKED 状态，运营查看与切换，F-14.3 补全只读端点）。 */
+    @GetMapping("/hot-words")
+    public Result<List<SearchHotWord>> hotWords() {
+        return Result.ok(searchTermService.listAllHotWords());
     }
 }

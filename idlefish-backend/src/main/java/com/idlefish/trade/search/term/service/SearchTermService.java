@@ -173,4 +173,10 @@ public class SearchTermService {
             hotMapper.updateById(hw);
         }
     }
+
+    /** 全量热搜词（含 ENABLED/BLOCKED 状态，按热度倒序，运营后台查看与切换用）。 */
+    public List<SearchHotWord> listAllHotWords() {
+        return hotMapper.selectList(new LambdaQueryWrapper<SearchHotWord>()
+                .orderByDesc(SearchHotWord::getHeat));
+    }
 }
