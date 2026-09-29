@@ -1,5 +1,8 @@
 package com.idlefish.trade.marketing.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -16,9 +19,17 @@ public class CouponCreateDTO {
     @NotBlank(message = "券类型不能为空")
     private String type;                 // FULL_REDUCTION / NO_THRESHOLD / DISCOUNT
 
+    @Min(value = 0, message = "满减门槛（分）不可为负")
     private Long thresholdAmount = 0L;   // 满减门槛（分）
+
+    @Min(value = 0, message = "减免金额（分）不可为负")
     private Long reduceAmount = 0L;      // 减免金额（分）
-    private Double discountRate = 1.0;   // 折扣率（DISCOUNT）
+
+    @DecimalMin(value = "0.0", message = "折扣率不可为负")
+    @DecimalMax(value = "1.0", message = "折扣率不可超过 1.0")
+    private Double discountRate = 1.0;   // 折扣率（DISCOUNT，0~1）
+
+    @Min(value = 0, message = "折扣封顶（分）不可为负")
     private Long maxDiscountAmount = 0L; // 折扣封顶（分）
 
     @NotBlank(message = "适用范围不能为空")

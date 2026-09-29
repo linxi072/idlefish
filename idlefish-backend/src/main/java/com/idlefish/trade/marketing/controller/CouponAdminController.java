@@ -4,6 +4,7 @@ import com.idlefish.trade.common.Result;
 import com.idlefish.trade.marketing.dto.CouponCreateDTO;
 import com.idlefish.trade.marketing.entity.Coupon;
 import com.idlefish.trade.marketing.service.CouponService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,7 +26,7 @@ public class CouponAdminController {
 
     /** 创建优惠券（发放）。 */
     @PostMapping("/create")
-    public Result<Coupon> create(@RequestBody CouponCreateDTO dto) {
+    public Result<Coupon> create(@Valid @RequestBody CouponCreateDTO dto) {
         return Result.ok(couponService.createCoupon(dto));
     }
 

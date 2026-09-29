@@ -1,5 +1,6 @@
 package com.idlefish.trade.trade.dto;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -15,7 +16,8 @@ public class RefundApplyDTO {
     private String type;        // only_refund / return_refund
 
     @NotNull(message = "退款金额不能为空")
-    private Long amount;
+    @Min(value = 0, message = "退款金额（分）不可为负")
+    private Long amount; // 金额单位：分
 
     private String reason;
 
