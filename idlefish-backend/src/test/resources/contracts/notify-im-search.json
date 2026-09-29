@@ -129,6 +129,70 @@
       "expectStatus": 200,
       "expectFields": ["data"],
       "notes": "延时消息消费入口（RocketMQ 兜底）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search/term/hot",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "热搜榜（ENABLED 按热度倒序，F-14.3）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search/term/history",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "我的搜索历史（最近优先、去重，F-14.3）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/search/term/record",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "记录一次搜索（写历史+热搜累加，屏蔽词跳过，F-14.3）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/search-term/block",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "新增屏蔽词（同步置热搜 BLOCKED，F-14.3）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/search-term/unblock",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "移除屏蔽词（恢复热搜 ENABLED，F-14.3）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/search-term/synonym",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "新增同义词（F-14.3）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/search-term/synonyms",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "同义词词典列表（F-14.3）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/search-term/hotword/status",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "设置热搜词状态（ENABLED/BLOCKED，F-14.3）"
     }
   ]
 }
