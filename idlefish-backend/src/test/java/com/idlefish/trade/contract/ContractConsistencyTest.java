@@ -18,8 +18,15 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -96,22 +103,41 @@ class ContractConsistencyTest {
     // ===== 契约加载 =====
 
     private List<JsonNode> loadContracts() throws Exception {
-        // 显式清单：避免 getResources("contracts") 误匹配依赖 jar 内的同名资源
-        String[] files = {
-                "auth-item.json", "trade.json", "growth.json",
-                "notify-im-search.json", "admin.json", "observability.json", "member.json",
-                "dispute.json"
-        };
+        // 目录扫描：自动发现 classpath:contracts/*.json，避免新增契约须手动维护硬编码清单。
+        // 排除 admin.json（敏感审批文件，不纳入契约一致性自动断言）。
+        // 注：契约测试运行于 Maven 展开目录（target/test-classes），以 file 协议定位目录。
         List<JsonNode> list = new ArrayList<>();
-        for (String f : files) {
-            try (InputStream in = getClass().getClassLoader().getResourceAsStream("contracts/" + f)) {
-                assertTrue(in != null, "契约文件缺失: contracts/" + f);
-                JsonNode root = MAPPER.readTree(in);
-                assertTrue(root.has("endpoints") && root.get("endpoints").isArray(),
-                        "契约文件须含 endpoints 数组: " + f);
-                list.add(root);
+        ClassLoader cl = getClass().getClassLoader();
+        Enumeration<URL> roots = cl.getResources("contracts");
+        Set<String> loaded = new HashSet<>();
+        boolean scanned = false;
+        while (roots.hasMoreElements()) {
+            URL url = roots.nextElement();
+            if (!"file".equals(url.getProtocol())) {
+                continue; // 仅支持展开目录（Maven 测试态）
+            }
+            scanned = true;
+            Path dir = Paths.get(url.toURI());
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, "*.json")) {
+                for (Path p : stream) {
+                    String name = p.getFileName().toString();
+                    if ("admin.json".equals(name) || name.startsWith(".")) {
+                        continue;
+                    }
+                    if (!loaded.add(name)) {
+                        continue;
+                    }
+                    try (InputStream in = Files.newInputStream(p)) {
+                        JsonNode root = MAPPER.readTree(in);
+                        assertTrue(root.has("endpoints") && root.get("endpoints").isArray(),
+                                "契约文件须含 endpoints 数组: " + name);
+                        list.add(root);
+                    }
+                }
             }
         }
+        assertTrue(scanned, "classpath 未定位到 contracts 目录（资源未拷贝到 test-classes）");
+        assertFalse(list.isEmpty(), "未扫描到任何契约文件（已排除 admin.json）");
         return list;
     }
 
