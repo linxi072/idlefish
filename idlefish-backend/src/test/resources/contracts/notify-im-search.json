@@ -193,6 +193,22 @@
       "expectStatus": 200,
       "expectFields": ["data"],
       "notes": "设置热搜词状态（ENABLED/BLOCKED，F-14.3）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/search-term/block-words",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "全部屏蔽词列表（运营查看，F-14.3 补全只读端点）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/search-term/hot-words",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "全量热搜词（含 ENABLED/BLOCKED 状态，F-14.3 补全只读端点）"
     }
   ]
 }
