@@ -19,6 +19,9 @@ import Coupon from './views/coupon.js';
 import Analytics from './views/analytics.js';
 import Member from './views/member.js';
 import Marketing from './views/marketing.js';
+import Recommend from './views/recommend.js';
+import Invite from './views/invite.js';
+import SearchTerm from './views/search-term.js';
 import { notifyApi } from './api.js';
 
 const { createApp } = window.Vue;
@@ -41,6 +44,9 @@ const App = {
         { key: 'analytics', label: '运营 BI', icon: '📈' },
         { key: 'marketing', label: '营销驾驶舱', icon: '🎯' },
         { key: 'member', label: '会员等级', icon: '🏅' },
+        { key: 'recommend', label: '首页推荐', icon: '🤖' },
+        { key: 'invite', label: '邀请拉新', icon: '🤝' },
+        { key: 'search-term', label: '搜索词运营', icon: '🔍' },
         { group: '财务与运营', icon: '💰', children: [
           { key: 'wallet', label: '钱包/提现', icon: '💳' },
           { key: 'attributes', label: '属性模板', icon: '🏷️' },
@@ -61,7 +67,7 @@ const App = {
     current() {
       return {
         dashboard: Dashboard, items: Items, orders: Orders, dispute: Dispute,
-        users: Users, categories: Categories, risk: Risk, analytics: Analytics, marketing: Marketing, member: Member,
+        users: Users, categories: Categories, risk: Risk, analytics: Analytics, marketing: Marketing, member: Member, recommend: Recommend, invite: Invite, searchTerm: SearchTerm,
         sysuser: SysUser, role: Role, organization: Organization, menu: Menu, dict: Dict,
         wallet: Wallet, attributes: Attributes, notify: Notify, coupon: Coupon
       }[this.active];

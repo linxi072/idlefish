@@ -1,0 +1,34 @@
+<!-- pages/search/search.wxml —— 搜索页（F-14.3） -->
+<view class="search-page">
+  <view class="search-bar">
+    <input class="search-input" placeholder="搜索闲置好物" value="{{keyword}}" bindinput="onInput" confirm-type="search" bindconfirm="onSearch" />
+    <text class="clear-btn" wx:if="{{keyword}}" bindtap="onClear">✕</text>
+    <button class="search-btn" size="mini" type="primary" bindtap="onSearch">搜索</button>
+  </view>
+
+  <view wx:if="{{!searched}}" class="panel">
+    <view class="panel-title">🔥 热搜榜</view>
+    <view class="tag-wrap">
+      <text class="tag" wx:for="{{hotWords}}" wx:key="*this" data-word="{{item}}" bindtap="onHotTap">{{item}}</text>
+    </view>
+
+    <view class="panel-title" wx:if="{{history.length}}">🕘 搜索历史</view>
+    <view class="tag-wrap" wx:if="{{history.length}}">
+      <text class="tag hist" wx:for="{{history}}" wx:key="*this" data-word="{{item}}" bindtap="onHistoryTap">{{item}}</text>
+    </view>
+  </view>
+
+  <view wx:else class="result">
+    <view wx:if="{{searching}}" class="empty">搜索中...</view>
+    <view wx:elif="{{results.length === 0}}" class="empty">没有找到相关商品</view>
+    <view wx:else>
+      <view class="goods-item" wx:for="{{results}}" wx:key="id">
+        <image class="goods-img" src="{{item.img}}" mode="aspectFill"></image>
+        <view class="goods-info">
+          <text class="goods-title">{{item.title}}</text>
+          <text class="goods-price">¥{{item.price}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

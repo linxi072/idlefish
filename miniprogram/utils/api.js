@@ -225,6 +225,43 @@ const api = {
   // 下单可用券（itemId + 商品金额（分））：返回数组（含 discountAmount 可抵扣）
   couponAvailable(itemId, amount) { return route(() => mock.couponAvailable(itemId, amount), () => http.get('/api/coupon/available?itemId=' + itemId + '&amount=' + amount)); },
 
+  // ===== 邀请拉新（F-13.4，对齐 InviteController /api/invite/*）=====
+  // 我的邀请码：后端返回 Result<String>，归一化为 {code}
+  inviteMyCode(userId) {
+    return route(
+      () => mock.inviteMyCode(userId),
+      () => http.get('/api/invite/code?userId=' + userId).then((c) => ({ code: typeof c === 'string' ? c : ((c && c.code) || '') }))
+    );
+  },
+  // 绑定邀请码：返回 InviteRelation（含 inviterId/inviteeId/rewarded）
+  inviteBind(userId, code) {
+    return route(
+      () => mock.inviteBind(userId, code),
+      () => http.post('/api/invite/bind?userId=' + userId + '&code=' + encodeURIComponent(code || ''))
+    );
+  },
+  // 我的邀请列表：后端返回 Result<List<InviteRelation>>，归一化为 {records,total}
+  inviteInvitees(userId) {
+    return route(
+      () => mock.inviteInvitees(userId),
+      () => http.get('/api/invite/invitees?userId=' + userId).then((list) => ({ records: list || [], total: (list || []).length }))
+    );
+  },
+
+  // ===== 搜索词运营（F-14.3，对齐 SearchTermController /api/search/term/*）=====
+  // 热搜榜：后端返回 List<String>
+  searchTermHot(limit) {
+    return route(() => mock.searchTermHot(limit), () => http.get('/api/search/term/hot', { limit: limit || 10 }, false));
+  },
+  // 我的搜索历史：后端返回 List<String>
+  searchTermHistory(userId, limit) {
+    return route(() => mock.searchTermHistory(userId, limit), () => http.get('/api/search/term/history', { userId, limit: limit || 10 }, false));
+  },
+  // 记录一次搜索（best-effort，屏蔽词/异常不阻断搜索）
+  searchTermRecord(userId, word) {
+    return route(() => mock.searchTermRecord(userId, word), () => http.post('/api/search/term/record?userId=' + userId + '&word=' + encodeURIComponent(word || ''), null, false).catch(() => ({})));
+  },
+
   // ===== 埋点 =====
   track(event, extra) {
     const app = getApp();

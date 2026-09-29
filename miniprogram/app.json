@@ -24,7 +24,9 @@
     "pages/chat/chat",
     "pages/mine/mine",
     "pages/address/address",
-    "pages/favorite/favorite"
+    "pages/favorite/favorite",
+    "pages/invite/invite",
+    "pages/search/search"
   ],
   "window": {
     "navigationBarBackgroundColor": "#FFCE3D",

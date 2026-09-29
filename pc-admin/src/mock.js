@@ -321,6 +321,29 @@ export function couponAnalyticsTypeDist() {
   ];
 }
 
+// 首页推荐预览（F-14.2，对齐后端 RecommendService.feed，返回 IPage 形态 {records,total}）
+// 真实模式由后端综合同城/热度/兴趣/冷启动打分；此处取在售商品并补 cover/priceYuan/city/conditionLevel 等 ItemVO 字段
+export function recommend(city, page, size) {
+  page = page || 1; size = size || 10;
+  const cityMap = ['北京', '上海', '广州', '深圳', '杭州'];
+  const records = items
+    .filter(i => i.status === 'onsale' && i.auditStatus === 'passed')
+    .map((it, idx) => ({
+      id: it.id,
+      title: it.title,
+      price: it.price,
+      priceYuan: (it.price / 100).toFixed(2),
+      categoryName: it.categoryName,
+      cover: img(it.id),
+      city: cityMap[idx % cityMap.length],
+      conditionLevel: (idx % 5) + 1,
+      createdAt: it.createdAt,
+      sellerId: 1001 + (idx % 3)
+    }));
+  const start = (page - 1) * size;
+  return { records: records.slice(start, start + size), total: records.length };
+}
+
 // 售后维权工单（F-17，对齐 AdminDisputeController /api/admin/dispute/*）
 const disputes = [
   { id: 1, disputeNo: 'DP20260926001', orderNo: 'NO20260920001', buyerId: 10001, sellerId: 10002,
@@ -349,4 +372,21 @@ export function disputeList() {
   return disputes;
 }
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList };
+// 邀请关系（F-13.4，对齐 InviteRelation：inviterId/inviteeId/rewardCouponId/rewarded/createdAt）
+export const inviteRelations = [
+  { inviterId: 2001, inviteeId: 1003, rewardCouponId: null, rewarded: 0, createdAt: '2026-09-21 07:55' },
+  { inviterId: 2001, inviteeId: 1004, rewardCouponId: 2, rewarded: 1, createdAt: '2026-09-20 12:30' },
+  { inviterId: 2001, inviteeId: 1005, rewardCouponId: null, rewarded: 0, createdAt: '2026-09-19 09:18' }
+];
+
+// 同义词词典（F-14.3，对齐 SearchSynonym：word/synonym）
+export function searchTermSynonyms() {
+  return [
+    { word: '手机', synonym: '移动电话' },
+    { word: '显卡', synonym: 'GPU' },
+    { word: '单车', synonym: '自行车' },
+    { word: '笔记本', synonym: '笔记本电脑' }
+  ];
+}
+
+export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList, recommend, inviteRelations, searchTermSynonyms };

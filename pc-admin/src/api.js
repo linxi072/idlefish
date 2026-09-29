@@ -301,24 +301,50 @@ export const couponApi = {
 };
 
 // 邀请拉新（F-13.4，对齐 InviteController /api/invite/*）
+// 注：后端 /code 返回 Result<String>，/invitees 返回 Result<List<InviteRelation>>（非 IPage），
+// 故真实分支分别归一为 {code} 与 {list,total}，不能用 pageTo（无 records 字段）。
 export const inviteApi = {
   myCode: (userId) => USE_MOCK
     ? Promise.resolve({ code: 'INV' + (userId || 0).toString(36).toUpperCase() + 'XK2P' })
-    : req('GET', '/api/invite/code', null, { userId }),
+    : req('GET', '/api/invite/code', null, { userId }).then(c => ({ code: typeof c === 'string' ? c : (c && c.code) || '' })),
   bind: (userId, code) => USE_MOCK ? Promise.resolve({ ok: true })
     : req('POST', '/api/invite/bind', null, { userId, code }),
-  invitees: (userId) => USE_MOCK ? Promise.resolve({ list: [], total: 0 })
-    : req('GET', '/api/invite/invitees', null, { userId }).then(pageTo)
+  invitees: (userId) => USE_MOCK
+    ? (() => {
+        const list = mock.inviteRelations.filter(r => r.inviterId === (userId || 2001));
+        return Promise.resolve({ list, total: list.length });
+      })()
+    : req('GET', '/api/invite/invitees', null, { userId }).then(r => ({ list: r || [], total: (r || []).length }))
 };
 
-// 搜索词运营（F-14.3，对齐 SearchTermController /api/search/term/*）
+// 首页推荐预览（F-14.2，对齐 SearchController /api/search/recommend，免登录）
+// 买家端推荐流：同城优先 + 热度半衰期衰减 + 行为加权 + 冷启动保量（后端 RecommendService.feed）
+export const recommendApi = {
+  recommend: (city, userId, page, size) => USE_MOCK
+    ? Promise.resolve(mock.recommend(city, page, size))
+    : req('GET', '/api/search/recommend', null, { city, userId, page, size }).then(pageTo)
+};
+
+// 搜索词运营（F-14.3，对齐 SearchTermController /api/search/term/* 与 SearchTermAdminController /api/admin/search-term/*）
 export const searchTermApi = {
-  hot: (limit) => USE_MOCK ? Promise.resolve(['iPhone', '华为', '显卡', '自行车'])
+  // —— 用户侧 ——
+  hot: (limit) => USE_MOCK ? Promise.resolve(['iPhone', '华为', '显卡', '自行车', '相机', '游戏机'])
     : req('GET', '/api/search/term/hot', null, { limit: limit || 10 }),
-  history: (userId, limit) => USE_MOCK ? Promise.resolve(['iPhone', '相机'])
+  history: (userId, limit) => USE_MOCK ? Promise.resolve(['iPhone', '相机', '显卡'])
     : req('GET', '/api/search/term/history', null, { userId, limit: limit || 10 }),
   record: (userId, word) => USE_MOCK ? Promise.resolve({ ok: true })
-    : req('POST', '/api/search/term/record', null, { userId, word })
+    : req('POST', '/api/search/term/record', null, { userId, word }),
+  // —— 管理侧（运营后台）——
+  synonyms: () => USE_MOCK ? Promise.resolve(mock.searchTermSynonyms())
+    : req('GET', '/api/admin/search-term/synonyms', null, {}),
+  addSynonym: (word, synonym) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', '/api/admin/search-term/synonym', null, { word, synonym }),
+  blockWord: (word) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', '/api/admin/search-term/block', null, { word }),
+  unblockWord: (word) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', '/api/admin/search-term/unblock', null, { word }),
+  setHotWordStatus: (word, status) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', '/api/admin/search-term/hotword/status', null, { word, status })
 };
 
 // 运营 BI（F-15.5，对齐 AdminAnalyticsController /api/admin/analytics/*）

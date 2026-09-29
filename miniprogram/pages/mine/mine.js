@@ -16,6 +16,8 @@ Page({
       { icon: '📍', name: '收货地址', url: '/pages/address/address' },
       { icon: '💬', name: '消息中心', url: '/pages/message/message' },
       { icon: '⭐', name: '我的收藏', url: '/pages/favorite/favorite' },
+      { icon: '🤝', name: '邀请有礼', url: '/pages/invite/invite' },
+      { icon: '🔍', name: '搜索', url: '/pages/search/search' },
       { icon: '⚙️', name: '设置', url: '' }
     ]
   },

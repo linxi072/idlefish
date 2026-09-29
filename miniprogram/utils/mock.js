@@ -92,6 +92,17 @@ const disputes = [
   { id: 1, disputeNo: 'DP20260920001', orderNo: 'NO20260920002', buyerId: me.id, sellerId: 1002, type: 'DAMAGED', expectation: 'REFUND', reason: '收到商品有明显划痕，与描述不符', amount: 4200, status: 'PENDING', buyerEvidence: '', sellerEvidence: '', result: '', platformRemark: '', refundAmount: 0, createdAt: fmtTs(Date.now() - 3600 * 1000 * 3) }
 ];
 
+// 本地邀请关系集合（mock 模式，模拟 InviteService / InviteRelation）
+// 预置：me(2001) 邀请了两位用户（其中一位已获首单返券奖励）
+const inviteRelations = [
+  { inviterId: 2001, inviteeId: 1003, rewardCouponId: null, rewarded: 0, createdAt: fmtTs(Date.now() - 3600 * 1000 * 10) },
+  { inviterId: 2001, inviteeId: 1004, rewardCouponId: 2, rewarded: 1, createdAt: fmtTs(Date.now() - 3600 * 1000 * 30) }
+];
+// 邀请类失败（同 failRefund 机制，对齐 InviteService.bind 守卫）
+function failInvite(msg) {
+  return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
+}
+
 // 本地评价集合（mock 模式，模拟 ReviewService 互评 + 内容机审）
 // 预置：2 条「我发出的」（买家评卖家 / 卖家评买家）+ 1 条「我收到的」，便于演示双向与评价展示
 function fmtTs(ts) {
@@ -586,6 +597,47 @@ module.exports = {
       .filter(Boolean)
       .sort((a, b) => (b.discountAmount || 0) - (a.discountAmount || 0));
     return delay(list);
+  },
+
+  // ===== 邀请拉新（F-13.4 对齐 InviteService / InviteRelation）=====
+  // 我的邀请码：对齐 InviteService.ensureCode（INV + base36(userId) + 固定后缀，便于演示）
+  inviteMyCode(userId) {
+    const uid = Number(userId || me.id);
+    return delay({ code: 'INV' + uid.toString(36).toUpperCase() + 'XK2P' });
+  },
+  // 绑定邀请码：对齐 InviteService.bind 守卫（自邀/重复拦截），演示用固定好友 ID 作为邀请人
+  inviteBind(userId, code) {
+    const c = (code || '').trim().toUpperCase();
+    const uid = Number(userId || me.id);
+    const myCode = 'INV' + uid.toString(36).toUpperCase() + 'XK2P';
+    if (!c || !c.startsWith('INV')) return failInvite('邀请码格式不正确');
+    if (c === myCode) return failInvite('不能绑定自己的邀请码');
+    const inviterId = 3001; // 演示：以固定好友作为邀请人
+    const exist = inviteRelations.find(r => r.inviterId === inviterId && r.inviteeId === uid);
+    if (exist) return failInvite('您已绑定过该邀请人');
+    const rel = { inviterId, inviteeId: uid, rewardCouponId: null, rewarded: 0, createdAt: fmtTs(Date.now()) };
+    inviteRelations.push(rel);
+    return delay(Object.assign({}, rel));
+  },
+  // 我的邀请列表：按 inviterId=我 过滤，返回数组（真实后端 Result<List> 经 api 归一为 {records,total}）
+  inviteInvitees(userId) {
+    const uid = Number(userId || me.id);
+    const list = inviteRelations.filter(r => r.inviterId === uid).map(r => Object.assign({}, r));
+    return delay(list);
+  },
+
+  // ===== 搜索词运营（F-14.3 对齐 SearchTermService）=====
+  // 热搜榜（演示：返回热门关键词）
+  searchTermHot(limit) {
+    return delay(['iPhone', '华为', '显卡', '自行车', '相机', '游戏机', '笔记本', '沙发'].slice(0, limit || 10));
+  },
+  // 我的搜索历史（演示：最近搜索过的关键词）
+  searchTermHistory(userId, limit) {
+    return delay(['iPhone', '相机', '显卡'].slice(0, limit || 10));
+  },
+  // 记录一次搜索（演示：恒成功，不落库）
+  searchTermRecord(userId, word) {
+    return delay({ ok: true });
   },
 
   // —— 后台 mock ——

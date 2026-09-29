@@ -1,0 +1,37 @@
+<!-- pages/invite/invite.wxml —— 邀请拉新页 -->
+<view class="invite-page">
+  <!-- 我的邀请码 -->
+  <view class="card code-card">
+    <view class="card-title">我的邀请码</view>
+    <view class="code-row">
+      <text class="code-text">{{myCode || '加载中...'}}</text>
+      <button class="copy-btn" size="mini" bindtap="onCopyCode" disabled="{{!myCode}}">复制</button>
+    </view>
+    <view class="tip">分享邀请码给好友，好友首单成交双方得券</view>
+  </view>
+
+  <!-- 绑定邀请码 -->
+  <view class="card bind-card">
+    <view class="card-title">绑定邀请码</view>
+    <view class="bind-row">
+      <input class="bind-input" placeholder="输入好友邀请码" value="{{bindCode}}" bindinput="onBindInput" confirm-type="done" />
+      <button class="bind-btn" size="mini" type="primary" bindtap="onBindTap" loading="{{binding}}" disabled="{{binding}}">绑定</button>
+    </view>
+  </view>
+
+  <!-- 我邀请的好友 -->
+  <view class="card list-card">
+    <view class="card-title">我邀请的好友（{{invitees.length}}）</view>
+    <view wx:if="{{loading}}" class="empty">加载中...</view>
+    <view wx:elif="{{invitees.length === 0}}" class="empty">还没有邀请好友，快去分享吧~</view>
+    <view wx:else>
+      <view class="invitee-item" wx:for="{{invitees}}" wx:key="inviteeId">
+        <view class="invitee-info">
+          <text class="invitee-id">用户 #{{item.inviteeId}}</text>
+          <text class="invitee-time">{{item.createdAt}}</text>
+        </view>
+        <view class="reward-tag {{item.rewarded ? 'rewarded' : ''}}">{{item.rewarded ? '已奖励' : '未奖励'}}</view>
+      </view>
+    </view>
+  </view>
+</view>
