@@ -174,9 +174,14 @@ public class SearchTermService {
         }
     }
 
-    /** 全量热搜词（含 ENABLED/BLOCKED 状态，按热度倒序，运营后台查看与切换用）。 */
+    /**
+     * 全量热搜词（含 ENABLED/BLOCKED 状态，按热度倒序，运营后台查看与切换用）。
+     * 注：运营后台列表全量属既有范式（同 blockWords/synonyms），此处仅加防御性 LIMIT 上限，
+     * 避免极端情况下 DB 全表拉取打爆内存；热搜词量级远小于该值，不影响正常运营查看。
+     */
     public List<SearchHotWord> listAllHotWords() {
         return hotMapper.selectList(new LambdaQueryWrapper<SearchHotWord>()
-                .orderByDesc(SearchHotWord::getHeat));
+                .orderByDesc(SearchHotWord::getHeat)
+                .last("LIMIT 1000"));
     }
 }
