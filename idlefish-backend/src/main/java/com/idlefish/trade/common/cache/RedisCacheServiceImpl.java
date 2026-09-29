@@ -1,9 +1,14 @@
 package com.idlefish.trade.common.cache;
 
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.util.CollectionUtils;
+import org.springframework.data.redis.core.ScanOptions;
 
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -44,15 +49,45 @@ public class RedisCacheServiceImpl implements CacheService {
         redisTemplate.delete(key);
     }
 
+    /**
+     * 按前缀批量失效缓存。
+     * 使用 SCAN 游标替代 {@code keys()}：避免在生产 Redis 上执行 O(N) 阻塞命令，
+     * 并通过分批 del 控制客户端内存占用。每次 SCAN 迭代最多拉取 {@code batchSize} 个键。
+     */
     @Override
     public void evictPrefix(String prefix) {
         if (prefix == null || prefix.isEmpty()) {
             return;
         }
-        Set<String> keys = redisTemplate.keys(prefix + "*");
-        if (!CollectionUtils.isEmpty(keys)) {
-            redisTemplate.delete(keys);
-        }
+        final String pattern = prefix + "*";
+        final int batchSize = 200;
+        redisTemplate.execute(new RedisCallback<Object>() {
+            @Override
+            public Object doInRedis(RedisConnection connection) throws DataAccessException {
+                ScanOptions options = ScanOptions.scanOptions().match(pattern).count(batchSize).build();
+                Cursor<byte[]> cursor = connection.scan(options);
+                try {
+                    List<byte[]> batch = new ArrayList<>(batchSize);
+                    while (cursor.hasNext()) {
+                        batch.add(cursor.next());
+                        if (batch.size() >= batchSize) {
+                            connection.del(batch.toArray(new byte[0][]));
+                            batch.clear();
+                        }
+                    }
+                    if (!batch.isEmpty()) {
+                        connection.del(batch.toArray(new byte[0][]));
+                    }
+                } finally {
+                    try {
+                        cursor.close();
+                    } catch (Exception ignored) {
+                        // 关闭游标失败不影响已执行的删除，仅记录忽略
+                    }
+                }
+                return null;
+            }
+        });
     }
 
     @Override
