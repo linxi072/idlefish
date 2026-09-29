@@ -110,20 +110,19 @@ public class CouponService {
         return Math.min(discount, goodsAmount);
     }
 
-    /** 领券中心：可领券分页（已抢光/已结束/未开始不展示）。 */
+    /**
+     * 领券中心：可领券分页（已抢光/已结束/未开始不展示）。
+     * 分页与「未抢光」过滤（claimed_count < total_count）均下沉至 DB，
+     * 避免全表加载到内存再做内存分页；列间比较经 apply 片段表达。
+     */
     public IPage<CouponVO> pageCenter(int page, int size, Long userId) {
-        // claimedCount<totalCount 为列间比较，DB 不易表达，券量可控故内存过滤
         LambdaQueryWrapper<Coupon> w = new LambdaQueryWrapper<Coupon>()
                 .eq(Coupon::getStatus, STATUS_ACTIVE)
                 .gt(Coupon::getEndAt, LocalDateTime.now())
+                .apply("claimed_count < total_count")
                 .orderByDesc(Coupon::getCreatedAt);
-        List<Coupon> all = couponMapper.selectList(w);
-        List<Coupon> valid = all.stream()
-                .filter(c -> (c.getClaimedCount() == null ? 0 : c.getClaimedCount()) < (c.getTotalCount() == null ? 0 : c.getTotalCount()))
-                .collect(Collectors.toList());
-        int from = Math.min((page - 1) * size, valid.size());
-        int to = Math.min(from + size, valid.size());
-        List<Coupon> slice = valid.subList(from, to);
+        IPage<Coupon> pageResult = couponMapper.selectPage(new Page<>(page, size), w);
+        List<Coupon> slice = pageResult.getRecords();
         // 批量查询当前用户已领券（一次 IN 查询替代逐券 selectCount 的 N+1）
         Set<Long> claimedIds = new HashSet<>();
         if (userId != null && !slice.isEmpty()) {
@@ -134,7 +133,7 @@ public class CouponService {
         }
         List<CouponVO> vos = slice.stream()
                 .map(c -> toCenterVO(c, userId, claimedIds)).collect(Collectors.toList());
-        IPage<CouponVO> result = new Page<>(page, size, valid.size());
+        IPage<CouponVO> result = new Page<>(page, size, pageResult.getTotal());
         result.setRecords(vos);
         return result;
     }
