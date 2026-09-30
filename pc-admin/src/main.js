@@ -23,20 +23,22 @@ import Recommend from './views/recommend.js';
 import Invite from './views/invite.js';
 import SearchTerm from './views/search-term.js';
 import Activity from './views/activity.js';
-import { notifyApi } from './api.js';
+import Review from './views/review.js';
+import { notifyApi, adminApi, getToken, clearToken } from './api.js';
 
 const { createApp } = window.Vue;
 
 const App = {
   data() {
     return {
-      loggedIn: !!window.localStorage.getItem('idlefish_admin_token'),
+      loggedIn: !!getToken(),
       user: null,
       active: 'dashboard',
       bellUnread: 0,
       menus: [
         { key: 'dashboard', label: '控制台', icon: '📊' },
         { key: 'items', label: '商品审核', icon: '🛍️' },
+        { key: 'review', label: '评价审核', icon: '⭐' },
         { key: 'orders', label: '订单管理', icon: '📦' },
         { key: 'dispute', label: '维权工单', icon: '⚖️' },
         { key: 'users', label: '用户管理', icon: '👤' },
@@ -49,7 +51,7 @@ const App = {
         { key: 'invite', label: '邀请拉新', icon: '🤝' },
         { key: 'search-term', label: '搜索词运营', icon: '🔍' },
         { group: '财务与运营', icon: '💰', children: [
-          { key: 'wallet', label: '钱包/提现', icon: '💳' },
+          { key: 'wallet', label: '资金财务', icon: '💳' },
           { key: 'attributes', label: '属性模板', icon: '🏷️' },
           { key: 'coupon', label: '发券管理', icon: '🎟️' },
           { key: 'activity', label: '活动管理', icon: '🎪' }
@@ -71,7 +73,7 @@ const App = {
         dashboard: Dashboard, items: Items, orders: Orders, dispute: Dispute,
         users: Users, categories: Categories, risk: Risk, analytics: Analytics, marketing: Marketing, member: Member, recommend: Recommend, invite: Invite, searchTerm: SearchTerm,
         sysuser: SysUser, role: Role, organization: Organization, menu: Menu, dict: Dict,
-        wallet: Wallet, attributes: Attributes, notify: Notify, coupon: Coupon, activity: Activity
+        wallet: Wallet, attributes: Attributes, notify: Notify, coupon: Coupon, activity: Activity, review: Review
       }[this.active];
     },
     activeTitle() {
@@ -89,7 +91,7 @@ const App = {
   methods: {
     onLoggedIn(u) { this.user = u; this.loggedIn = true; this.refreshBell(); },
     logout() {
-      window.localStorage.removeItem('idlefish_admin_token');
+      clearToken();
       this.loggedIn = false; this.user = null; this.active = 'dashboard'; this.bellUnread = 0;
     },
     go(key) { this.active = key; },
@@ -98,7 +100,16 @@ const App = {
     }
   },
   mounted() {
-    if (this.loggedIn) this.refreshBell();
+    // D-18 路由守卫：初始化时若本地存在令牌，则校验其有效性（防篡改/过期令牌直接进入后台）。
+    // 校验失败（401/403）清除令牌并回登录页；成功则载入当前管理员并刷新铃铛。
+    if (this.loggedIn) {
+      adminApi.me()
+        .then(r => { this.user = r.user; this.refreshBell(); })
+        .catch(() => {
+          clearToken();
+          this.loggedIn = false; this.user = null; this.bellUnread = 0;
+        });
+    }
     // 消息中心标记已读后，由 notify 视图派发事件刷新铃铛角标
     window.addEventListener('notify-unread', (e) => {
       this.bellUnread = (e.detail && e.detail.unread) || 0;

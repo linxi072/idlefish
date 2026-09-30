@@ -18,15 +18,25 @@
 import axios from 'axios';
 
 export const USE_MOCK = true;
-export const BASE = 'http://localhost:8080';
+// R-23 生产化 · 接口基址外置：优先读取 index.html 的 <meta name="api-base">，缺省回退本地后端。
+// 生产部署时在该 meta 写入真实域名（如 https://api.example.com），无需改代码重新打包。
+const API_BASE_META = (typeof document !== 'undefined')
+  ? (document.querySelector('meta[name="api-base"]')?.content || '').trim()
+  : '';
+export const BASE = API_BASE_META || 'http://localhost:8080';
 const TOKEN_KEY = 'idlefish_admin_token';
 
-export function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
-export function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
-export function clearToken() { localStorage.removeItem(TOKEN_KEY); }
+// R-23 生产化 · 令牌存储由 localStorage 改为 sessionStorage：
+// 会话级、关标签页即失效，显著缩短 XSS 窃取后的可利用窗口（配合 index.html 的 CSP 进一步收敛 XSS 面）。
+// 注：真正的「XSS 不可窃取」需后端 HttpOnly Cookie（已镜像 F-04 在 AdminAuthController 下发），
+// 跨源场景下需同源部署或显式 CORS（与用户侧 F-04 一致），详见交付说明。
+export function getToken() { return sessionStorage.getItem(TOKEN_KEY) || ''; }
+export function setToken(t) { sessionStorage.setItem(TOKEN_KEY, t); }
+export function clearToken() { sessionStorage.removeItem(TOKEN_KEY); }
 
 // 统一 HTTP 实例（R-15：401/过期集中处理 —— 清除令牌并回到登录页）
-const http = axios.create({ baseURL: BASE, timeout: 15000 });
+// withCredentials：同源部署下携带后端下发的 HttpOnly 管理员 Cookie（R-23 / 镜像 F-04）。
+const http = axios.create({ baseURL: BASE, timeout: 15000, withCredentials: true });
 http.interceptors.response.use(
   (resp) => {
     const body = resp.data;

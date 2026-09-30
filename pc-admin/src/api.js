@@ -17,6 +17,12 @@ export const adminApi = {
         // 后端返回 AdminLoginVO：{ token, role, nickname, adminId }
         return { token: data.token, user: { username: data.nickname || username, role: data.role } };
       })(),
+  // 当前管理员（D-18 路由守卫支撑）：初始化时校验令牌有效性，无效/过期返回 401/403
+  me: () => USE_MOCK
+    ? Promise.resolve({ token: 'admin-mock-token', user: { username: 'admin', role: 'SUPER' } })
+    : req('GET', '/api/admin/auth/me').then(d => ({
+        token: d.token, user: { username: d.nickname || 'admin', role: d.role }
+      })),
   // 控制台概览：真实模式由订单/用户/商品/风控聚合得出
   stats: () => USE_MOCK ? Promise.resolve(mock.stats()) : (async () => {
     const [orders, users, items, risks] = await Promise.all([
@@ -112,7 +118,11 @@ export const adminApi = {
     }
       return req('GET', '/api/admin/audit-logs', null,
         { keyword: options.keyword, page: options.page || 1, size: options.size || 20 }).then(pageTo);
-  }
+  },
+  riskRules: () => USE_MOCK ? Promise.resolve(mock.riskRules.slice())
+    : req('GET', '/api/admin/risk/rules'),
+  saveRiskRules: (rules) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('PUT', '/api/admin/risk/rules', rules)
 };
 
 // 系统管理（F-16 后端 RBAC 落地后的前端闭环）：管理员/角色/机构/菜单/字典
@@ -207,7 +217,11 @@ export const walletApi = {
         { bizNo: 'NO20260919003', type: 'pay', amountFen: 520000, feeFen: 26000, status: 'success', time: '2026-09-19 12:00' },
         { bizNo: 'NO20260918004', type: 'refund', amountFen: 19900, feeFen: 0, status: 'success', time: '2026-09-18 15:30' }
       ]
-    }) : req('GET', '/api/admin/reconciliation', null, { day })
+    }) : req('GET', '/api/admin/reconciliation', null, { day }),
+  // 结算单解冻（风控处置完成后，frozen → pending 重新进入放款队列）
+  // 注：后端 AdminFinanceController 仅暴露此解冻动作端点，无结算单列表端点，故视图以「输入结算单ID」方式解冻。
+  unfreezeSettlement: (id) => USE_MOCK ? Promise.resolve({ ok: true })
+    : req('POST', `/api/admin/settlements/${id}/unfreeze`)
 };
 
 // 类目属性模板（F-PC-02，对齐 AdminController /api/admin/attr-templates、/attr-template）
@@ -347,6 +361,26 @@ export const disputeApi = {
     if (d) d.status = 'CLOSED';
     return Promise.resolve({ ok: true });
   })() : req('POST', '/api/admin/dispute/close', null, { id })
+};
+
+// 评价审核（F-06，对齐 AdminReviewController /api/admin/reviews、/reviews/{id}/approve、/reviews/{id}/reject）
+// 后端 pendingList() 仅返回 status=0（待审核）；审核通过触发被评价方信用重算，驳回记录原因。
+export const reviewApi = {
+  // 待审评价列表（后端仅返 status=0；mock 同样收敛为待审队列，审核后移出）
+  list: () => USE_MOCK ? (() => {
+    const list = mock.reviews.filter(r => r.status === 0);
+    return Promise.resolve({ list: list.slice(), total: list.length });
+  })() : req('GET', '/api/admin/reviews').then(a => ({ list: a || [], total: (a || []).length })),
+  approve: (id) => USE_MOCK ? (() => {
+    const r = mock.reviews.find(x => x.id === id);
+    if (r) r.status = 1;
+    return Promise.resolve({ ok: true });
+  })() : req('POST', `/api/admin/reviews/${id}/approve`),
+  reject: (id, reason) => USE_MOCK ? (() => {
+    const r = mock.reviews.find(x => x.id === id);
+    if (r) { r.status = 2; r.rejectReason = reason || ''; }
+    return Promise.resolve({ ok: true });
+  })() : req('POST', `/api/admin/reviews/${id}/reject`, null, { reason })
 };
 
 // 促销活动管理（F-13.3，对齐 ActivityController /api/activity/*；金额单位：分）

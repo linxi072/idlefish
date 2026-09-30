@@ -7,7 +7,8 @@ export default {
   mixins: [formatMixin],
   data() {
     return {
-      form: { username: 'admin', password: 'admin123' },
+      // R-23 生产化 · 移除演示账号预填（D-27）：避免生产环境默认凭据被自动带入。
+      form: { username: '', password: '' },
       loading: false,
       rules: {
         username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],

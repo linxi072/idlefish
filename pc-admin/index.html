@@ -4,12 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>闲置集 · 运营后台</title>
-  <!-- Vue 3 + Element Plus（UMD 全局构建，免打包即可运行） -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.7.0/dist/index.css" />
-  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/element-plus@2.7.0/dist/index.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.8/dist/axios.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <!-- R-23 生产化 · 接口基址外置：生产部署改为真实后端域名（如 https://api.example.com）；
+       同时需在本文件 CSP 的 connect-src 中追加该域名，避免被策略拦截。留空则用默认 http://localhost:8080。 -->
+  <meta name="api-base" content="" />
+  <!-- R-23 生产化 · 内容安全策略（CSP）：关闭 inline script（防 XSS 注入窃取令牌/篡改 DOM），
+       仅放行同源脚本与 jsDelivr 的受信库；样式/图片/字体按最小可用集放行。 -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' https://cdn.jsdelivr.net;
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+    img-src 'self' data: https:;
+    font-src 'self' https://cdn.jsdelivr.net data:;
+    connect-src 'self' http://localhost:8080 https://cdn.jsdelivr.net;
+    frame-src 'none';
+    object-src 'none';
+    base-uri 'self';
+  " />
+  <!-- Vue 3 + Element Plus（UMD 全局构建，免打包即可运行）；crossorigin 保障 CORS 正确性与 SRI 兼容，referrerpolicy 减少外泄 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.7.0/dist/index.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/element-plus@2.7.0/dist/index.full.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.8/dist/axios.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <style>
     * { box-sizing: border-box; }
     html, body, #app { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
@@ -98,32 +114,7 @@
 <body>
   <div id="app"></div>
   <script type="module" src="./src/main.js"></script>
-  <script>
-    // RK-6 CDN 生产兜底：jsDelivr 不可达会导致后台白屏/功能不可用。
-    // 逐一检测关键 CDN 资源（Vue / ElementPlus / axios / echarts），任一缺失即展示友好面板并列出缺失项，
-    // 避免白屏与静默误用；同时提示生产应改用本地打包构建（SRI/离线兜底）。
-    window.addEventListener('load', function () {
-      setTimeout(function () {
-        var required = [
-          { key: 'Vue', label: 'Vue' },
-          { key: 'ElementPlus', label: 'Element Plus' },
-          { key: 'axios', label: 'axios' },
-          { key: 'echarts', label: 'ECharts' }
-        ];
-        var missing = required.filter(function (r) { return !window[r.key]; }).map(function (r) { return r.label; });
-        if (missing.length === 0) return; // 全部就绪，正常进入应用
-        var app = document.getElementById('app');
-        if (!app) return;
-        app.innerHTML = '<div style="max-width:600px;margin:120px auto;padding:32px;background:#fff;'
-          + 'border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.1);text-align:center;color:#1A1A1A;">'
-          + '<h2 style="color:#FF3939;">依赖资源加载失败</h2>'
-          + '<p style="color:#666;line-height:1.7;">运营后台依赖以下 CDN 资源，当前环境可能无法访问 jsDelivr 外网：</p>'
-          + '<p style="color:#FF3939;font-weight:600;">缺失：' + missing.join('、') + '</p>'
-          + '<p style="color:#9A9A9A;font-size:13px;">建议：① 检查网络后刷新；② 生产部署请改用本地打包构建'
-          + '（npm install &amp;&amp; vite build）并引入 SRI / 离线兜底，避免依赖公共 CDN。</p>'
-          + '</div>';
-      }, 1500);
-    });
-  </script>
+  <!-- RK-6 / R-23：CDN 加载兜底已外置为同源经典脚本（见 src/cdn-check.js），以便 CSP 收紧为无 inline。 -->
+  <script src="./src/cdn-check.js"></script>
 </body>
 </html>

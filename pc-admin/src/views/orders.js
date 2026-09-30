@@ -82,7 +82,7 @@ export default {
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{row}">
             <el-button size="small" @click="view(row)">详情</el-button>
-            <el-button v-if="row.status==='shipping'" size="small" type="primary" @click="openShip(row)">发货</el-button>
+            <el-button v-if="row.status==='pending_ship'" size="small" type="primary" @click="openShip(row)">发货</el-button>
             <el-button v-if="row.status==='refunding'" size="small" type="success" @click="refund(row,true)">退款</el-button>
           </template>
         </el-table-column>
