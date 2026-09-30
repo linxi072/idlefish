@@ -64,6 +64,18 @@ Page({
     wx.navigateTo({ url: '/pages/checkout/checkout?itemId=' + it.id });
   },
 
+  // 砍价入口（仅 bargainEnable）：跳转议价页，携带会话/卖家/商品/原价(分)
+  bargain() {
+    const it = this.data.item;
+    if (!it || !it.bargainEnable) return;
+    const convId = 'C' + it.id;
+    const cover = (it.images && it.images[0]) || it.cover || it.img;
+    wx.navigateTo({ url: '/pages/bargain/bargain?convId=' + convId +
+      '&sellerId=' + it.seller.id + '&itemId=' + it.id +
+      '&itemTitle=' + encodeURIComponent(it.title || '') + '&itemImg=' + (cover || '') +
+      '&origPriceFen=' + (it.price || 0) });
+  },
+
   onShareAppMessage() {
     const it = this.data.item || {};
     return { title: it.title || '闲置好物', path: '/pages/item-detail/item-detail?id=' + this.data.id };

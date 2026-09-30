@@ -26,7 +26,12 @@
     "pages/address/address",
     "pages/favorite/favorite",
     "pages/invite/invite",
-    "pages/search/search"
+    "pages/search/search",
+    "pages/point/point",
+    "pages/member/member",
+    "pages/activity/list/list",
+    "pages/activity/detail/detail",
+    "pages/bargain/bargain"
   ],
   "window": {
     "navigationBarBackgroundColor": "#FFCE3D",
