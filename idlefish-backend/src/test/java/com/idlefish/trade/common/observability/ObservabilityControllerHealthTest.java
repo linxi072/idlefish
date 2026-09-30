@@ -59,16 +59,21 @@ class ObservabilityControllerHealthTest {
         when(dataSource.getConnection()).thenReturn(conn);
         when(conn.createStatement()).thenReturn(stmt);
 
-        Map<String, Object> health = controller().health();
+        // 隔离外部 TCP 探活：mock 所有可选依赖可达，验证聚合逻辑 happy path
+        // （MySQL UP + 各可选依赖可达 => 整体 UP）。不依赖真实环境是否装有 Redis/ES。
+        ObservabilityController spy = org.mockito.Mockito.spy(new ObservabilityController(metrics, dataSource, new IdlefishProperties()));
+        doReturn(true).when(spy).tcpReachable(anyString(), anyInt(), anyInt());
+
+        Map<String, Object> health = spy.health();
         @SuppressWarnings("unchecked")
         Map<String, Object> deps = (Map<String, Object>) health.get("dependencies");
 
         assertEquals("UP", health.get("status"));
         assertEquals("UP", ((Map<?, ?>) deps.get("mysql")).get("status"));
-        assertEquals("UP", ((Map<?, ?>) deps.get("redis")).get("status")); // local cache
-        assertEquals("UP", ((Map<?, ?>) deps.get("elasticsearch")).get("status")); // not configured
-        assertEquals("UP", ((Map<?, ?>) deps.get("rocketmq")).get("status")); // DB fallback
-        assertEquals("UP", ((Map<?, ?>) deps.get("oss")).get("status")); // not configured
+        assertEquals("UP", ((Map<?, ?>) deps.get("redis")).get("status"));
+        assertEquals("UP", ((Map<?, ?>) deps.get("elasticsearch")).get("status"));
+        assertEquals("UP", ((Map<?, ?>) deps.get("rocketmq")).get("status"));
+        assertEquals("UP", ((Map<?, ?>) deps.get("oss")).get("status"));
     }
 
     @Test
