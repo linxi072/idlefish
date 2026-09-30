@@ -3,7 +3,6 @@ package com.idlefish.trade.common.cache;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -16,7 +15,6 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * 提供 JSON 序列化的 RedisTemplate<String,Object> 与 CacheService(Redis) Bean。
  */
 @Configuration
-@EnableConfigurationProperties(com.idlefish.trade.common.IdlefishProperties.class)
 public class RedisCacheAutoConfig {
 
     @Bean
