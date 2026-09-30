@@ -209,6 +209,40 @@ function refundTerminal(status) {
   return status === 'refunded' || status === 'rejected' || status === 'canceled';
 }
 
+// 本地积分状态（mock 模式，模拟 PointService；balance=可用积分，totalEarned=累计获得）
+const pointState = { balance: 320, totalEarned: 480 };
+// 本地积分流水（PointLogVO：bizType/delta/balanceAfter/remark/createdAt，时间倒序展示）
+const pointLogs = [
+  { id: 1, bizType: 'EARN_SIGNIN', bizId: '2026-09-29', delta: 10, balanceAfter: 320, remark: '每日签到', createdAt: fmtTs(Date.now() - 3600 * 1000 * 2) },
+  { id: 2, bizType: 'EARN_TRADE', bizId: 'NO20260920002', delta: 84, balanceAfter: 310, remark: '交易完成奖励', createdAt: fmtTs(Date.now() - 3600 * 1000 * 30) },
+  { id: 3, bizType: 'EARN_REVIEW', bizId: '1', delta: 15, balanceAfter: 226, remark: '评价奖励', createdAt: fmtTs(Date.now() - 3600 * 1000 * 240) },
+  { id: 4, bizType: 'REDEEM', bizId: 'NO20260910001', delta: -50, balanceAfter: 211, remark: '积分抵现', createdAt: fmtTs(Date.now() - 3600 * 1000 * 245) }
+];
+// 最近签到日期（演示：初始为空=今日未签到）
+let lastSigninDate = '';
+// 本地会员等级（MemberLevelView）
+const memberLevel = {
+  levelCode: 'LV2', levelName: '黄金会员', icon: '👑', color: '#FFB300',
+  growthValue: 680, freeShipping: 1, priorityReview: 1, commissionDiscount: 50,
+  nextLevelName: '钻石会员', growthToNext: 320, percent: 68
+};
+// 本地活动集合（Activity：type=SECKILL/GROUP，activityPrice=分，status=ONGOING，金额单位：分）
+const ACT_DAY = 86400000;
+const activities = [
+  { id: 1, itemId: 9001, type: 'SECKILL', activityPrice: 990, stock: 50, soldCount: 32, limitPerUser: 1, groupSize: 0, groupValidMinutes: 0, status: 'ONGOING', startAt: Date.now() - ACT_DAY, endAt: Date.now() + 2 * ACT_DAY },
+  { id: 2, itemId: 9003, type: 'GROUP', activityPrice: 3180, stock: 30, soldCount: 12, limitPerUser: 2, groupSize: 3, groupValidMinutes: 1440, status: 'ONGOING', startAt: Date.now() - ACT_DAY, endAt: Date.now() + 3 * ACT_DAY },
+  { id: 3, itemId: 9002, type: 'SECKILL', activityPrice: 3990, stock: 20, soldCount: 18, limitPerUser: 1, groupSize: 0, groupValidMinutes: 0, status: 'ONGOING', startAt: Date.now() - ACT_DAY, endAt: Date.now() + ACT_DAY },
+  { id: 4, itemId: 9006, type: 'GROUP', activityPrice: 890, stock: 40, soldCount: 5, limitPerUser: 5, groupSize: 2, groupValidMinutes: 1440, status: 'ONGOING', startAt: Date.now() - ACT_DAY, endAt: Date.now() + 5 * ACT_DAY }
+];
+// 本地活动参与记录（ActivityParticipant：status=JOINED/PAID_PENDING/CANCELLED/COMPLETED）
+const activityParticipants = [
+  { id: 1, activityId: 2, userId: me.id, groupId: 'G' + me.id, orderNo: '', status: 'JOINED', qty: 1 }
+];
+// 通用失败（同 failRefund 机制，对齐各类 Service 守卫）
+function failMock(msg) {
+  return new Promise((resolve, reject) => setTimeout(() => reject({ code: 40001, msg: msg }), 200));
+}
+
 function delay(data, ms) {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms || 200));
 }
@@ -520,6 +554,70 @@ module.exports = {
     return delay(Object.assign({}, b));
   },
   listBargains(convId) { return delay(bargains.filter(b => b.convId === convId).map(b => Object.assign({}, b))); },
+
+  // ===== 积分（F-13.1 对齐 PointService：余额/流水/签到/配置/抵现预览，金额单位：分）=====
+  pointBalance() {
+    return delay({ userId: me.id, balance: pointState.balance, totalEarned: pointState.totalEarned });
+  },
+  pointLogs(page, size) {
+    const sorted = pointLogs.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const total = sorted.length;
+    const start = (page - 1) * size;
+    return delay({ records: sorted.slice(start, start + size).map(l => Object.assign({}, l)), total });
+  },
+  pointSignin() {
+    const today = fmtTs(Date.now()).slice(0, 10);
+    if (lastSigninDate === today) return failMock('今日已签到');
+    lastSigninDate = today;
+    const gain = 10; // 演示：固定基础分（真实后端按连续天数 + 加成）
+    pointState.balance += gain;
+    pointState.totalEarned += gain;
+    pointLogs.unshift({ id: Date.now(), bizType: 'EARN_SIGNIN', bizId: today, delta: gain, balanceAfter: pointState.balance, remark: '每日签到', createdAt: fmtTs(Date.now()) });
+    return delay(gain);
+  },
+  pointConfig() {
+    return delay({
+      enabled: true, redeemPointsPerYuan: 100, maxRedeemRatio: 0.6,
+      earnPointsPerYuan: 2, tradeMaxPerOrder: 2000, signinBase: 10, signinMaxBonus: 15, reviewFixed: 15
+    });
+  },
+  // 抵现预览：1 积分 = 1 分（100 积分=1 元=100 分）；抵扣上限 = maxRedeemRatio × 应付，且不超过持有余额
+  pointPreview(usedPoint, payableFen) {
+    let discount = Math.min(usedPoint || 0, payableFen || 0);
+    const cap = Math.round((payableFen || 0) * 0.6);
+    discount = Math.min(discount, cap);
+    discount = Math.min(discount, pointState.balance);
+    if (discount < 0) discount = 0;
+    return delay(discount);
+  },
+  // ===== 会员等级（F-13.2 对齐 MemberLevelService：等级/权益/升级进度）=====
+  memberMine() { return delay(Object.assign({}, memberLevel)); },
+  // ===== 促销活动（F-13.3 对齐 ActivityService：列表/详情/参与/我的，金额单位：分）=====
+  activityList() { return delay(activities.filter(a => a.status === 'ONGOING').map(a => Object.assign({}, a))); },
+  activityDetail(id) {
+    const a = activities.find(x => x.id === Number(id));
+    return delay(a ? Object.assign({}, a) : null);
+  },
+  activityJoin(dto) {
+    const a = activities.find(x => x.id === Number(dto.activityId));
+    if (!a) return failMock('活动不存在');
+    if (a.status !== 'ONGOING') return failMock('活动已结束');
+    const exist = activityParticipants.find(p => p.activityId === Number(dto.activityId) && p.userId === me.id && (p.status === 'JOINED' || p.status === 'PAID_PENDING'));
+    if (exist) return delay(Object.assign({}, exist));
+    const p = {
+      id: Date.now(), activityId: Number(dto.activityId), userId: me.id,
+      groupId: dto.groupNo || ('G' + me.id + '_' + Date.now()), orderNo: '', status: 'JOINED', qty: dto.qty || 1
+    };
+    activityParticipants.push(p);
+    if (a.soldCount != null) a.soldCount += 1;
+    return delay(Object.assign({}, p));
+  },
+  activityMy() {
+    return delay(activityParticipants.filter(p => p.userId === me.id).map(p => {
+      const a = activities.find(x => x.id === p.activityId) || {};
+      return Object.assign({}, p, { type: a.type, activityPrice: a.activityPrice, itemId: a.itemId, statusName: a.status });
+    }));
+  },
 
   // ===== 站内通知（对齐 NotificationController / NotificationVO：IPage → {records,total}）=====
   notifyList(page, size) {

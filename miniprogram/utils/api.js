@@ -27,6 +27,16 @@
  *  - GET  /api/notify/list?page&size               -> PageData<Notification>
  *  - GET  /api/invite/code?userId                  -> { code }
  *  - GET  /api/search/recommend?city&userId&page&size -> PageData<Item>
+ *  - GET  /api/point/balance                      -> Point{userId,balance,totalEarned}
+ *  - GET  /api/point/logs?page&size               -> PageData<PointLogVO>
+ *  - POST /api/point/signin                       -> Integer(本次获得积分)
+ *  - GET  /api/point/config                       -> PointConfig(兑换/抵扣/赚取规则)
+ *  - GET  /api/point/preview?usedPoint&payableFen -> Long(抵扣金额，分)
+ *  - GET  /api/member/level/mine                  -> MemberLevelView{levelCode,levelName,icon,color,growthValue,freeShipping,priorityReview,commissionDiscount,nextLevelName,growthToNext,percent}
+ *  - GET  /api/activity/list                      -> Activity[]{itemId,type[SECKILL|GROUP],activityPrice[分],stock,soldCount,limitPerUser,groupSize,status,startAt,endAt}
+ *  - GET  /api/activity/detail?id                 -> Activity
+ *  - POST /api/activity/join {activityId,itemId,groupNo,qty} -> ActivityParticipant{activityId,userId,groupId,orderNo,status,qty}
+ *  - GET  /api/activity/my                        -> ActivityParticipant[]
  * PageData = { list: Array<*>, total: number }
  */
 const http = require('./request.js');
@@ -226,6 +236,43 @@ const api = {
   createBargain(data) { return route(() => mock.createBargain(data), () => http.post('/api/bargain/create', data)); },
   acceptBargain(bargainId) { return route(() => mock.acceptBargain(bargainId), () => http.post('/api/bargain/accept?bargainId=' + bargainId)); },
   listBargains(convId) { return route(() => mock.listBargains(convId), () => http.get('/api/bargain/list?convId=' + convId)); },
+
+  // ===== 积分（F-13.1，对齐 PointController /api/point/*，金额单位：分）=====
+  // 我的积分余额与累计：Point{userId,balance,totalEarned}
+  pointBalance() { return route(() => mock.pointBalance(), () => http.get('/api/point/balance')); },
+  // 积分流水（分页）：IPage<PointLogVO> → {records,total}
+  pointLogs(page, size) {
+    return route(
+      () => mock.pointLogs(page, size),
+      () => http.get('/api/point/logs?page=' + (page || 1) + '&size=' + (size || 20))
+        .then((p) => ({ records: (p && p.records) || [], total: (p && p.total) || 0 }))
+    );
+  },
+  // 每日签到得积分：返回 Integer（本次获得积分）
+  pointSignin() { return route(() => mock.pointSignin(), () => http.post('/api/point/signin')); },
+  // 积分规则配置：IdlefishProperties.Point（兑换比例 / 抵扣上限 / 赚取规则）
+  pointConfig() { return route(() => mock.pointConfig(), () => http.get('/api/point/config')); },
+  // 积分抵现预览（试算抵扣金额，分，不落库）：usedPoint(积分) + payableFen(应付分) → Long(抵扣分)
+  pointPreview(usedPoint, payableFen) {
+    return route(
+      () => mock.pointPreview(usedPoint, payableFen),
+      () => http.get('/api/point/preview?usedPoint=' + (usedPoint || 0) + '&payableFen=' + (payableFen || 0))
+    );
+  },
+
+  // ===== 会员等级（F-13.2，对齐 MemberLevelController /api/member/level/mine）=====
+  // 我的会员等级与权益 + 升级进度：MemberLevelView
+  memberMine() { return route(() => mock.memberMine(), () => http.get('/api/member/level/mine')); },
+
+  // ===== 促销活动（F-13.3，对齐 ActivityController /api/activity/*，金额单位：分）=====
+  // 进行中活动列表：List<Activity>
+  activityList() { return route(() => mock.activityList(), () => http.get('/api/activity/list')); },
+  // 活动详情：Activity
+  activityDetail(id) { return route(() => mock.activityDetail(id), () => http.get('/api/activity/detail?id=' + id)); },
+  // 参与活动（拼团可带 groupNo 加入已有团）：返回 ActivityParticipant
+  activityJoin(dto) { return route(() => mock.activityJoin(dto), () => http.post('/api/activity/join', dto)); },
+  // 我的活动参与记录：List<ActivityParticipant>
+  activityMy() { return route(() => mock.activityMy(), () => http.get('/api/activity/my')); },
 
   // ===== 站内通知（对齐 NotificationController / NotificationVO，IPage → {records,total}）=====
   notifyList(page, size) {
