@@ -28,6 +28,15 @@ export const items = [
   { id: 9007, title: '疑似违规：全新虫草低价', price: 50, categoryName: '其他', seller: '新注册用户', status: 'pending_review', auditStatus: 'pending', createdAt: '2026-09-21 07:55', description: '【待核查】该商品标题与描述涉嫌违规关键词，价格明显低于市场价，需人工重点复核卖家资质与实物。', images: ['seed/9007a'] }
 ];
 
+// 促销活动（F-13.3 拼团/秒杀，金额单位：分）：引用在售商品 9001~9006（9004/9007 为待审核，不挂活动）
+export const activities = [
+  { id: 1, itemId: 9001, type: 'SECKILL', activityPrice: 128000, stock: 50, soldCount: 31, limitPerUser: 1, groupSize: null, groupValidMinutes: null, status: 'ONGOING', startAt: '2026-09-30 00:00:00', endAt: '2026-10-07 23:59:59' },
+  { id: 2, itemId: 9002, type: 'SECKILL', activityPrice: 499900, stock: 30, soldCount: 12, limitPerUser: 1, groupSize: null, groupValidMinutes: null, status: 'ONGOING', startAt: '2026-09-28 00:00:00', endAt: '2026-10-05 23:59:59' },
+  { id: 3, itemId: 9003, type: 'GROUP', activityPrice: 399900, stock: 80, soldCount: 20, limitPerUser: 2, groupSize: 3, groupValidMinutes: 1440, status: 'ONGOING', startAt: '2026-09-29 00:00:00', endAt: '2026-10-10 23:59:59' },
+  { id: 4, itemId: 9006, type: 'GROUP', activityPrice: 9900, stock: 100, soldCount: 45, limitPerUser: 3, groupSize: 5, groupValidMinutes: 2880, status: 'ONGOING', startAt: '2026-09-27 00:00:00', endAt: '2026-10-08 23:59:59' },
+  { id: 5, itemId: 9005, type: 'SECKILL', activityPrice: 99900, stock: 20, soldCount: 18, limitPerUser: 1, groupSize: null, groupValidMinutes: null, status: 'ONGOING', startAt: '2026-09-30 08:00:00', endAt: '2026-10-03 23:59:59' }
+];
+
 export const orders = [
   { orderNo: 'NO20260921001', title: 'Switch OLED 续航版', buyer: '我', seller: '数码小哥', amount: 1380, status: 'pending_pay', createdAt: '2026-09-21 11:00' },
   { orderNo: 'NO20260920002', title: 'MacBook Air M1', buyer: '我', seller: '衣橱清仓', amount: 4200, status: 'shipping', logistic: '顺丰速运 SF1234567890', createdAt: '2026-09-20 09:00' },
@@ -400,4 +409,4 @@ export function searchTermHotWords() {
   ];
 }
 
-export default { categories, items, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList, recommend, inviteRelations, searchTermSynonyms, searchTermHotWords };
+export default { categories, items, activities, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList, recommend, inviteRelations, searchTermSynonyms, searchTermHotWords };

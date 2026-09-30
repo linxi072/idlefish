@@ -349,6 +349,21 @@ export const disputeApi = {
   })() : req('POST', '/api/admin/dispute/close', null, { id })
 };
 
+// 促销活动管理（F-13.3，对齐 ActivityController /api/activity/*；金额单位：分）
+// 注：后端 /api/activity/list 仅返回 ONGOING（进行中）活动，运营主要管理生效中的活动；
+// 创建即生效（ActivityService.create 置 ONGOING）。后端暂无 admin 列表端点与编辑/终止端点，本视图按契约收敛为「列表 + 创建」。
+export const activityApi = {
+  list: () => USE_MOCK
+    ? Promise.resolve({ list: mock.activities.slice(), total: mock.activities.length })
+    : req('GET', '/api/activity/list').then(a => ({ list: a || [], total: (a || []).length })),
+  create: (d) => USE_MOCK ? (() => {
+    const id = Math.max(0, ...mock.activities.map(a => a.id)) + 1;
+    const a = Object.assign({ id, soldCount: 0, status: 'ONGOING' }, d);
+    mock.activities.push(a);
+    return Promise.resolve(a);
+  })() : req('POST', '/api/activity/create', d)
+};
+
 // ===== CSV 导出工具（前端侧生成，便于 mock/真实模式统一下载） =====
 export function toCsv(headers, rows) {
   const esc = (v) => {

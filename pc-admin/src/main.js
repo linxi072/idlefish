@@ -22,6 +22,7 @@ import Marketing from './views/marketing.js';
 import Recommend from './views/recommend.js';
 import Invite from './views/invite.js';
 import SearchTerm from './views/search-term.js';
+import Activity from './views/activity.js';
 import { notifyApi } from './api.js';
 
 const { createApp } = window.Vue;
@@ -50,7 +51,8 @@ const App = {
         { group: '财务与运营', icon: '💰', children: [
           { key: 'wallet', label: '钱包/提现', icon: '💳' },
           { key: 'attributes', label: '属性模板', icon: '🏷️' },
-          { key: 'coupon', label: '发券管理', icon: '🎟️' }
+          { key: 'coupon', label: '发券管理', icon: '🎟️' },
+          { key: 'activity', label: '活动管理', icon: '🎪' }
         ] },
         { key: 'notify', label: '消息中心', icon: '🔔' },
         { group: '系统管理', icon: '⚙️', children: [
@@ -69,7 +71,7 @@ const App = {
         dashboard: Dashboard, items: Items, orders: Orders, dispute: Dispute,
         users: Users, categories: Categories, risk: Risk, analytics: Analytics, marketing: Marketing, member: Member, recommend: Recommend, invite: Invite, searchTerm: SearchTerm,
         sysuser: SysUser, role: Role, organization: Organization, menu: Menu, dict: Dict,
-        wallet: Wallet, attributes: Attributes, notify: Notify, coupon: Coupon
+        wallet: Wallet, attributes: Attributes, notify: Notify, coupon: Coupon, activity: Activity
       }[this.active];
     },
     activeTitle() {
