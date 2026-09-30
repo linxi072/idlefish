@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.enums.ItemStatus;
+import com.idlefish.trade.common.lock.DistributedLock;
+import com.idlefish.trade.common.lock.LockKeyBuilder;
 import com.idlefish.trade.common.util.MoneyUtil;
 import com.idlefish.trade.item.dto.ItemEditDTO;
 import com.idlefish.trade.item.dto.ItemPublishDTO;
@@ -34,8 +36,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 /**
@@ -54,15 +54,22 @@ public class ItemService {
     private final SearchService searchService;
     private final NotificationService notificationService;
 
-    /** 单实例应用级库存锁（防超卖）；多实例需改用 Redis 分布式锁。 */
-    private final ConcurrentMap<Long, Object> itemLocks = new ConcurrentHashMap<>();
+    /** 库存锁等待上限（毫秒）：超时快速失败，避免线程无限阻塞。 */
+    private static final long LOCK_WAIT_MS = 1_000L;
+
+    /** 库存锁租约（毫秒）：到期自动释放，防止进程崩溃导致死锁。 */
+    private static final long LOCK_LEASE_MS = 5_000L;
+
+    /** 分布式锁：替代原单实例本地锁，使多实例部署下库存扣减仍然互斥。 */
+    private final DistributedLock distributedLock;
 
     private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     public ItemService(ItemMapper itemMapper, CategoryService categoryService,
                        UserService userService, ItemStateMachine stateMachine, ObjectMapper objectMapper,
                        ItemStatusLogMapper itemStatusLogMapper, ContentAuditService contentAuditService,
-                       @Lazy SearchService searchService, NotificationService notificationService) {
+                       @Lazy SearchService searchService, NotificationService notificationService,
+                       DistributedLock distributedLock) {
         this.itemMapper = itemMapper;
         this.categoryService = categoryService;
         this.userService = userService;
@@ -72,6 +79,7 @@ public class ItemService {
         this.contentAuditService = contentAuditService;
         this.searchService = searchService;
         this.notificationService = notificationService;
+        this.distributedLock = distributedLock;
     }
 
     /** 发布商品：初始为 DRAFT 草稿。 */
@@ -231,8 +239,10 @@ public class ItemService {
 
     /** 下单锁库存：扣减库存，售罄转 LOCKED。返回是否成功。 */
     public void lockStock(Long itemId, int qty) {
-        Object lock = itemLocks.computeIfAbsent(itemId, k -> new Object());
-        synchronized (lock) {
+        String lockKey = LockKeyBuilder.item(itemId);
+        // 拿不到锁（含 Redis 不可用降级）仍继续执行：正确性由下方 DB 条件更新保证，绝不超卖
+        String token = distributedLock.tryLock(lockKey, LOCK_WAIT_MS, LOCK_LEASE_MS);
+        try {
             Item item = getById(itemId);
             if (!ItemStatus.ONSALE.getCode().equals(item.getStatus())) {
                 throw new BizException(Code.STATE_NOT_ALLOWED, "商品当前不可购买");
@@ -240,31 +250,50 @@ public class ItemService {
             if (item.getStock() < qty) {
                 throw new BizException(Code.STOCK_NOT_ENOUGH);
             }
-            Item upd = new Item();
-            upd.setId(itemId);
-            upd.setStock(item.getStock() - qty);
-            if (upd.getStock() == 0) {
-                upd.setStatus(ItemStatus.LOCKED.getCode());
-            }
-            if (itemMapper.updateById(upd) == 0) {
+            // 条件更新（最终防线）：库存与版本双条件，即使锁完全失效也不可能扣成负数
+            int affected = itemMapper.update(null, new LambdaUpdateWrapper<Item>()
+                    .eq(Item::getId, itemId)
+                    .eq(Item::getStatus, ItemStatus.ONSALE.getCode())
+                    .ge(Item::getStock, qty)
+                    .eq(Item::getVersion, nullSafeVersion(item))
+                    .setSql("stock = stock - " + qty + ", version = version + 1"));
+            if (affected == 0) {
+                // 并发下版本已被其他请求推进，或库存已不足
                 throw new BizException(Code.STOCK_NOT_ENOUGH, "库存扣减失败，请重试");
+            }
+            if (item.getStock() - qty == 0) {
+                setStatus(itemId, ItemStatus.LOCKED);
+            }
+        } finally {
+            if (token != null) {
+                distributedLock.unlock(lockKey, token);
             }
         }
     }
 
     /** 取消订单释放库存：恢复库存；若由 LOCKED 恢复则回 ONSALE。 */
     public void releaseStock(Long itemId, int qty) {
-        Object lock = itemLocks.computeIfAbsent(itemId, k -> new Object());
-        synchronized (lock) {
+        String lockKey = LockKeyBuilder.item(itemId);
+        String token = distributedLock.tryLock(lockKey, LOCK_WAIT_MS, LOCK_LEASE_MS);
+        try {
             Item item = getById(itemId);
-            Item upd = new Item();
-            upd.setId(itemId);
-            upd.setStock(item.getStock() + qty);
-            if (ItemStatus.LOCKED.getCode().equals(item.getStatus()) && upd.getStock() > 0) {
-                upd.setStatus(ItemStatus.ONSALE.getCode());
+            // 回补库存为加法，不存在超卖风险，无需 stock 条件；仅按 ID 定位并推进版本
+            itemMapper.update(null, new LambdaUpdateWrapper<Item>()
+                    .eq(Item::getId, itemId)
+                    .setSql("stock = stock + " + qty + ", version = version + 1"));
+            if (ItemStatus.LOCKED.getCode().equals(item.getStatus()) && item.getStock() + qty > 0) {
+                setStatus(itemId, ItemStatus.ONSALE);
             }
-            itemMapper.updateById(upd);
+        } finally {
+            if (token != null) {
+                distributedLock.unlock(lockKey, token);
+            }
         }
+    }
+
+    /** version 空值防护：null 视为 0，避免条件更新恒不匹配导致误判库存不足。 */
+    private int nullSafeVersion(Item item) {
+        return item.getVersion() == null ? 0 : item.getVersion();
     }
 
     /** 确认收货后标记成交（库存已为 0）。 */
