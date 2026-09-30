@@ -1,0 +1,37 @@
+<view class="page member" wx:if="{{level}}">
+  <!-- 等级头部（主题色随等级） -->
+  <view class="hero" style="background:{{level.color}}">
+    <view class="lv-icon">{{level.icon}}</view>
+    <view class="lv-name">{{level.levelName}}</view>
+    <view class="lv-growth">成长值 {{level.growthValue}}</view>
+  </view>
+
+  <!-- 权益 -->
+  <view class="card sec">
+    <view class="sec-title">会员权益</view>
+    <view class="benefits">
+      <view class="benefit" wx:for="{{benefits}}" wx:key="name">
+        <view class="b-icon">{{item.icon}}</view>
+        <view class="b-name">{{item.name}}</view>
+      </view>
+      <view wx:if="{{!benefits.length}}" class="b-none">暂无专属权益</view>
+    </view>
+  </view>
+
+  <!-- 升级进度 -->
+  <view class="card sec" wx:if="{{level.nextLevelName}}">
+    <view class="sec-title">升级进度</view>
+    <view class="progress">
+      <view class="bar"><view class="bar-in" style="width:{{level.percent}}%"></view></view>
+      <view class="prog-text">再获得 {{level.growthToNext}} 成长值升级为「{{level.nextLevelName}}」</view>
+    </view>
+  </view>
+  <view class="card sec" wx:else>
+    <view class="sec-title">升级进度</view>
+    <view class="prog-text">您已达到最高等级 🎉</view>
+  </view>
+</view>
+
+<view class="empty" wx:else>
+  <view class="icon">👑</view><view class="tip">加载中...</view>
+</view>

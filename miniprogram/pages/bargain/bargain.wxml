@@ -1,0 +1,35 @@
+<view class="page bargain">
+  <!-- 商品摘要 -->
+  <view class="card goods" wx:if="{{itemTitle}}">
+    <image class="g-img" src="{{itemImg}}" mode="aspectFill" wx:if="{{itemImg}}" />
+    <view class="g-ph" wx:else>🛍️</view>
+    <view class="g-info">
+      <view class="g-title ellipsis-2">{{itemTitle}}</view>
+      <view class="g-price">原价 <text class="price">¥{{origPriceText}}</text></view>
+    </view>
+  </view>
+
+  <!-- 出价 -->
+  <view class="card sec">
+    <view class="sec-title">我的出价（元）</view>
+    <view class="offer-row">
+      <text class="rmb">¥</text>
+      <input class="offer-input" type="digit" placeholder="0.00" value="{{offerText}}" bindinput="onOfferInput" />
+      <view class="btn btn-sm submit-btn" bindtap="submit">{{submitting ? '发送中' : '发送出价'}}</view>
+    </view>
+    <view class="tip">出价以「元」填写，提交后按分（×100）发送给卖家，24 小时内有效</view>
+  </view>
+
+  <!-- 议价记录 -->
+  <view class="card sec">
+    <view class="sec-title">议价记录</view>
+    <view class="rec" wx:for="{{records}}" wx:key="id">
+      <view class="rec-top">
+        <text class="rec-offer">出价 ¥{{item.offerText}}</text>
+        <text class="rec-status s-{{item.status}}">{{item.statusText}}</text>
+      </view>
+      <view class="rec-meta">发起 {{item.createdAt}}<text wx:if="{{item.expireText}}"> · 有效期至 {{item.expireText}}</text></view>
+    </view>
+    <view wx:if="{{!loading && !records.length}}" class="empty"><view class="icon">💬</view><view class="tip">还没有议价记录</view></view>
+  </view>
+</view>

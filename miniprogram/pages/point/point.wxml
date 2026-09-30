@@ -1,0 +1,53 @@
+<view class="page point">
+  <!-- 余额头部 -->
+  <view class="hero">
+    <view class="hero-num">{{balance}}</view>
+    <view class="hero-label">我的积分</view>
+    <view class="hero-sub">累计获得 {{totalEarned}} 分</view>
+    <view class="signin-btn {{signedToday ? 'done' : ''}}" bindtap="signin">{{signedToday ? '今日已签' : '每日签到'}}</view>
+  </view>
+
+  <!-- 积分规则 -->
+  <view class="card sec" wx:if="{{config}}">
+    <view class="sec-title">积分规则</view>
+    <view class="rule-row"><text class="r-k">兑换比例</text><text class="r-v">{{config.redeemPointsPerYuan}} 积分 = 1 元</text></view>
+    <view class="rule-row"><text class="r-k">抵扣上限</text><text class="r-v">{{config.maxRedeemRatio * 100}}% 订单金额</text></view>
+    <view class="rule-row"><text class="r-k">交易赚取</text><text class="r-v">每消费 1 元得 {{config.earnPointsPerYuan}} 分</text></view>
+    <view class="rule-row"><text class="r-k">每日签到</text><text class="r-v">基础 {{config.signinBase}} 分（连续 + 加成）</text></view>
+    <view class="rule-row"><text class="r-k">评价奖励</text><text class="r-v">每条 {{config.reviewFixed}} 分</text></view>
+  </view>
+
+  <!-- 抵现试算 -->
+  <view class="card sec">
+    <view class="sec-title">积分抵现试算</view>
+    <view class="field">
+      <text class="f-label">使用积分</text>
+      <input class="f-input" type="number" placeholder="0" value="{{previewUsed}}" bindinput="onUsedInput" />
+    </view>
+    <view class="field">
+      <text class="f-label">订单应付(元)</text>
+      <input class="f-input" type="digit" placeholder="0.00" value="{{previewPayable}}" bindinput="onPayableInput" />
+    </view>
+    <view class="preview-result" wx:if="{{previewDiscountText !== null}}">
+      预计抵扣 <text class="price">¥{{previewDiscountText}}</text>
+    </view>
+    <view class="btn btn-block preview-btn" bindtap="preview">试算抵扣</view>
+  </view>
+
+  <!-- 积分明细 -->
+  <view class="card sec">
+    <view class="sec-title">积分明细</view>
+    <view class="log" wx:for="{{logs}}" wx:key="id">
+      <view class="log-left">
+        <view class="log-biz">{{item.bizText}}</view>
+        <view class="log-remark">{{item.remark}}</view>
+        <view class="log-time">{{item.createdAt}}</view>
+      </view>
+      <view class="log-delta {{item.deltaClass}}">{{item.deltaText}}</view>
+    </view>
+    <view wx:if="{{!loadErr && !logs.length}}" class="empty"><view class="icon">🧾</view><view class="tip">暂无积分明细</view></view>
+    <view wx:elif="{{loadErr}}" class="foot">加载失败，下拉重试</view>
+    <view wx:elif="{{finished}}" class="foot">没有更多了</view>
+    <view wx:elif="{{loading}}" class="foot">加载中...</view>
+  </view>
+</view>

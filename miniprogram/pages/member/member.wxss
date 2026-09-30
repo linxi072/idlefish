@@ -1,0 +1,21 @@
+.member { padding: 24rpx; }
+.hero {
+  border-radius: 24rpx; padding: 56rpx 32rpx; text-align: center; color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.08);
+}
+.lv-icon { font-size: 80rpx; }
+.lv-name { font-size: 38rpx; font-weight: 800; margin-top: 8rpx; }
+.lv-growth { font-size: 26rpx; opacity: 0.92; margin-top: 8rpx; }
+
+.sec { margin-top: 24rpx; }
+.sec-title { font-size: 30rpx; font-weight: 700; margin-bottom: 20rpx; }
+.benefits { display: flex; flex-wrap: wrap; }
+.benefit { width: 33.33%; text-align: center; padding: 20rpx 0; }
+.b-icon { font-size: 48rpx; }
+.b-name { font-size: 24rpx; color: var(--t2); margin-top: 8rpx; }
+.b-none { font-size: 26rpx; color: var(--t3); padding: 20rpx 0; }
+
+.progress { padding: 10rpx 0; }
+.bar { height: 20rpx; background: #F0F1F4; border-radius: 10rpx; overflow: hidden; }
+.bar-in { height: 100%; background: linear-gradient(135deg, #FFCE3D, #FFB300); border-radius: 10rpx; }
+.prog-text { font-size: 26rpx; color: var(--t2); margin-top: 16rpx; }

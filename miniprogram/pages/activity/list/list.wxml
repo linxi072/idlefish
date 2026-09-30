@@ -1,0 +1,27 @@
+<view class="page act-list">
+  <view class="topbar"><view class="tb-title">限时活动</view></view>
+
+  <block wx:if="{{!loadErr && list.length}}">
+    <view class="act card" wx:for="{{list}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+      <image class="act-img" src="{{item.cover}}" mode="aspectFill" wx:if="{{item.cover}}" />
+      <view class="act-img ph" wx:else>🛍️</view>
+      <view class="act-info">
+        <view class="act-title ellipsis-2">{{item.title}}</view>
+        <view class="act-type tag {{item.typeClass === 'seckill' ? 'tag-red' : 'tag-yellow'}}">{{item.typeText}}</view>
+        <view class="act-price">
+          <text class="price"><text class="symbol">¥</text>{{item.priceText}}</text>
+          <text class="origin" wx:if="{{item.originText}}">¥{{item.originText}}</text>
+        </view>
+        <view class="act-progress">
+          <view class="p-bar"><view class="p-in" style="width:{{item.soldPercent}}%"></view></view>
+          <text class="p-text">已抢 {{item.soldPercent}}%</text>
+        </view>
+        <view class="act-count">距结束 {{item.countdownText}}</view>
+      </view>
+    </view>
+    <view wx:if="{{loading}}" class="foot">加载中...</view>
+  </block>
+
+  <view wx:elif="{{loadErr}}" class="empty"><view class="icon">⚠️</view><view class="tip">加载失败，下拉重试</view></view>
+  <view wx:else class="empty"><view class="icon">🎉</view><view class="tip">暂无进行中的活动</view></view>
+</view>

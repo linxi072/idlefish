@@ -1,0 +1,20 @@
+.act-list { padding: 24rpx; }
+.topbar { padding: 8rpx 4rpx 20rpx; }
+.tb-title { font-size: 36rpx; font-weight: 800; }
+
+.act { display: flex; padding: 20rpx; margin-bottom: 20rpx; }
+.act-img { width: 200rpx; height: 200rpx; border-radius: 16rpx; flex-shrink: 0; background: #F2F3F5; }
+.act-img.ph { display: flex; align-items: center; justify-content: center; font-size: 64rpx; }
+.act-info { flex: 1; margin-left: 20rpx; display: flex; flex-direction: column; }
+.act-title { font-size: 28rpx; font-weight: 600; height: 76rpx; }
+.act-type { align-self: flex-start; margin-top: 6rpx; }
+.act-price { margin-top: 10rpx; display: flex; align-items: baseline; }
+.act-price .price { font-size: 38rpx; }
+.act-price .symbol { font-size: 24rpx; }
+.act-price .origin { font-size: 24rpx; color: var(--t3); text-decoration: line-through; margin-left: 12rpx; }
+.act-progress { margin-top: 12rpx; display: flex; align-items: center; }
+.p-bar { flex: 1; height: 14rpx; background: #F0F1F4; border-radius: 7rpx; overflow: hidden; }
+.p-in { height: 100%; background: linear-gradient(135deg, var(--red), var(--red-dark)); border-radius: 7rpx; }
+.p-text { font-size: 22rpx; color: var(--t3); margin-left: 12rpx; }
+.act-count { margin-top: 10rpx; font-size: 24rpx; color: var(--orange); }
+.foot { text-align: center; color: var(--t3); font-size: 24rpx; padding: 16rpx 0; }

@@ -1,0 +1,39 @@
+<view class="page act-detail" wx:if="{{act}}">
+  <image class="banner" src="{{item.cover}}" mode="aspectFill" wx:if="{{item.cover}}" />
+  <view class="banner ph" wx:else>🛍️</view>
+
+  <view class="card info">
+    <view class="i-title">{{item.title}}</view>
+    <view class="i-type tag {{act.type === 'SECKILL' ? 'tag-red' : 'tag-yellow'}}">{{act.typeText}}</view>
+    <view class="i-price">
+      <text class="price price-lg"><text class="symbol">¥</text>{{act.priceText}}</text>
+      <text class="origin" wx:if="{{item.originText}}">¥{{item.originText}}</text>
+    </view>
+  </view>
+
+  <view class="card meta">
+    <view class="m-row"><text class="m-k">倒计时</text><text class="m-v countdown">{{countdownText}}</text></view>
+    <view class="m-row"><text class="m-k">剩余库存</text><text class="m-v">{{act.left}}</text></view>
+    <view class="m-row" wx:if="{{act.type === 'GROUP'}}"><text class="m-k">成团人数</text><text class="m-v">{{act.groupSize}} 人</text></view>
+    <view class="m-row" wx:if="{{act.type === 'GROUP'}}"><text class="m-k">拼团有效期</text><text class="m-v">{{act.groupValidMinutes}} 分钟</text></view>
+    <view class="m-row"><text class="m-k">每人限购</text><text class="m-v">{{act.limitPerUser > 0 ? act.limitPerUser + ' 件' : '不限'}}</text></view>
+  </view>
+
+  <view class="card progress-sec">
+    <view class="sec-title">已抢进度</view>
+    <view class="p-bar"><view class="p-in" style="width:{{act.soldPercent}}%"></view></view>
+    <view class="p-text">已参与 {{act.soldPercent}}%</view>
+  </view>
+
+  <view class="safe-tip">🛡️ 担保交易：参与后请于结算页完成下单，库存将由活动锁定</view>
+
+  <view class="action-bar">
+    <view class="btn btn-block join-btn {{joined ? 'done' : ''}}" bindtap="join">
+      {{joined ? (act.type === 'GROUP' ? '已开团' : '已参与') : (act.type === 'GROUP' ? '我要开团' : '立即抢购')}}
+    </view>
+  </view>
+</view>
+
+<view class="empty" wx:else>
+  <view class="icon">🎉</view><view class="tip">活动不存在或已下架</view>
+</view>

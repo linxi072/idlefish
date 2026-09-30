@@ -1,0 +1,26 @@
+.bargain { padding: 24rpx; }
+.goods { display: flex; align-items: center; }
+.g-img, .g-ph { width: 120rpx; height: 120rpx; border-radius: 12rpx; flex-shrink: 0; background: #F2F3F5; }
+.g-ph { display: flex; align-items: center; justify-content: center; font-size: 48rpx; }
+.g-info { margin-left: 20rpx; flex: 1; }
+.g-title { font-size: 28rpx; font-weight: 600; }
+.g-price { font-size: 26rpx; color: var(--t2); margin-top: 10rpx; }
+
+.sec { margin-top: 24rpx; }
+.sec-title { font-size: 30rpx; font-weight: 700; margin-bottom: 18rpx; }
+.offer-row { display: flex; align-items: center; }
+.rmb { font-size: 36rpx; font-weight: 700; color: var(--red); margin-right: 8rpx; }
+.offer-input { flex: 1; background: #F7F8FA; border-radius: 12rpx; padding: 18rpx 20rpx; font-size: 32rpx; }
+.submit-btn { margin-left: 16rpx; }
+.tip { font-size: 22rpx; color: var(--t3); margin-top: 14rpx; }
+
+.rec { padding: 18rpx 0; border-bottom: 2rpx solid #F2F3F5; }
+.rec:last-child { border-bottom: none; }
+.rec-top { display: flex; justify-content: space-between; align-items: center; }
+.rec-offer { font-size: 28rpx; font-weight: 600; }
+.rec-status { font-size: 24rpx; padding: 4rpx 14rpx; border-radius: 8rpx; }
+.s-pending { color: var(--orange); background: #FFF1E0; }
+.s-accepted { color: var(--green); background: #EAF6EE; }
+.s-rejected { color: var(--red); background: #FFECEC; }
+.s-expired { color: var(--t3); background: #F0F1F4; }
+.rec-meta { font-size: 22rpx; color: var(--t4); margin-top: 8rpx; }
