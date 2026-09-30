@@ -42,6 +42,8 @@ public enum Code {
     DISPUTE_NOT_FOUND(30019, "维权工单不存在"),
     DISPUTE_STATE_NOT_ALLOWED(30020, "当前工单状态不允许该操作"),
     DISPUTE_EXISTS(30021, "该订单存在未结维权工单"),
+    /** 幂等：同一请求正在处理中（重复提交被拦截，F-18 幂等框架）。 */
+    BIZ_PROCESSING(30022, "处理中，请勿重复提交"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

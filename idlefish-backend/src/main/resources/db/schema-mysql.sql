@@ -775,3 +775,21 @@ CREATE TABLE IF NOT EXISTS t_dispute (
     KEY idx_dispute_seller (seller_id),
     KEY idx_dispute_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 幂等记录（F-18 幂等框架）：三态 PROCESSING/SUCCESS/FAILED
+-- uk_idem_key 为终局防重屏障（并发下仅一个请求可插入成功），与 uk_user_coupon 限领同一范式
+CREATE TABLE IF NOT EXISTS t_idempotent_record (
+    id             BIGINT       NOT NULL AUTO_INCREMENT,
+    idem_key       VARCHAR(128) NOT NULL COMMENT '幂等键 {bizType}:{bizKey}，超长取 SHA-256 摘要',
+    biz_type       VARCHAR(32)  NOT NULL COMMENT '业务类型：order.create/refund.apply/withdraw.apply',
+    status         VARCHAR(16)  NOT NULL COMMENT 'PROCESSING/SUCCESS/FAILED',
+    result         TEXT         COMMENT '首次成功结果快照（JSON），用于重复请求回放',
+    attempt        INT          NOT NULL DEFAULT 1 COMMENT '执行次数（超时接管递增）',
+    expire_at      DATETIME     NOT NULL COMMENT 'PROCESSING 过期时刻，超时可被接管',
+    create_time    DATETIME,
+    update_time    DATETIME,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_idem_key (idem_key),
+    KEY idx_idem_expire (expire_at),
+    KEY idx_idem_create (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
