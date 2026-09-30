@@ -5,6 +5,7 @@ import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.enums.OrderStatus;
 import com.idlefish.trade.common.enums.RefundStatus;
+import com.idlefish.trade.common.idempotent.IdempotentService;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.item.service.ItemService;
 import com.idlefish.trade.trade.dto.RefundApplyDTO;
@@ -40,12 +41,22 @@ public class RefundService {
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
 
+    /** 幂等（F-18）：拦截重复退款申请，重复请求回放首次退款单号。 */
+    private final IdempotentService idempotentService;
+
+    /** 退款申请幂等业务类型。 */
+    private static final String BIZ_REFUND_APPLY = "refund.apply";
+
+    /** 幂等 PROCESSING 过期秒数。 */
+    private static final long IDEMPOTENT_TTL_SECONDS = 30L;
+
     private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     public RefundService(RefundMapper refundMapper, OrderMapper orderMapper,
                          PayOrderMapper payOrderMapper, PayService payService,
                          ItemService itemService, FundFlowMapper fundFlowMapper,
-                         NotificationService notificationService, MetricsRegistry metrics) {
+                         NotificationService notificationService, MetricsRegistry metrics,
+                         IdempotentService idempotentService) {
         this.refundMapper = refundMapper;
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
@@ -54,10 +65,23 @@ public class RefundService {
         this.fundFlowMapper = fundFlowMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.idempotentService = idempotentService;
     }
 
-    /** 申请退款（幂等：同订单进行中退款单则直接返回）。 */
+    /**
+     * 申请退款。
+     * <p>
+     * 幂等（F-18）：同买家同订单同类型重复提交只执行一次，重复请求回放首次退款单号。
+     * findActiveRefund 保留为业务级兜底（防重复生成进行中退款单），两层防护互不冲突。
+     */
     public String apply(Long buyerId, RefundApplyDTO dto) {
+        String bizKey = buyerId + ":" + dto.getOrderNo() + ":" + dto.getType();
+        return idempotentService.execute(BIZ_REFUND_APPLY, bizKey, IDEMPOTENT_TTL_SECONDS,
+                String.class, () -> doApply(buyerId, dto));
+    }
+
+    /** 实际退款申请逻辑。 */
+    private String doApply(Long buyerId, RefundApplyDTO dto) {
         Order o = orderMapper.selectOne(new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, dto.getOrderNo()));
         if (o == null) {
             throw new BizException(Code.ORDER_NOT_FOUND);

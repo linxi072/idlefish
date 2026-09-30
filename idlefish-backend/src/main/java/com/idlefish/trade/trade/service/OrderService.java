@@ -9,6 +9,9 @@ import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.enums.OrderStatus;
 import com.idlefish.trade.common.enums.PayStatus;
+import com.idlefish.trade.common.idempotent.IdempotentService;
+import com.idlefish.trade.common.lock.DistributedLock;
+import com.idlefish.trade.common.lock.LockKeyBuilder;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.common.util.MoneyUtil;
 import com.idlefish.trade.item.entity.Item;
@@ -35,6 +38,8 @@ import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -68,6 +73,27 @@ public class OrderService {
     private final PointService pointService;
     private final ActivityService activityService;
 
+    /** 幂等（F-18）：拦截重复提交，重复请求回放首次结果。 */
+    private final IdempotentService idempotentService;
+
+    /** 分布式锁：下单库存争抢互斥（多实例安全）。 */
+    private final DistributedLock distributedLock;
+
+    /** 事务模板：显式事务边界，保证"锁包住事务"。 */
+    private final TransactionTemplate txTemplate;
+
+    /** 下单幂等业务类型。 */
+    private static final String BIZ_ORDER_CREATE = "order.create";
+
+    /** 幂等 PROCESSING 过期秒数（超时后允许被接管）。 */
+    private static final long IDEMPOTENT_TTL_SECONDS = 30L;
+
+    /** 库存锁等待上限（毫秒），超时快速失败。 */
+    private static final long LOCK_WAIT_MS = 1_000L;
+
+    /** 库存锁租约（毫秒），到期自动释放防死锁。 */
+    private static final long LOCK_LEASE_MS = 5_000L;
+
     private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     public OrderService(OrderMapper orderMapper, PayOrderMapper payOrderMapper, LogisticsMapper logisticsMapper,
@@ -76,7 +102,9 @@ public class OrderService {
                         SettlementService settlementService, TrackService trackService, ObjectMapper objectMapper,
                         @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
                         CreditService creditService, com.idlefish.trade.marketing.service.CouponService couponService,
-                        PointService pointService, ActivityService activityService) {
+                        PointService pointService, ActivityService activityService,
+                        IdempotentService idempotentService, DistributedLock distributedLock,
+                        PlatformTransactionManager txManager) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.logisticsMapper = logisticsMapper;
@@ -93,17 +121,48 @@ public class OrderService {
         this.couponService = couponService;
         this.pointService = pointService;
         this.activityService = activityService;
+        this.idempotentService = idempotentService;
+        this.distributedLock = distributedLock;
+        this.txTemplate = new TransactionTemplate(txManager);
     }
 
-    /** 创建订单（幂等：同买家同商品存在待支付订单则直接返回）。 */
+    /**
+     * 创建订单。
+     * <p>
+     * 三层防护（F-18）：
+     * <ol>
+     *   <li>幂等层（最外）：同买家同商品重复提交只执行一次，重复请求回放首次结果；
+     *       替代原 findPendingOrder 的 check-then-act 竞态逻辑。</li>
+     *   <li>库存锁：多实例互斥，避免并发争抢（Redis 不可用时降级，正确性由 DB 条件更新保证）。</li>
+     *   <li>事务：库存扣减与订单/支付单写入原子，异常全部回滚（修复原"库存已扣、订单未建"泄漏）。</li>
+     * </ol>
+     */
     public OrderCreateVO createOrder(Long buyerId, OrderCreateDTO dto) {
+        String bizKey = buyerId + ":" + dto.getItemId();
+        return idempotentService.execute(BIZ_ORDER_CREATE, bizKey, IDEMPOTENT_TTL_SECONDS,
+                OrderCreateVO.class, () -> doCreateOrder(buyerId, dto));
+    }
+
+    /**
+     * 实际下单：锁必须包住事务（锁在外层、事务在内层），
+     * 否则锁释放早于事务提交，会让其他实例读到未提交的中间态。
+     */
+    private OrderCreateVO doCreateOrder(Long buyerId, OrderCreateDTO dto) {
+        String lockKey = LockKeyBuilder.item(dto.getItemId());
+        String token = distributedLock.tryLock(lockKey, LOCK_WAIT_MS, LOCK_LEASE_MS);
+        try {
+            return txTemplate.execute(status -> createOrderInTx(buyerId, dto));
+        } finally {
+            if (token != null) {
+                distributedLock.unlock(lockKey, token);
+            }
+        }
+    }
+
+    /** 事务内下单逻辑。 */
+    private OrderCreateVO createOrderInTx(Long buyerId, OrderCreateDTO dto) {
         Long itemId = dto.getItemId();
         int qty = dto.getQuantity() == null ? 1 : dto.getQuantity();
-
-        OrderCreateVO pending = findPendingOrder(buyerId, itemId);
-        if (pending != null) {
-            return pending;
-        }
 
         itemService.lockStock(itemId, qty);
         Item item = itemMapper.selectById(itemId);
@@ -130,21 +189,6 @@ public class OrderService {
         trackOrderCreate(buyerId, o.getOrderNo(), o.getPayAmount());
 
         return buildCreateVO(o);
-    }
-
-    /** 查询同买家同商品的待支付订单，存在则包装为创建结果（幂等返回）。 */
-    private OrderCreateVO findPendingOrder(Long buyerId, Long itemId) {
-        Order exist = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
-                .eq(Order::getBuyerId, buyerId)
-                .eq(Order::getItemId, itemId)
-                .eq(Order::getStatus, OrderStatus.PENDING_PAY.getCode()));
-        if (exist == null) {
-            return null;
-        }
-        OrderCreateVO vo = new OrderCreateVO();
-        vo.setOrderNo(exist.getOrderNo());
-        vo.setAmount(exist.getPayAmount());
-        return vo;
     }
 
     /** 组装订单实体（含金额、快照，未落库）。 */

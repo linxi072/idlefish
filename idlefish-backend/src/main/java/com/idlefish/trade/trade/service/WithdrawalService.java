@@ -3,6 +3,7 @@ package com.idlefish.trade.trade.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
+import com.idlefish.trade.common.idempotent.IdempotentService;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.common.observability.MetricsRegistry;
@@ -14,9 +15,12 @@ import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.WithdrawalMapper;
 import com.idlefish.trade.user.mapper.UserMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -37,18 +41,36 @@ public class WithdrawalService {
     private final MetricsRegistry metrics;
     private final FundEscrowService fundEscrowService;
 
+    /** 幂等（F-18）：防连点/网络重试导致重复冻结与重复出款。 */
+    private final IdempotentService idempotentService;
+
+    /** 事务模板：显式事务边界（原 @Transactional 在拆分后内层方法上会因自调用失效）。 */
+    private final TransactionTemplate txTemplate;
+
+    /** 提现申请幂等业务类型。 */
+    private static final String BIZ_WITHDRAW_APPLY = "withdraw.apply";
+
+    /** 幂等 PROCESSING 过期秒数（短窗口，仅防连点/重试）。 */
+    private static final long IDEMPOTENT_TTL_SECONDS = 10L;
+
+    /** 幂等键时间窗（分钟级）：避免误杀用户稍后再次提现相同金额。 */
+    private static final DateTimeFormatter MINUTE_WINDOW_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
+
     /** 系统告警接收者（管理员账号 userId）；资金出款失败告警发往此处。 */
     private static final long ADMIN_ALERT_USER_ID = 1L;
 
     public WithdrawalService(WithdrawalMapper withdrawalMapper, FundFlowMapper fundFlowMapper,
                              UserMapper userMapper, NotificationService notificationService,
-                             MetricsRegistry metrics, FundEscrowService fundEscrowService) {
+                             MetricsRegistry metrics, FundEscrowService fundEscrowService,
+                             IdempotentService idempotentService, PlatformTransactionManager txManager) {
         this.withdrawalMapper = withdrawalMapper;
         this.fundFlowMapper = fundFlowMapper;
         this.userMapper = userMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
         this.fundEscrowService = fundEscrowService;
+        this.idempotentService = idempotentService;
+        this.txTemplate = new TransactionTemplate(txManager);
     }
 
     /** 累计结算入账（SETTLE IN 流水）。 */
@@ -81,9 +103,22 @@ public class WithdrawalService {
                 .stream().mapToLong(Withdrawal::getAmount).sum();
     }
 
-    /** 申请提现（先冻结）。 */
-    @Transactional
+    /**
+     * 申请提现（先冻结）。
+     * <p>
+     * 幂等（F-18）：同用户同金额在分钟级窗口内重复提交只执行一次，防止连点/网络重试造成重复冻结与重复出款。
+     * <p>
+     * 事务改用 TransactionTemplate 显式管理：原 {@code @Transactional} 若保留在拆分后的内层方法上
+     * 会因同类自调用失效；且幂等记录必须写在独立事务中，否则业务回滚会抹掉记录导致幂等失效。
+     */
     public Withdrawal apply(Long userId, Long amount, String account) {
+        String bizKey = userId + ":" + amount + ":" + LocalDateTime.now().format(MINUTE_WINDOW_FMT);
+        return idempotentService.execute(BIZ_WITHDRAW_APPLY, bizKey, IDEMPOTENT_TTL_SECONDS,
+                Withdrawal.class, () -> txTemplate.execute(status -> doApply(userId, amount, account)));
+    }
+
+    /** 事务内提现逻辑（冻结 + 冻结流水 + 通知）。 */
+    private Withdrawal doApply(Long userId, Long amount, String account) {
         if (userMapper.selectById(userId) == null) {
             throw new BizException(Code.USER_NOT_FOUND);
         }
