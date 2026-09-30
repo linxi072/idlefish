@@ -6,7 +6,7 @@ Page({
     user: { nickname: '未登录', avatar: '', creditScore: 0, phone: '' },
     notifUnread: 0,
     menus: [
-      { icon: '📦', name: '我的发布', url: '' },
+      { icon: '📦', name: '我的发布', url: '/pages/my-publish/my-publish' },
       { icon: '📋', name: '我的订单', url: '/pages/order/list/list' },
       { icon: '💰', name: '我的钱包', url: '/pages/wallet/index/index' },
       { icon: '🎟️', name: '优惠券', url: '/pages/coupon/my/my' },
@@ -21,7 +21,7 @@ Page({
       { icon: '⭐', name: '我的收藏', url: '/pages/favorite/favorite' },
       { icon: '🤝', name: '邀请有礼', url: '/pages/invite/invite' },
       { icon: '🔍', name: '搜索', url: '/pages/search/search' },
-      { icon: '⚙️', name: '设置', url: '' }
+      { icon: '⚙️', name: '设置', url: '/pages/settings/settings' }
     ]
   },
 

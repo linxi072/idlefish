@@ -1,0 +1,31 @@
+<view class="page settings">
+  <view class="card account">
+    <image class="avatar" src="{{user.avatar || 'https://picsum.photos/seed/me/200'}}" mode="aspectFill" />
+    <view class="a-info">
+      <view class="nickname">{{user.nickname}}</view>
+      <view class="credit">信用分 {{user.creditScore}} · 已实名</view>
+    </view>
+  </view>
+
+  <view class="card menu">
+    <view class="m-item between">
+      <text class="m-name">消息推送通知</text>
+      <switch checked="{{notifyOn}}" color="#FFB300" bindchange="onNotifyChange" />
+    </view>
+    <view class="m-item" bindtap="onAbout">
+      <text class="m-name">关于{{appName}}</text>
+      <text class="m-extra">{{version}}</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <view class="m-item" bindtap="onAgreement">
+      <text class="m-name">用户协议</text>
+      <text class="m-arrow">›</text>
+    </view>
+    <view class="m-item" bindtap="onPrivacy">
+      <text class="m-name">隐私政策</text>
+      <text class="m-arrow">›</text>
+    </view>
+  </view>
+
+  <button class="btn btn-red btn-block logout" bindtap="logout">退出登录</button>
+</view>

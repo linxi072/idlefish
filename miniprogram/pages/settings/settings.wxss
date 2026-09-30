@@ -1,0 +1,17 @@
+/* settings.wxss —— 设置页（复用 app.wxss 设计 token） */
+.settings { padding: 24rpx; }
+
+.account { display: flex; align-items: center; padding: 36rpx 28rpx; }
+.avatar { width: 96rpx; height: 96rpx; border-radius: 50%; margin-right: 24rpx; background: #eee; }
+.a-info { display: flex; flex-direction: column; }
+.nickname { font-size: 32rpx; font-weight: 600; color: var(--t1); }
+.credit { font-size: 24rpx; color: var(--t3); margin-top: 8rpx; }
+
+.menu { margin-top: 24rpx; padding: 0 28rpx; }
+.m-item { display: flex; align-items: center; height: 96rpx; border-bottom: 2rpx solid #F2F3F5; }
+.m-item:last-child { border-bottom: none; }
+.m-name { flex: 1; font-size: 30rpx; color: var(--t1); }
+.m-extra { font-size: 26rpx; color: var(--t3); margin-right: 12rpx; }
+.m-arrow { font-size: 36rpx; color: var(--t4); }
+
+.logout { margin-top: 48rpx; }

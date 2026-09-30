@@ -278,7 +278,14 @@ module.exports = {
     const id = 9000 + Math.floor(Math.random() * 999);
     return delay({ id, status: 'pending_review' });
   },
-  myItems() { return delay(items.filter(i => i.seller.id === me.id).concat([{ id: 9999, title: '我的闲置（已发布示例）', price: 88, img: IMG('my'), status: 'onsale', categoryName: '其他' }])); },
+  myItems() {
+    const mine = [
+      { id: 9007, title: 'iPhone 13 mini 128G 星光色 自用出', price: 3200, priceYuan: 3200, originalPrice: 4599, originalPriceYuan: 4599, img: IMG('mine1'), images: [IMG('mine1'), IMG('mine2')], categoryName: 'iPhone', condition: '95新', status: 'onsale', auditStatus: 'pass', createdAt: Date.now() - 3600 * 1000 * 2 },
+      { id: 9008, title: '九成新 Kindle Paperwhite 阅读器', price: 380, priceYuan: 380, img: IMG('mine3'), images: [IMG('mine3')], categoryName: '图书', condition: '9成新', status: 'offshelf', auditStatus: 'pass', createdAt: Date.now() - 3600 * 1000 * 48 },
+      { id: 9999, title: '我的闲置（已发布示例）', price: 88, priceYuan: 88, img: IMG('my'), images: [IMG('my')], status: 'onsale', auditStatus: 'pass', categoryName: '其他', createdAt: Date.now() - 3600 * 1000 * 120 }
+    ];
+    return delay(mine);
+  },
   getAddresses() { return delay(addresses); },
   saveAddress(dto) { const a = Object.assign({ id: Date.now() }, dto); addresses.push(a); return delay(a); },
   deleteAddress(id) { return delay({ ok: true }); },
