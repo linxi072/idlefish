@@ -3,6 +3,8 @@ package com.idlefish.trade.notify.channel;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.idlefish.trade.common.IdlefishProperties;
+import com.idlefish.trade.common.lock.DistributedLock;
+import com.idlefish.trade.common.lock.LockKeyBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -26,22 +28,28 @@ public class RealWxSubscribeChannelImpl implements NotifyChannel {
     private static final String SEND_URL = "https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=%s";
     /** token 提前 5 分钟刷新，避免临界过期。 */
     private static final long TOKEN_REFRESH_AHEAD_MS = 5 * 60 * 1000L;
+    /** 跨实例锁参数：最长等待 1s，租约 5s（刷新为轻操作）。 */
+    private static final long LOCK_WAIT_MS = 1000L;
+    private static final long LOCK_LEASE_MS = 5000L;
 
     private final IdlefishProperties props;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final UserOpenidResolver openidResolver;
+    private final DistributedLock lock;
 
-    /** 缓存的 access_token 与过期时间戳（内存，单实例；多实例可改 Redis）。 */
+    /** 缓存的 access_token 与过期时间戳（内存，单实例；多实例经 Redis 锁单飞刷新）。 */
     private volatile String cachedToken;
     private volatile long tokenExpireAt;
 
     public RealWxSubscribeChannelImpl(IdlefishProperties props, RestTemplate restTemplate,
-                                      ObjectMapper objectMapper, UserOpenidResolver openidResolver) {
+                                      ObjectMapper objectMapper, UserOpenidResolver openidResolver,
+                                      DistributedLock lock) {
         this.props = props;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.openidResolver = openidResolver;
+        this.lock = lock;
     }
 
     @Override
@@ -85,39 +93,57 @@ public class RealWxSubscribeChannelImpl implements NotifyChannel {
         }
     }
 
-    /** 获取 access_token（内存缓存 + 提前刷新；微信失败返回 null 由调用方回落）。 */
+    /**
+     * 获取 access_token（内存缓存 + 提前刷新；微信失败返回 null 由调用方回落）。
+     * <p>多实例下经 Redis 分布式锁做跨实例单飞刷新；Redis 不可用 / 获取超时则退化为本实例
+     * synchronized 单飞（token 刷新幂等，安全），与 V1.0.4 库存锁同样 fail-open 有界。
+     */
     private String resolveToken() {
         long now = System.currentTimeMillis();
         if (cachedToken != null && now < tokenExpireAt - TOKEN_REFRESH_AHEAD_MS) {
             return cachedToken;
         }
-        synchronized (this) {
-            if (cachedToken != null && now < tokenExpireAt - TOKEN_REFRESH_AHEAD_MS) {
-                return cachedToken;
-            }
+        String token = lock.tryLock(LockKeyBuilder.wxSubscribeToken(), LOCK_WAIT_MS, LOCK_LEASE_MS);
+        if (token != null) {
             try {
-                String appid = props.getLogin() == null ? null : props.getLogin().getAppid();
-                String secret = props.getLogin() == null ? null : props.getLogin().getSecret();
-                if (appid == null || secret == null) {
-                    log.warn("[notify:wx-subscribe] 微信 appid/secret 未配置，无法获取 access_token");
-                    return null;
-                }
-                String url = String.format(TOKEN_URL, appid, secret);
-                String resp = restTemplate.getForObject(url, String.class);
-                JsonNode node = objectMapper.readTree(resp);
-                String token = node.path("access_token").asText(null);
-                if (token == null) {
-                    log.warn("[notify:wx-subscribe] 微信返回无 access_token: {}", resp);
-                    return null;
-                }
-                long expiresIn = node.path("expires_in").asLong(7200L);
-                cachedToken = token;
-                tokenExpireAt = now + expiresIn * 1000L;
-                return token;
-            } catch (Exception e) {
-                log.warn("[notify:wx-subscribe] 获取 access_token 异常(回落): {}", e.getMessage());
+                return refreshTokenIfNeeded(now);
+            } finally {
+                lock.unlock(LockKeyBuilder.wxSubscribeToken(), token);
+            }
+        }
+        // 降级：获取锁超时或 Redis 不可用 → 本实例 synchronized 单飞刷新（刷新幂等，安全）
+        synchronized (this) {
+            return refreshTokenIfNeeded(now);
+        }
+    }
+
+    /** 双重检查后刷新 access_token（调用方已持分布式锁或处于 synchronized 临界区）。返回 null 表示获取失败，由调用方回落。 */
+    private String refreshTokenIfNeeded(long now) {
+        if (cachedToken != null && now < tokenExpireAt - TOKEN_REFRESH_AHEAD_MS) {
+            return cachedToken;
+        }
+        try {
+            String appid = props.getLogin() == null ? null : props.getLogin().getAppid();
+            String secret = props.getLogin() == null ? null : props.getLogin().getSecret();
+            if (appid == null || secret == null) {
+                log.warn("[notify:wx-subscribe] 微信 appid/secret 未配置，无法获取 access_token");
                 return null;
             }
+            String url = String.format(TOKEN_URL, appid, secret);
+            String resp = restTemplate.getForObject(url, String.class);
+            JsonNode node = objectMapper.readTree(resp);
+            String token = node.path("access_token").asText(null);
+            if (token == null) {
+                log.warn("[notify:wx-subscribe] 微信返回无 access_token: {}", resp);
+                return null;
+            }
+            long expiresIn = node.path("expires_in").asLong(7200L);
+            cachedToken = token;
+            tokenExpireAt = now + expiresIn * 1000L;
+            return token;
+        } catch (Exception e) {
+            log.warn("[notify:wx-subscribe] 获取 access_token 异常(回落): {}", e.getMessage());
+            return null;
         }
     }
 }
