@@ -10,7 +10,9 @@ export default {
       // 提现
       wdList: [], wdLoading: false, wdStatusFilter: '',
       // 对账
-      reconDay: '', reconLoading: false, recon: null
+      reconDay: '', reconLoading: false, recon: null,
+      // 结算解冻
+      unfreezeId: '', unfreezing: false
     };
   },
   computed: {
@@ -61,11 +63,25 @@ export default {
       finally { this.reconLoading = false; }
     },
     reconTypeTag(t) { return t === 'refund' ? 'danger' : 'success'; },
-    reconTypeText(t) { return t === 'refund' ? '退款' : '支付'; }
+    reconTypeText(t) { return t === 'refund' ? '退款' : '支付'; },
+    async unfreeze() {
+      const id = Number(this.unfreezeId);
+      if (!id || id <= 0) { this.$message.error('请输入有效的结算单 ID'); return; }
+      try {
+        await this.$confirm(`确认解冻结算单 #${id}？解冻后该单将重新进入 T+1 放款队列。`, '结算解冻', { type: 'warning' });
+      } catch { return; }
+      this.unfreezing = true;
+      try {
+        await walletApi.unfreezeSettlement(id);
+        this.$message.success('已提交解冻，结算单将重新进入放款队列');
+        this.unfreezeId = '';
+      } catch (e) { notifyError(this, e, '解冻失败'); }
+      finally { this.unfreezing = false; }
+    }
   },
   template: `
   <div>
-    <h2 class="page-title">钱包 / 提现与对账</h2>
+    <h2 class="page-title">资金财务（提现 / 对账 / 结算解冻）</h2>
 
     <el-tabs>
       <el-tab-pane label="提现管理">
@@ -136,6 +152,22 @@ export default {
             </el-table>
           </div>
           <div v-else-if="!reconLoading" class="empty-tip">暂无对账数据</div>
+        </el-card>
+      </el-tab-pane>
+
+      <el-tab-pane label="结算解冻">
+        <el-card shadow="never">
+          <el-alert type="info" :closable="false" show-icon
+            title="结算单在 T+1 放款时，若卖家存在未处置的高危风控事件会被冻结（status=frozen）；待风控事件处置完成后，在此输入结算单 ID 手动解冻，使其重新进入放款队列（frozen → pending）。"></el-alert>
+          <el-form inline style="margin-top:16px">
+            <el-form-item label="结算单 ID">
+              <el-input v-model="unfreezeId" placeholder="请输入结算单 ID（数字）" style="width:240px" clearable></el-input>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="warning" :loading="unfreezing" :disabled="!unfreezeId" @click="unfreeze">解冻结算单</el-button>
+            </el-form-item>
+          </el-form>
+          <div class="empty-tip">提示：冻结结算单由结算定时任务（processDue）与风控联动自动产生；当前后端未提供冻结列表端点，需凭结算单 ID 操作。</div>
         </el-card>
       </el-tab-pane>
     </el-tabs>

@@ -37,6 +37,16 @@ export const activities = [
   { id: 5, itemId: 9005, type: 'SECKILL', activityPrice: 99900, stock: 20, soldCount: 18, limitPerUser: 1, groupSize: null, groupValidMinutes: null, status: 'ONGOING', startAt: '2026-09-30 08:00:00', endAt: '2026-10-03 23:59:59' }
 ];
 
+// 待审评价（F-06，status: 0=待审核 / 1=通过 / 2=驳回；后端 pendingList 仅返 0）
+// 引用在售商品 9001~9006；评价人 reviewerId / 被评人 targetId 取自 users（2001=我/买家，1001~1004=卖家）
+export const reviews = [
+  { id: 1, itemId: 9001, reviewerId: 2001, targetId: 1001, role: 'BUYER_SELLER', rating: 5, content: '机器成色很好，屏幕无划痕，配件齐全，卖家发货快，好评！', anonymous: 0, status: 0, createdAt: '2026-09-22 14:30' },
+  { id: 2, itemId: 9002, reviewerId: 2001, targetId: 1001, role: 'BUYER_SELLER', rating: 4, content: '手机跟描述一致，电池效率 91% 属实，就是包装盒有点旧。', anonymous: 0, status: 0, createdAt: '2026-09-22 15:10' },
+  { id: 3, itemId: 9003, reviewerId: 1002, targetId: 2001, role: 'SELLER_BUYER', rating: 5, content: '买家付款及时，沟通顺畅，已确认收货。', anonymous: 1, status: 0, createdAt: '2026-09-23 09:20' },
+  { id: 4, itemId: 9005, reviewerId: 2001, targetId: 1001, role: 'BUYER_SELLER', rating: 1, content: '耳机降噪明显不如宣传，怀疑不是正品，申请平台复核。', anonymous: 0, status: 0, createdAt: '2026-09-23 11:05' },
+  { id: 5, itemId: 9006, reviewerId: 1002, targetId: 2001, role: 'SELLER_BUYER', rating: 3, content: '交易正常完成，中评。', anonymous: 1, status: 0, createdAt: '2026-09-24 16:40' }
+];
+
 export const orders = [
   { orderNo: 'NO20260921001', title: 'Switch OLED 续航版', buyer: '我', seller: '数码小哥', amount: 1380, status: 'pending_pay', createdAt: '2026-09-21 11:00' },
   { orderNo: 'NO20260920002', title: 'MacBook Air M1', buyer: '我', seller: '衣橱清仓', amount: 4200, status: 'shipping', logistic: '顺丰速运 SF1234567890', createdAt: '2026-09-20 09:00' },
@@ -63,6 +73,14 @@ export const auditLogs = [
   { opId: 'A1', operator: 'admin', target: 'item:9002', action: '通过审核', createdAt: '2026-09-21 09:35' },
   { opId: 'A2', operator: 'admin', target: 'item:9003', action: '通过审核', createdAt: '2026-09-20 21:10' },
   { opId: 'A3', operator: 'risk', target: 'user:1003', action: '封禁账号', createdAt: '2026-09-21 07:56' }
+];
+
+export const riskRules = [
+  { code: 'R1_HIGH_PUBLISH', name: '高频发布限制', type: 'FREQUENCY', level: 'mid', scope: 'user', threshold: 20, windowMin: 60, priority: 1, enabled: 1, description: '单位时间内发布次数超阈值则限流' },
+  { code: 'R2_NEW_DEVICE_PAY', name: '新设备支付校验', type: 'DEVICE', level: 'high', scope: 'device', threshold: 1, windowMin: 1, priority: 2, enabled: 1, description: '新设备首次支付触发二次验证' },
+  { code: 'R3_SUSPECT_KEYWORD', name: '敏感词命中', type: 'KEYWORD', level: 'high', scope: 'user', threshold: 1, windowMin: 1, priority: 3, enabled: 1, description: '发布含敏感词内容直接拦截' },
+  { code: 'R4_LOW_CREDIT_TRADE', name: '低信用交易限速', type: 'CREDIT', level: 'low', scope: 'user', threshold: 60, windowMin: 1, priority: 4, enabled: 0, description: '信用分低于阈值时限制大额交易' },
+  { code: 'R5_ABNORMAL_DISCOUNT', name: '异常折扣识别', type: 'PRICE', level: 'mid', scope: 'user', threshold: 50, windowMin: 1, priority: 5, enabled: 1, description: '折扣力度低于阈值疑似异常' }
 ];
 
 export function stats() {
@@ -409,4 +427,4 @@ export function searchTermHotWords() {
   ];
 }
 
-export default { categories, items, activities, orders, users, riskEvents, auditLogs, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList, recommend, inviteRelations, searchTermSynonyms, searchTermHotWords };
+export default { categories, items, activities, reviews, orders, users, riskEvents, auditLogs, riskRules, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList, recommend, inviteRelations, searchTermSynonyms, searchTermHotWords };
