@@ -1,4 +1,21 @@
 /* pc-admin/src/styles/global.css —— 由 index.html 的 <style> 外置（Vite 形态） */
+/* ===== 设计令牌（P0 品牌色 + Element Plus 主色覆盖；P1 补全字/距/圆角/阴影） ===== */
+:root{
+  /* 品牌（闲鱼黄→更沉稳的琥珀，避免荧光感） */
+  --brand-1:#FFB300; --brand-2:#FFCE3D; --brand-ink:#5A4000;
+  --bg:#F4F5F7; --surface:#FFFFFF; --border:#ECEDEF;
+  --text-1:#1A1A1A; --text-2:#5A5F66; --text-3:#9A9FA8;
+  /* 覆盖 Element Plus 默认蓝，统一为暖橙品牌色系（含 hover/active 派生色，避免按钮 hover 仍泛蓝） */
+  --el-color-primary:#F5731F;
+  --el-color-primary-light-3:#F98A45;
+  --el-color-primary-light-5:#FBA66E;
+  --el-color-primary-light-7:#FDCA9E;
+  --el-color-primary-light-8:#FEDBBB;
+  --el-color-primary-light-9:#FCEEDE;
+  --el-color-primary-dark-2:#C45918;
+  --el-color-success:#18A058; --el-color-warning:#FF8F1F;
+  --el-color-danger:#F53F3F; --el-color-error:#F53F3F; --el-color-info:#86909C;
+}
 * { box-sizing: border-box; }
 html, body, #app { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
 body { background: #F4F5F7; color: #1A1A1A; }
@@ -16,13 +33,16 @@ body { background: #F4F5F7; color: #1A1A1A; }
 .menu { background: transparent !important; border-right: none; flex: 1; }
 .menu .el-menu-item { color: #C4C4C4; height: 52px; }
 .menu .el-menu-item.is-active { background: linear-gradient(90deg,#FFCE3D,#FFB300) !important; color: #1A1A1A !important; font-weight: 700; border-radius: 0 24px 24px 0; }
-.m-icon { margin-right: 10px; }
+.menu .el-icon { margin-right: 10px; vertical-align: -2px; }
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .topbar { height: 60px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
 .tb-title { font-size: 18px; font-weight: 700; }
 .tb-right { display: flex; align-items: center; }
 .tb-user { margin-right: 16px; color: #666; }
 .content { flex: 1; overflow: auto; padding: 24px; }
+.filter-bar { margin-bottom: 16px; }
+.filter-bar .el-form-item { margin-bottom: 12px; }
+.page-bar { margin-top: 16px; display: flex; justify-content: flex-end; }
 .page-title { font-size: 20px; font-weight: 700; margin: 0 0 16px; }
 .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
 .stat-card { background: #fff; border-radius: 12px; padding: 22px; box-shadow: 0 2px 10px rgba(0,0,0,.04); }

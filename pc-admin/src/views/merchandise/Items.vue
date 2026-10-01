@@ -3,8 +3,8 @@
   <div>
     <h2 class="page-title">商品管理 / 内容审核</h2>
     <el-card shadow="never">
-      <el-form inline>
-        <el-form-item label="关键词"><el-input v-model="keyword" placeholder="商品标题" clearable></el-input></el-form-item>
+      <el-form inline class="filter-bar">
+        <el-form-item label="关键词"><el-input v-model="keyword" placeholder="商品标题" clearable style="width:200px"></el-input></el-form-item>
         <el-form-item label="审核状态">
           <el-select v-model="statusFilter" placeholder="全部" clearable style="width:140px">
             <el-option label="待审核" value="pending_review"></el-option>
@@ -12,10 +12,13 @@
             <el-option label="已驳回" value="rejected"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item><el-button type="primary" @click="load">查询</el-button></el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="load">查询</el-button>
+          <el-button @click="reset">重置</el-button>
+        </el-form-item>
       </el-form>
 
-      <el-table :data="list" v-loading="loading" border stripe>
+      <el-table :data="list" v-loading="loading" border stripe :max-height="560">
         <el-table-column label="商品" min-width="220">
           <template #default="{row}">
             <div class="cell-goods"><img :src="'https://picsum.photos/seed/'+row.id+'/80/80'" class="thumb"/>
@@ -36,7 +39,10 @@
           </template>
         </el-table-column>
       </el-table>
-      <div style="margin-top:12px">共 {{ list.length }} 条</div>
+      <el-pagination class="page-bar" layout="total, sizes, prev, pager, next, jumper"
+        :total="total" :page-size="size" :current-page="page" :page-sizes="[10,20,50,100]"
+        @current-change="p=>{page=p;load()}" @size-change="s=>{size=s;page=1;load()}">
+      </el-pagination>
     </el-card>
 
     <el-dialog v-model="rejectVisible" title="驳回商品" width="420px">
@@ -82,17 +88,18 @@ export default {
   mixins: [formatMixin],
   data() {
     return {
-      list: [], total: 0, loading: false, keyword: '', statusFilter: '',
+      list: [], total: 0, loading: false, keyword: '', statusFilter: '', page: 1, size: 20,
       rejectVisible: false, auditRow: null, reason: '',
       detailRow: null, detailVisible: false, detailLoading: false
     };
   },
   mounted() { this.load(); },
   methods: {
+    reset() { this.keyword = ''; this.statusFilter = ''; this.page = 1; this.load(); },
     async load() {
       this.loading = true;
       try {
-        const r = await adminApi.items({ keyword: this.keyword, status: this.statusFilter, page: 1, size: 20 });
+        const r = await adminApi.items({ keyword: this.keyword, status: this.statusFilter, page: this.page, size: this.size });
         // 真实后端返回 status（pending_review/onsale/rejected），统一规整为审计态供展示
         this.list = (r.list || []).map(it => ({
           ...it,
