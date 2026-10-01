@@ -1,5 +1,6 @@
 const api = require('../../utils/api.js');
 const { formatPrice, statusText } = require('../../utils/util.js');
+const store = require('../../utils/store.js');
 
 Page({
   data: {

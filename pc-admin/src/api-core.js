@@ -15,9 +15,39 @@
  * @property {Array<*>} list 当前页记录
  * @property {number} total 总记录数
  */
-import axios from 'axios';
+// 免构建 CDN 架构：axios 由 index.html 的 UMD <script> 注入为全局 window.axios（同 Vue/ElementPlus/echarts），
+// 不得使用裸 import 说明符（浏览器无 import map 会抛 "Failed to resolve module specifier 'axios'" 导致整页白屏）。
+const axios = window.axios;
 
-export const USE_MOCK = true;
+// 联调开关（R-24）：USE_MOCK 不再硬编码，改为外部可控，避免每次联调都改 JS 源码。
+// 优先级：URL 参数 ?mock=0/1（单次临时切换最便捷）> index.html 的 <meta name="use-mock"> > 缺省 true。
+// 缺省 true 是为延续项目既有约定「USE_MOCK=true 完整体验」（无需后端即可完整演示）。
+// 联调真实后端时：① 访问 index.html?mock=0 临时切换；② 或把 meta 改为 content="false" 长期生效。
+function truthyFalse(v) {
+  return v === 'false' || v === '0' || v === 'no' || v === 'off';
+}
+function readUseMockMeta() {
+  if (typeof document === 'undefined') return '';
+  const el = document.querySelector('meta[name="use-mock"]');
+  return el ? (el.content || '').trim().toLowerCase() : '';
+}
+function readUseMockQuery() {
+  if (typeof window === 'undefined') return null;
+  try {
+    return new URLSearchParams(window.location.search || '').get('mock');
+  } catch (e) {
+    return null;
+  }
+}
+function computeUseMock() {
+  const q = readUseMockQuery();
+  if (q !== null && q !== '') return !truthyFalse(q.toLowerCase());
+  const m = readUseMockMeta();
+  if (m !== '') return !truthyFalse(m);
+  return true;
+}
+export const USE_MOCK = computeUseMock();
+
 // R-23 生产化 · 接口基址外置：优先读取 index.html 的 <meta name="api-base">，缺省回退本地后端。
 // 生产部署时在该 meta 写入真实域名（如 https://api.example.com），无需改代码重新打包。
 const API_BASE_META = (typeof document !== 'undefined')

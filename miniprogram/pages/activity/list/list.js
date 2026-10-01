@@ -1,5 +1,5 @@
-const api = require('../../utils/api.js');
-const { formatPrice } = require('../../utils/util.js');
+const api = require('../../../utils/api.js');
+const { formatPrice } = require('../../../utils/util.js');
 
 // 倒计时文案（endAt 为后端时间字符串/时间戳）
 function countdownText(endAt, now) {

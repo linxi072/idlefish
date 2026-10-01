@@ -1,5 +1,5 @@
-const api = require('../../utils/api.js');
-const { formatPrice, statusText, formatTime } = require('../../utils/util.js');
+const api = require('../../../utils/api.js');
+const { formatPrice, statusText, formatTime } = require('../../../utils/util.js');
 
 Page({
   data: { role: 'buyer', list: [], loading: true },

@@ -1,5 +1,5 @@
-const api = require('../../utils/api.js');
-const { formatPrice, formatTime } = require('../../utils/util.js');
+const api = require('../../../utils/api.js');
+const { formatPrice, formatTime } = require('../../../utils/util.js');
 
 // 钱包流水类型中文（后端 FundFlow.type：SETTLE/FREEZE/WITHDRAW/UNFREEZE）
 const FLOW_TYPE = {

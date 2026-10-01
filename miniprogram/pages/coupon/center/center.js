@@ -1,5 +1,5 @@
-const api = require('../../utils/api.js');
-const { formatPrice, couponTypeText, couponDesc, couponScopeText, formatTime } = require('../../utils/util.js');
+const api = require('../../../utils/api.js');
+const { formatPrice, couponTypeText, couponDesc, couponScopeText, formatTime } = require('../../../utils/util.js');
 
 Page({
   data: {

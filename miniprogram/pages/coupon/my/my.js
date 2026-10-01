@@ -1,5 +1,5 @@
-const api = require('../../utils/api.js');
-const { formatPrice, couponTypeText, couponDesc, couponScopeText, couponStatusText, formatTime } = require('../../utils/util.js');
+const api = require('../../../utils/api.js');
+const { formatPrice, couponTypeText, couponDesc, couponScopeText, couponStatusText, formatTime } = require('../../../utils/util.js');
 
 const TABS = [
   { key: 'UNUSED', label: '未使用' },

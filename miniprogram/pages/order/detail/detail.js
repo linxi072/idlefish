@@ -1,5 +1,5 @@
-const api = require('../../utils/api.js');
-const { formatPrice, statusText, formatTime, canApplyRefund, canEvaluate, orderRoleToReviewRole } = require('../../utils/util.js');
+const api = require('../../../utils/api.js');
+const { formatPrice, statusText, formatTime, canApplyRefund, canEvaluate, orderRoleToReviewRole } = require('../../../utils/util.js');
 
 Page({
   data: {
