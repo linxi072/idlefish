@@ -1,0 +1,23 @@
+{
+  "name": "idlefish-pc-admin",
+  "private": true,
+  "version": "1.0.4",
+  "type": "module",
+  "description": "闲置集二手交易 · 运营后台（Vite + Vue3 + Element Plus 单文件组件）",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.6.8",
+    "echarts": "^5.5.0",
+    "element-plus": "^2.7.0",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "vite": "^5.2.0"
+  }
+}
