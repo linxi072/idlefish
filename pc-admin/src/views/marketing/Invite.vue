@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">邀请拉新</h2>
+    <page-header title="邀请拉新" />
 
     <el-card shadow="never" style="margin-bottom:16px">
       <el-form inline>

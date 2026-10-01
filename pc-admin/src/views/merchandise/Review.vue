@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">评价审核</h2>
+    <page-header title="评价审核" />
     <el-card shadow="never">
       <el-form inline>
         <el-form-item label="关键字">

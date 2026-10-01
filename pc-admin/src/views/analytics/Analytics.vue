@@ -1,17 +1,16 @@
 <template>
 
   <div v-loading="loading">
-    <div class="page-head">
-      <h2 class="page-title">运营 BI 驾驶舱</h2>
-      <div class="page-tools">
+    <page-header title="运营 BI 驾驶舱">
+      <template #extra>
         <el-select v-model="days" size="small" style="width:120px" @change="load">
           <el-option :value="7" label="近 7 天"></el-option>
           <el-option :value="30" label="近 30 天"></el-option>
           <el-option :value="90" label="近 90 天"></el-option>
         </el-select>
         <el-button size="small" type="primary" plain @click="exportSummary">导出概览</el-button>
-      </div>
-    </div>
+      </template>
+    </page-header>
 
     <div class="stat-grid" v-if="overview">
       <div class="stat-card"><div class="stat-num">{{ yuan(overview.gmv) }}</div><div class="stat-label">GMV（元）</div></div>

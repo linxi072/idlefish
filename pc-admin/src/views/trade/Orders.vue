@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">订单管理</h2>
+    <page-header title="订单管理" />
     <el-card shadow="never">
       <el-form inline>
         <el-form-item label="关键词"><el-input v-model="keyword" placeholder="订单号/商品标题" clearable></el-input></el-form-item>

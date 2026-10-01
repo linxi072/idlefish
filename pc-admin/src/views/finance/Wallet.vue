@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">资金财务（提现 / 对账 / 结算解冻）</h2>
+    <page-header title="资金财务（提现 / 对账 / 结算解冻）" />
 
     <el-tabs>
       <el-tab-pane label="提现管理">
@@ -51,12 +51,12 @@
 
           <div v-if="recon" v-loading="reconLoading">
             <el-row :gutter="16" class="recon-cards">
-              <el-col :span="4"><div class="rc"><div class="rc-num">{{ recon.orderCount }}</div><div class="rc-label">交易笔数</div></div></el-col>
-              <el-col :span="4"><div class="rc"><div class="rc-num success">{{ recon.paySuccess }}</div><div class="rc-label">支付成功</div></div></el-col>
-              <el-col :span="4"><div class="rc"><div class="rc-num danger">{{ recon.payFail }}</div><div class="rc-label">支付失败</div></div></el-col>
-              <el-col :span="4"><div class="rc"><div class="rc-num warning">{{ recon.refundCount }}</div><div class="rc-label">退款笔数</div></div></el-col>
-              <el-col :span="4"><div class="rc"><div class="rc-num">{{ yuan(recon.platformFeeFen) }}</div><div class="rc-label">平台佣金</div></div></el-col>
-              <el-col :span="4"><div class="rc"><div class="rc-num primary">{{ yuan(recon.netFen) }}</div><div class="rc-label">净入账</div></div></el-col>
+              <el-col :xs="12" :sm="8" :md="6" :lg="4"><div class="rc"><div class="rc-num">{{ recon.orderCount }}</div><div class="rc-label">交易笔数</div></div></el-col>
+              <el-col :xs="12" :sm="8" :md="6" :lg="4"><div class="rc"><div class="rc-num success">{{ recon.paySuccess }}</div><div class="rc-label">支付成功</div></div></el-col>
+              <el-col :xs="12" :sm="8" :md="6" :lg="4"><div class="rc"><div class="rc-num danger">{{ recon.payFail }}</div><div class="rc-label">支付失败</div></div></el-col>
+              <el-col :xs="12" :sm="8" :md="6" :lg="4"><div class="rc"><div class="rc-num warning">{{ recon.refundCount }}</div><div class="rc-label">退款笔数</div></div></el-col>
+              <el-col :xs="12" :sm="8" :md="6" :lg="4"><div class="rc"><div class="rc-num">{{ yuan(recon.platformFeeFen) }}</div><div class="rc-label">平台佣金</div></div></el-col>
+              <el-col :xs="12" :sm="8" :md="6" :lg="4"><div class="rc"><div class="rc-num primary">{{ yuan(recon.netFen) }}</div><div class="rc-label">净入账</div></div></el-col>
             </el-row>
             <div class="recon-date">对账日期：{{ recon.date }}</div>
 
@@ -71,7 +71,7 @@
               <el-table-column label="时间" prop="time" width="170"></el-table-column>
             </el-table>
           </div>
-          <div v-else-if="!reconLoading" class="empty-tip">暂无对账数据</div>
+          <el-empty v-else-if="!reconLoading" description="暂无对账数据" :image-size="80" />
         </el-card>
       </el-tab-pane>
 
@@ -87,7 +87,8 @@
               <el-button type="warning" :loading="unfreezing" :disabled="!unfreezeId" @click="unfreeze">解冻结算单</el-button>
             </el-form-item>
           </el-form>
-          <div class="empty-tip">提示：冻结结算单由结算定时任务（processDue）与风控联动自动产生；当前后端未提供冻结列表端点，需凭结算单 ID 操作。</div>
+          <el-alert type="info" :closable="false" show-icon class="recon-hint"
+            title="提示：冻结结算单由结算定时任务（processDue）与风控联动自动产生；当前后端未提供冻结列表端点，需凭结算单 ID 操作。"></el-alert>
         </el-card>
       </el-tab-pane>
     </el-tabs>

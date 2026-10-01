@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">售后维权工单</h2>
+    <page-header title="售后维权工单" />
     <el-card shadow="never">
       <el-form inline>
         <el-form-item label="工单状态">

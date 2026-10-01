@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">类目管理</h2>
+    <page-header title="类目管理" />
     <el-card shadow="never">
       <div style="margin-bottom:12px">
         <el-button type="primary" @click="openAdd(null)">新增一级类目</el-button>

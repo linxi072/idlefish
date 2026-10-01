@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">用户管理</h2>
+    <page-header title="用户管理" />
     <el-card shadow="never">
       <el-form inline class="filter-bar">
         <el-form-item label="关键词"><el-input v-model="keyword" placeholder="昵称/手机号" clearable style="width:200px"></el-input></el-form-item>

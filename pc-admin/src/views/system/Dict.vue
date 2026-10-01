@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">系统管理 / 数据字典</h2>
+    <page-header title="系统管理 / 数据字典" />
     <el-row :gutter="16">
       <el-col :span="10">
         <el-card shadow="never">

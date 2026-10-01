@@ -6,6 +6,7 @@ import * as ElIcons from '@element-plus/icons-vue';
 import * as echarts from 'echarts';
 import App from './App.vue';
 import router from './router';
+import PageHeader from './components/PageHeader.vue';
 import './styles/global.css';
 
 // 视图内通过 window.echarts 引用图表库（保留免构建期「无 echarts 降级」逻辑，npm 形态下始终可用）。
@@ -18,6 +19,8 @@ app.use(router);
 for (const [name, comp] of Object.entries(ElIcons)) {
   app.component(name, comp);
 }
+// 全局统一页面头部（标题 + 描述 + 面包屑 + 右侧操作插槽）
+app.component('PageHeader', PageHeader);
 // 渲染期错误（如视图方法缺失/模板表达式抛错）直达页面顶部诊断条，避免静默白屏
 app.config.errorHandler = (err, vm, info) => {
   const msg = (err && (err.stack || err.message)) || String(err);

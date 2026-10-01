@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">风控与审计</h2>
+    <page-header title="风控与审计" />
       <el-card shadow="never">
       <el-form inline style="margin-bottom:12px">
         <el-form-item label="关键词"><el-input v-model="keyword" placeholder="规则名 / 动作 / 对象" clearable></el-input></el-form-item>

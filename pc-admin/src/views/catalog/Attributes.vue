@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">类目属性模板</h2>
+    <page-header title="类目属性模板" />
     <el-card shadow="never">
       <el-form inline>
         <el-form-item label="选择类目">

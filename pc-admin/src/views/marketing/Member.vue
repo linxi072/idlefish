@@ -1,13 +1,12 @@
 <template>
 
   <div v-loading="loading">
-    <div class="page-head">
-      <h2 class="page-title">会员等级与权益</h2>
-      <div class="page-tools">
+    <page-header title="会员等级与权益">
+      <template #extra>
         <el-button size="small" type="primary" @click="openEdit(null)">新增等级</el-button>
         <el-button size="small" type="success" plain @click="exportTiers">导出等级配置</el-button>
-      </div>
-    </div>
+      </template>
+    </page-header>
 
     <el-card shadow="never" style="margin-bottom:20px">
       <template #header>

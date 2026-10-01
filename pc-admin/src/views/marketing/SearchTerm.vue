@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">搜索词运营</h2>
+    <page-header title="搜索词运营" />
 
     <el-card shadow="never" style="margin-bottom:16px">
       <el-divider content-position="left">热搜词运营（ENABLED 热搜榜）</el-divider>

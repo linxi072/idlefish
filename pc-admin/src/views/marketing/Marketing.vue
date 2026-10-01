@@ -1,9 +1,7 @@
 <template>
 
   <div v-loading="loading">
-    <div class="page-head">
-      <h2 class="page-title">营销驾驶舱</h2>
-    </div>
+    <page-header title="营销驾驶舱" />
 
     <div class="stat-grid" v-if="overview">
       <div class="stat-card"><div class="stat-num">{{ fmt(overview.issuedCount) }}</div><div class="stat-label">券发放量</div></div>

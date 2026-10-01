@@ -1,7 +1,7 @@
 <template>
 
   <div v-loading="loading">
-    <h2 class="page-title">数据概览</h2>
+    <page-header title="数据概览" />
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-num">{{ fmt(s.gmv) }}</div><div class="stat-label">累计 GMV（元）</div></div>
       <div class="stat-card"><div class="stat-num">{{ s.orderCnt }}</div><div class="stat-label">订单总数</div></div>

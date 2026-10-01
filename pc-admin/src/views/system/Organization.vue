@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">系统管理 / 机构管理</h2>
+    <page-header title="系统管理 / 机构管理" />
     <el-card shadow="never" v-loading="loading">
       <div style="margin-bottom:12px">
         <el-button type="primary" @click="openAdd(null)">新增顶级机构</el-button>

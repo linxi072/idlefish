@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">商品管理 / 内容审核</h2>
+    <page-header title="商品管理 / 内容审核" />
     <el-card shadow="never">
       <el-form inline class="filter-bar">
         <el-form-item label="关键词"><el-input v-model="keyword" placeholder="商品标题" clearable style="width:200px"></el-input></el-form-item>

@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">首页推荐 / 买家端预览</h2>
+    <page-header title="首页推荐 / 买家端预览" />
     <el-alert type="info" :closable="false" show-icon style="margin-bottom:12px"
       title="推荐算法：同城优先 + 热度半衰期衰减（7天）+ 行为加权（用户类目兴趣）+ 冷启动保量（3天内新品加分）"></el-alert>
     <el-card shadow="never">

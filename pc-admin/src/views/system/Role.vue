@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">系统管理 / 角色管理</h2>
+    <page-header title="系统管理 / 角色管理" />
     <el-card shadow="never">
       <el-form inline>
         <el-form-item label="关键词"><el-input v-model="keyword" placeholder="角色名/编码" clearable></el-input></el-form-item>

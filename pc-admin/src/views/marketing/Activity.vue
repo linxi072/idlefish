@@ -1,7 +1,7 @@
 <template>
 
   <div>
-    <h2 class="page-title">促销活动管理</h2>
+    <page-header title="促销活动管理" />
     <el-card shadow="never">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <span class="muted">运营创建秒杀 / 拼团活动，用户端「限时活动」页实时展示并参与。</span>
