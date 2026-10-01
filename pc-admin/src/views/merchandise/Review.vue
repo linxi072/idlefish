@@ -16,7 +16,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="list" v-loading="loading" border stripe>
+      <el-table :data="list" v-loading="loading" border stripe :max-height="560">
         <el-table-column label="评价ID" prop="id" width="90"></el-table-column>
         <el-table-column label="商品" min-width="200" show-overflow-tooltip>
           <template #default="{row}">

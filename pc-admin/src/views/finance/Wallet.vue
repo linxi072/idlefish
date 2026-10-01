@@ -60,13 +60,13 @@
             </el-row>
             <div class="recon-date">对账日期：{{ recon.date }}</div>
 
-            <el-table :data="recon.details || []" border stripe style="margin-top:12px">
+            <el-table :data="recon.details || []" border stripe style="margin-top:12px" :max-height="420">
               <el-table-column label="业务单号" prop="bizNo" min-width="180"></el-table-column>
               <el-table-column label="类型" width="100">
                 <template #default="{row}"><el-tag :type="reconTypeTag(row.type)" size="small">{{ reconTypeText(row.type) }}</el-tag></template>
               </el-table-column>
-              <el-table-column label="金额" width="140"><template #default="{row}"><span class="amount">{{ yuan(row.amountFen) }}</span></template></el-table-column>
-              <el-table-column label="手续费" width="140"><template #default="{row}"><span class="amount">{{ yuan(row.feeFen) }}</span></template></el-table-column>
+              <el-table-column label="金额" width="140" align="right"><template #default="{row}"><span class="amount">{{ yuan(row.amountFen) }}</span></template></el-table-column>
+              <el-table-column label="手续费" width="140" align="right"><template #default="{row}"><span class="amount">{{ yuan(row.feeFen) }}</span></template></el-table-column>
               <el-table-column label="状态" width="100"><template #default="{row}"><el-tag :type="row.status==='success'?'success':'danger'" size="small">{{ row.status==='success'?'成功':'失败' }}</el-tag></template></el-table-column>
               <el-table-column label="时间" prop="time" width="170"></el-table-column>
             </el-table>

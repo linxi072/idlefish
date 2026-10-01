@@ -18,7 +18,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="list" v-loading="loading" border stripe>
+      <el-table :data="list" v-loading="loading" border stripe :max-height="560">
         <el-table-column label="工单号" prop="disputeNo" width="170"></el-table-column>
         <el-table-column label="订单号" prop="orderNo" width="170"></el-table-column>
         <el-table-column label="争议类型" width="120">

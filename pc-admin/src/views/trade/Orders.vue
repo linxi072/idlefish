@@ -3,22 +3,25 @@
   <div>
     <page-header title="订单管理" />
     <el-card shadow="never">
-      <el-form inline>
-        <el-form-item label="关键词"><el-input v-model="keyword" placeholder="订单号/商品标题" clearable></el-input></el-form-item>
+      <el-form inline class="filter-bar">
+        <el-form-item label="关键词"><el-input v-model="keyword" placeholder="订单号/商品标题" clearable style="width:220px"></el-input></el-form-item>
         <el-form-item label="订单状态">
           <el-select v-model="statusFilter" placeholder="全部" clearable style="width:150px">
             <el-option v-for="(t,k) in {'pending_pay':'待支付','paid':'已支付','pending_ship':'待发货','shipping':'待收货','completed':'已完成','closed':'已关闭','refunding':'退款中'}" :key="k" :label="t" :value="k"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item><el-button type="primary" @click="load">查询</el-button></el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="load">查询</el-button>
+          <el-button @click="reset">重置</el-button>
+        </el-form-item>
       </el-form>
 
-      <el-table :data="list" v-loading="loading" border stripe>
+      <el-table :data="list" v-loading="loading" border stripe :max-height="560">
         <el-table-column label="订单号" prop="orderNo" width="180"></el-table-column>
         <el-table-column label="商品" prop="title" min-width="160"></el-table-column>
         <el-table-column label="买家" width="100"><template #default="{row}">{{ row.buyerId || '-' }}</template></el-table-column>
         <el-table-column label="卖家" width="100"><template #default="{row}">{{ row.sellerId || '-' }}</template></el-table-column>
-        <el-table-column label="金额" width="100"><template #default="{row}">{{ yuan(row.amount) }}</template></el-table-column>
+        <el-table-column label="金额" width="100" align="right"><template #default="{row}">{{ yuan(row.amount) }}</template></el-table-column>
         <el-table-column label="状态" width="110"><template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusText(row.status) }}</el-tag></template></el-table-column>
         <el-table-column label="下单时间" prop="createdAt" width="160"></el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
@@ -29,6 +32,10 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-pagination class="page-bar" layout="total, sizes, prev, pager, next, jumper"
+        :total="total" :page-size="size" :current-page="page" :page-sizes="[10,20,50,100]"
+        @current-change="p=>{page=p;load()}" @size-change="s=>{size=s;page=1;load()}">
+      </el-pagination>
     </el-card>
 
     <el-dialog v-model="detailVisible" title="订单详情" width="520px">
@@ -94,7 +101,7 @@ export default {
   name: 'Orders',
   mixins: [formatMixin],
   data() {
-    return { list: [], total: 0, loading: false, keyword: '', statusFilter: '', detailRow: null, logistics: null, shipVisible: false, shipForm: { company: '', logisticNo: '' } };
+    return { list: [], total: 0, loading: false, keyword: '', statusFilter: '', page: 1, size: 20, detailRow: null, logistics: null, shipVisible: false, shipForm: { company: '', logisticNo: '' } };
   },
   computed: {
     // 详情弹窗可见：详情行存在 且 发货弹窗未打开（发货弹窗为详情的子模式）
@@ -105,10 +112,11 @@ export default {
   },
   mounted() { this.load(); },
   methods: {
+    reset() { this.keyword = ''; this.statusFilter = ''; this.page = 1; this.load(); },
     async load() {
       this.loading = true;
       try {
-        const r = await adminApi.orders({ keyword: this.keyword, status: this.statusFilter, page: 1, size: 20 });
+        const r = await adminApi.orders({ keyword: this.keyword, status: this.statusFilter, page: this.page, size: this.size });
         this.list = r.list || [];
         this.total = r.total;
       } finally { this.loading = false; }

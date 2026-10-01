@@ -2,8 +2,8 @@
 
   <div class="login-wrap">
     <div class="login-card">
-      <div class="login-brand"><span class="logo">闲</span> 闲置集 · 运营后台</div>
-      <div class="login-sub">二手交易运营管理平台</div>
+      <div class="login-brand"><span class="logo">闲</span><span class="login-name">闲置集</span></div>
+      <div class="login-slogan">二手交易 · 运营管理后台</div>
       <el-form ref="form" :model="form" :rules="rules" label-position="top" @submit.prevent>
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名" prefix-icon="User" clearable></el-input>
@@ -13,7 +13,10 @@
         </el-form-item>
         <el-button type="primary" style="width:100%" :loading="loading" @click="submit">登 录</el-button>
       </el-form>
-      <div class="login-tip">演示账号：admin / admin123（默认本地 Mock 模式）</div>
+      <div class="login-foot">
+        <el-divider>演示环境</el-divider>
+        <div class="login-tip">演示账号：admin / admin123（默认本地 Mock 模式）</div>
+      </div>
     </div>
   </div>
 </template>

@@ -1,9 +1,9 @@
 <template>
   <Login v-if="!loggedIn" @logged-in="onLoggedIn"></Login>
   <div v-else class="layout">
-    <aside class="sidebar">
+    <aside class="sidebar" :class="{collapsed}" :style="{width: collapsed ? '64px' : '220px'}">
       <div class="brand"><span class="logo">闲</span><span class="brand-name">闲置集后台</span></div>
-      <el-menu :default-active="$route.name" @select="go" class="menu">
+      <el-menu :default-active="$route.name" @select="go" class="menu" :collapse="collapsed" :collapse-transition="false">
         <template v-for="m in menus" :key="m.key || m.group">
           <el-sub-menu v-if="m.children" :index="m.group">
             <template #title><el-icon><component :is="m.icon" /></el-icon><span>{{ m.group }}</span></template>
@@ -19,11 +19,20 @@
     </aside>
     <main class="main">
       <header class="topbar">
-        <div class="tb-title">{{ activeTitle }}</div>
+        <div class="tb-left">
+          <el-button text class="collapse-btn" @click="collapsed = !collapsed" :aria-label="collapsed ? '展开菜单' : '收起菜单'">
+            <el-icon><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
+          </el-button>
+          <el-breadcrumb separator="/" class="tb-crumb">
+            <el-breadcrumb-item>运营后台</el-breadcrumb-item>
+            <el-breadcrumb-item>{{ activeTitle }}</el-breadcrumb-item>
+          </el-breadcrumb>
+        </div>
         <div class="tb-right">
           <el-badge :value="bellUnread" :hidden="!bellUnread" :max="99" class="bell">
             <el-button text @click="go('notify')"><el-icon><Bell /></el-icon></el-button>
           </el-badge>
+          <el-avatar class="tb-avatar" :size="30">{{ (user ? user.username : '管').slice(0, 1) }}</el-avatar>
           <span class="tb-user">{{ user ? user.username : '' }}</span>
           <el-button size="small" @click="logout">退出</el-button>
         </div>
@@ -47,6 +56,7 @@ export default {
       loggedIn: !!getToken(),
       user: null,
       bellUnread: 0,
+      collapsed: false,
       menus: [
         { key: 'dashboard', label: '控制台', icon: 'DataLine' },
         { key: 'items', label: '商品审核', icon: 'Goods' },

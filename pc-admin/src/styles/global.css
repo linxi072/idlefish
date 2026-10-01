@@ -35,26 +35,34 @@
 * { box-sizing: border-box; }
 html, body, #app { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
 body { background: #F4F5F7; color: #1A1A1A; }
-.login-wrap { height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg,#FFCE3D,#FFB300); }
-.login-card { width: 420px; background: #fff; border-radius: 16px; padding: 40px 36px; box-shadow: 0 20px 60px rgba(0,0,0,.18); }
-.login-brand { display: flex; align-items: center; font-size: 24px; font-weight: 700; color: #5A4000; }
-.logo { width: 48px; height: 48px; line-height: 48px; text-align: center; background: linear-gradient(135deg,#FFCE3D,#FFB300); border-radius: 12px; color: #fff; margin-right: 12px; }
-.login-sub { color: #9A9A9A; font-size: 13px; margin: 6px 0 24px; }
-.login-tip { color: #9A9A9A; font-size: 12px; margin-top: 16px; text-align: center; }
+.login-wrap { height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--brand-2), var(--brand-1)); }
+.login-card { width: 420px; background: var(--surface); border-radius: var(--radius-lg); padding: var(--sp-8) 36px; box-shadow: var(--shadow-2); }
+.login-brand { display: flex; align-items: center; font-size: 24px; font-weight: 700; color: var(--brand-ink); }
+.login-name { margin-left: 10px; }
+.logo { width: 48px; height: 48px; line-height: 48px; text-align: center; background: linear-gradient(135deg, var(--brand-2), var(--brand-1)); border-radius: var(--radius-md); color: #fff; margin-right: 12px; }
+.login-slogan { color: var(--text-3); font-size: var(--fs-sm); margin: 6px 0 24px; }
+.login-tip { color: var(--text-3); font-size: var(--fs-xs); text-align: center; }
+.login-foot { margin-top: var(--sp-5); }
 .layout { display: flex; height: 100%; }
-.sidebar { width: 220px; background: #1A1A1A; color: #fff; display: flex; flex-direction: column; }
-.brand { display: flex; align-items: center; padding: 20px; font-weight: 700; font-size: 18px; color: #FFCE3D; }
-.brand .logo { color: #1A1A1A; }
+.sidebar { width: 220px; background: #1A1A1A; color: #fff; display: flex; flex-direction: column; transition: width .2s ease; flex-shrink: 0; overflow: hidden; }
+.sidebar.collapsed { width: 64px; }
+.brand { display: flex; align-items: center; padding: 20px; font-weight: 700; font-size: 18px; color: var(--brand-2); white-space: nowrap; }
+.brand .logo { color: #1A1A1A; flex-shrink: 0; }
 .brand-name { margin-left: 10px; }
+.sidebar.collapsed .brand-name { display: none; }
 .menu { background: transparent !important; border-right: none; flex: 1; }
 .menu .el-menu-item { color: #C4C4C4; height: 52px; }
 .menu .el-menu-item.is-active { background: linear-gradient(90deg,#FFCE3D,#FFB300) !important; color: #1A1A1A !important; font-weight: 700; border-radius: 0 24px 24px 0; }
 .menu .el-icon { margin-right: 10px; vertical-align: -2px; }
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .topbar { height: 60px; background: var(--surface); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--sp-6); box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+.tb-left { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.collapse-btn { font-size: 20px; color: var(--text-2); }
+.tb-crumb { font-size: var(--fs-sm); }
 .tb-title { font-size: var(--fs-h2); font-weight: var(--fw-bold); }
 .tb-right { display: flex; align-items: center; }
-.tb-user { margin-right: var(--sp-4); color: var(--text-2); }
+.tb-avatar { background: var(--brand-1); color: #fff; font-weight: var(--fw-bold); flex-shrink: 0; }
+.tb-user { margin: 0 var(--sp-4) 0 var(--sp-2); color: var(--text-2); }
 .content { flex: 1; overflow: auto; padding: var(--sp-6); }
 .filter-bar { margin-bottom: var(--sp-4); }
 .filter-bar .el-form-item { margin-bottom: var(--sp-3); }
