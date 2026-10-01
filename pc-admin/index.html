@@ -7,114 +7,13 @@
   <!-- R-23 生产化 · 接口基址外置：生产部署改为真实后端域名（如 https://api.example.com）；
        同时需在本文件 CSP 的 connect-src 中追加该域名，避免被策略拦截。留空则用默认 http://localhost:8080。 -->
   <meta name="api-base" content="" />
-  <!-- R-23 生产化 · 内容安全策略（CSP）：关闭 inline script（防 XSS 注入窃取令牌/篡改 DOM），
-       仅放行同源脚本与 jsDelivr 的受信库；样式/图片/字体按最小可用集放行。 -->
-  <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    script-src 'self' https://cdn.jsdelivr.net;
-    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
-    img-src 'self' data: https:;
-    font-src 'self' https://cdn.jsdelivr.net data:;
-    connect-src 'self' http://localhost:8080 https://cdn.jsdelivr.net;
-    frame-src 'none';
-    object-src 'none';
-    base-uri 'self';
-  " />
-  <!-- Vue 3 + Element Plus（UMD 全局构建，免打包即可运行）；crossorigin 保障 CORS 正确性与 SRI 兼容，referrerpolicy 减少外泄 -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.7.0/dist/index.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/element-plus@2.7.0/dist/index.full.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.8/dist/axios.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <style>
-    * { box-sizing: border-box; }
-    html, body, #app { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
-    body { background: #F4F5F7; color: #1A1A1A; }
-    .login-wrap { height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg,#FFCE3D,#FFB300); }
-    .login-card { width: 420px; background: #fff; border-radius: 16px; padding: 40px 36px; box-shadow: 0 20px 60px rgba(0,0,0,.18); }
-    .login-brand { display: flex; align-items: center; font-size: 24px; font-weight: 700; color: #5A4000; }
-    .logo { width: 48px; height: 48px; line-height: 48px; text-align: center; background: linear-gradient(135deg,#FFCE3D,#FFB300); border-radius: 12px; color: #fff; margin-right: 12px; }
-    .login-sub { color: #9A9A9A; font-size: 13px; margin: 6px 0 24px; }
-    .login-tip { color: #9A9A9A; font-size: 12px; margin-top: 16px; text-align: center; }
-    .layout { display: flex; height: 100%; }
-    .sidebar { width: 220px; background: #1A1A1A; color: #fff; display: flex; flex-direction: column; }
-    .brand { display: flex; align-items: center; padding: 20px; font-weight: 700; font-size: 18px; color: #FFCE3D; }
-    .brand .logo { color: #1A1A1A; }
-    .brand-name { margin-left: 10px; }
-    .menu { background: transparent !important; border-right: none; flex: 1; }
-    .menu .el-menu-item { color: #C4C4C4; height: 52px; }
-    .menu .el-menu-item.is-active { background: linear-gradient(90deg,#FFCE3D,#FFB300) !important; color: #1A1A1A !important; font-weight: 700; border-radius: 0 24px 24px 0; }
-    .m-icon { margin-right: 10px; }
-    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .topbar { height: 60px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
-    .tb-title { font-size: 18px; font-weight: 700; }
-    .tb-right { display: flex; align-items: center; }
-    .tb-user { margin-right: 16px; color: #666; }
-    .content { flex: 1; overflow: auto; padding: 24px; }
-    .page-title { font-size: 20px; font-weight: 700; margin: 0 0 16px; }
-    .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
-    .stat-card { background: #fff; border-radius: 12px; padding: 22px; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
-    .stat-card.warn { border-left: 4px solid #FFB300; }
-    .stat-card.danger { border-left: 4px solid #FF3939; }
-    .stat-num { font-size: 30px; font-weight: 700; }
-    .stat-card.warn .stat-num { color: #FFB300; }
-    .stat-card.danger .stat-num { color: #FF3939; }
-    .stat-label { color: #9A9A9A; font-size: 13px; margin-top: 6px; }
-    .bars { display: flex; align-items: flex-end; height: 160px; gap: 12px; padding: 10px 0; }
-    .bar-item { flex: 1; text-align: center; }
-    .bar { background: linear-gradient(180deg,#FFCE3D,#FFB300); border-radius: 6px 6px 0 0; width: 70%; margin: 0 auto; }
-    .bar-val { font-size: 11px; color: #666; margin-top: 4px; }
-    .bar-x { font-size: 11px; color: #9A9A9A; }
-    .todo li { list-style: none; padding: 10px 0; border-bottom: 1px solid #F2F3F5; display: flex; align-items: center; gap: 10px; }
-    .todo { padding: 0; margin: 0; }
-    .cell-goods { display: flex; align-items: center; }
-    .thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; margin-right: 10px; }
-    .g-title { font-weight: 600; }
-    .g-sub { color: #9A9A9A; font-size: 12px; }
-    .item-detail .id-gallery { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
-    .item-detail .id-img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid #F2F3F5; }
-    .item-detail .id-desc { margin-top: 16px; }
-    .item-detail .id-desc-title { font-weight: 700; margin-bottom: 8px; color: #1A1A1A; }
-    .item-detail .id-desc-body { background: #F7F8FA; border-radius: 8px; padding: 14px; line-height: 1.7; color: #555; font-size: 14px; white-space: pre-wrap; }
-    .amount { font-weight: 700; color: #FF3939; }
-    .opt-tags { color: #555; }
-    .empty-tip { color: #9A9A9A; text-align: center; padding: 40px 0; }
-    .bell { margin-right: 6px; }
-    .bell .el-button { font-size: 16px; }
-    .recon-cards { margin-bottom: 16px; }
-    .rc { background: #fff; border: 1px solid #F0F1F3; border-radius: 10px; padding: 16px; text-align: center; height: 78px; display: flex; flex-direction: column; justify-content: center; }
-    .rc-num { font-size: 22px; font-weight: 700; color: #1A1A1A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .rc-num.success { color: #18A058; }
-    .rc-num.danger { color: #FF3939; }
-    .rc-num.warning { color: #FFB300; }
-    .rc-num.primary { color: #2D8CF0; }
-    .rc-label { color: #9A9A9A; font-size: 12px; margin-top: 4px; }
-    .recon-date { color: #666; font-size: 13px; margin: 4px 0; }
-    /* ===== F-14.5 物流时间轴 ===== */
-    .lg-block { margin-top: 16px; border-top: 1px solid #F2F3F5; padding-top: 14px; }
-    .lg-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 13px; color: #666; margin-bottom: 12px; }
-    .lg-company { font-weight: 600; color: #1A1A1A; }
-    .lg-status { padding: 2px 10px; border-radius: 10px; font-size: 12px; }
-    .lg-transport { background: #E6F4FF; color: #1677FF; }
-    .lg-signed { background: #E8F8EE; color: #18A058; }
-    .lg-exception { background: #FDECEC; color: #E52E2E; }
-    .timeline { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid #E5E7EB; }
-    .tl-item { position: relative; padding: 8px 0; }
-    .tl-dot { position: absolute; left: -21px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: #C9CDD4; }
-    .tl-transport { background: #1677FF; }
-    .tl-transit { background: #FFB300; }
-    .tl-sign { background: #18A058; }
-    .tl-exception { background: #E52E2E; }
-    .tl-unknown { background: #C9CDD4; }
-    .tl-body { display: flex; flex-direction: column; }
-    .tl-desc { font-size: 13px; color: #1A1A1A; line-height: 1.5; }
-    .tl-time { font-size: 12px; color: #9A9A9A; margin-top: 4px; }
-  </style>
+  <!-- R-24 联调开关 · 是否使用本地 Mock 数据（无需后端即可完整演示）。
+       联调真实后端时改为 content="false"；也可临时用 URL 参数覆盖：index.html?mock=0（优先级高于本 meta）。 -->
+  <meta name="use-mock" content="true" />
 </head>
 <body>
   <div id="app"></div>
-  <script type="module" src="./src/main.js"></script>
-  <!-- RK-6 / R-23：CDN 加载兜底已外置为同源经典脚本（见 src/cdn-check.js），以便 CSP 收紧为无 inline。 -->
-  <script src="./src/cdn-check.js"></script>
+  <!-- Vite 入口：由 npm 依赖注入 Vue/ElementPlus/ECharts（不再依赖 CDN 全局脚本） -->
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>
