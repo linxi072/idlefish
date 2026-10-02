@@ -3,19 +3,15 @@
   <div>
     <page-header title="类目管理" />
     <el-card shadow="never">
-      <div style="margin-bottom:12px">
+      <div class="filter-bar">
         <el-button type="primary" @click="openAdd(null)">新增一级类目</el-button>
+        <span class="g-sub">共 {{ treeFlatCount }} 个类目（含子类），层级关系以缩进与「层级」列呈现</span>
       </div>
-      <el-tree :data="tree" :props="defaultProps" default-expand-all>
-        <template #default="{ node, data }">
-          <span class="tree-node">
-            <span>{{ node.label }}</span>
-            <span class="tree-ops">
-              <el-button size="small" link type="primary" @click.stop="openAdd(data)">新增子类</el-button>
-            </span>
-          </span>
+      <tree-flat-table :data="tree" :columns="columns" :loading="loading">
+        <template #actions="{ row }">
+          <el-button size="small" link type="primary" @click="openAdd(row)">新增子类</el-button>
         </template>
-      </el-tree>
+      </tree-flat-table>
     </el-card>
 
     <el-dialog v-model="addVisible" title="新增类目" width="420px">
@@ -36,18 +32,43 @@
 <script>
 import { adminApi } from '@/api';
 import { formatMixin, notifyError } from '@/utils/format';
-// pc-admin/src/views/categories.js —— 类目管理（树 + 新增）
-
+// pc-admin/src/views/categories.js —— 类目管理（树状结构扁平为表格，保留层级与全部字段）
 
 export default {
   name: 'Categories',
   mixins: [formatMixin],
   data() {
-    return { tree: [], defaultProps: { children: 'children', label: 'name' }, addVisible: false, form: { name: '', parentId: 0 } };
+    return {
+      tree: [], addVisible: false, form: { name: '', parentId: 0 }, loading: false
+    };
+  },
+  computed: {
+    // 扁平表格列定义：ID / 名称（缩进）/ 父级ID / 直属子类 / 层级
+    columns() {
+      return [
+        { prop: 'id', label: 'ID', width: 70, align: 'right' },
+        { prop: 'name', label: '类目名称', minWidth: 240 },
+        { prop: 'parentId', label: '父级ID', width: 90, align: 'right',
+          format: (v) => (v === 0 || v == null ? '顶级' : v) },
+        { prop: '_childCount', label: '直属子类', width: 100, align: 'right' },
+        { prop: '_depth', label: '层级', width: 80, align: 'center' }
+      ];
+    },
+    treeFlatCount() {
+      let n = 0;
+      const walk = (l) => (l || []).forEach(x => { n++; if (x.children) walk(x.children); });
+      walk(this.tree);
+      return n;
+    }
   },
   mounted() { this.load(); },
   methods: {
-    async load() { this.tree = await adminApi.categories(); },
+    async load() {
+      this.loading = true;
+      try { this.tree = await adminApi.categories(); }
+      catch (e) { notifyError(this, e, '加载失败'); }
+      finally { this.loading = false; }
+    },
     openAdd(node) {
       this.form = { name: '', parentId: node && node.id ? node.id : 0 };
       this.addVisible = true;

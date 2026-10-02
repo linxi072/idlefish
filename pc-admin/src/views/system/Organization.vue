@@ -3,21 +3,17 @@
   <div>
     <page-header title="系统管理 / 机构管理" />
     <el-card shadow="never" v-loading="loading">
-      <div style="margin-bottom:12px">
+      <div class="filter-bar">
         <el-button type="primary" @click="openAdd(null)">新增顶级机构</el-button>
+        <span class="g-sub">层级关系以缩进与「层级」列呈现，共 {{ treeFlatCount }} 个机构</span>
       </div>
-      <el-tree :data="tree" :props="defaultProps" default-expand-all>
-        <template #default="{ node, data }">
-          <span class="tree-node">
-            <span>{{ node.label }} <el-tag v-if="data.status===1" size="small" type="info">停用</el-tag></span>
-            <span class="tree-ops">
-              <el-button size="small" link type="primary" @click.stop="openAdd(data)">新增子机构</el-button>
-              <el-button size="small" link type="warning" @click.stop="openEdit(data)">编辑</el-button>
-              <el-button size="small" link type="danger" @click.stop="remove(data)">删除</el-button>
-            </span>
-          </span>
+      <tree-flat-table :data="tree" :columns="columns">
+        <template #actions="{ row }">
+          <el-button size="small" link type="primary" @click="openAdd(row)">新增子机构</el-button>
+          <el-button size="small" link type="warning" @click="openEdit(row)">编辑</el-button>
+          <el-button size="small" link type="danger" @click="remove(row)">删除</el-button>
         </template>
-      </el-tree>
+      </tree-flat-table>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="isEdit?'编辑机构':'新增机构'" width="460px">
@@ -45,18 +41,40 @@
 import { systemApi } from '@/api';
 import { formatMixin, notifyError } from '@/utils/format';
 import { listPageMixin, crudDialogMixin } from '@/mixins';
-// pc-admin/src/views/organization.js —— 系统管理：机构（树形管理）
+// pc-admin/src/views/organization.js —— 系统管理：机构（树状结构扁平为表格，保留层级与全部字段）
 
 
 export default {
   name: 'Organization',
   mixins: [formatMixin, listPageMixin, crudDialogMixin],
   data() {
-    // tree/defaultProps 为树结构自有；loading 由 listPageMixin 提供；dialogVisible/submitting/form 由 crudDialogMixin 提供
+    // tree 为树结构；loading 由 listPageMixin 提供；dialogVisible/submitting/form 由 crudDialogMixin 提供
     return {
-      tree: [], defaultProps: { children: 'children', label: 'name' },
+      tree: [],
       isEdit: false, parentName: ''
     };
+  },
+  computed: {
+    // 扁平表格列定义：ID / 名称（缩进）/ 父级ID / 负责人 / 电话 / 状态（标签）/ 层级
+    columns() {
+      return [
+        { prop: 'id', label: 'ID', width: 70, align: 'right' },
+        { prop: 'name', label: '机构名称', minWidth: 200 },
+        { prop: 'parentId', label: '父级ID', width: 90, align: 'right',
+          format: (v) => (v === 0 || v == null ? '顶级' : v) },
+        { prop: 'leader', label: '负责人', width: 110 },
+        { prop: 'phone', label: '联系电话', width: 150 },
+        { prop: 'status', label: '状态', width: 90, align: 'center',
+          tag: (v) => ({ text: v === 0 ? '启用' : '停用', type: v === 0 ? 'success' : 'info' }) },
+        { prop: '_depth', label: '层级', width: 80, align: 'center' }
+      ];
+    },
+    treeFlatCount() {
+      let n = 0;
+      const walk = (l) => (l || []).forEach(x => { n++; if (x.children) walk(x.children); });
+      walk(this.tree);
+      return n;
+    }
   },
   mounted() { this.load(); },
   methods: {

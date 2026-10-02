@@ -3,24 +3,17 @@
   <div>
     <page-header title="系统管理 / 菜单管理" />
     <el-card shadow="never" v-loading="loading">
-      <div style="margin-bottom:12px">
+      <div class="filter-bar">
         <el-button type="primary" @click="openAdd(null)">新增顶级菜单</el-button>
+        <span class="g-sub">层级关系以缩进与「层级」列呈现，共 {{ treeFlatCount }} 个菜单项</span>
       </div>
-      <el-tree :data="tree" :props="defaultProps" default-expand-all>
-        <template #default="{ node, data }">
-          <span class="tree-node">
-            <span>{{ node.label }}
-              <el-tag size="small" :type="typeTag(data.type).type">{{ typeTag(data.type).label }}</el-tag>
-              <span class="g-sub" v-if="data.perms"> · {{ data.perms }}</span>
-            </span>
-            <span class="tree-ops">
-              <el-button size="small" link type="primary" @click.stop="openAdd(data)">新增子项</el-button>
-              <el-button size="small" link type="warning" @click.stop="openEdit(data)">编辑</el-button>
-              <el-button size="small" link type="danger" @click.stop="remove(data)">删除</el-button>
-            </span>
-          </span>
+      <tree-flat-table :data="tree" :columns="columns">
+        <template #actions="{ row }">
+          <el-button size="small" link type="primary" @click="openAdd(row)">新增子项</el-button>
+          <el-button size="small" link type="warning" @click="openEdit(row)">编辑</el-button>
+          <el-button size="small" link type="danger" @click="remove(row)">删除</el-button>
         </template>
-      </el-tree>
+      </tree-flat-table>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="isEdit?'编辑菜单':'新增菜单'" width="480px">
@@ -50,21 +43,46 @@
 import { systemApi } from '@/api';
 import { formatMixin, notifyError } from '@/utils/format';
 import { listPageMixin, crudDialogMixin } from '@/mixins';
-// pc-admin/src/views/menu.js —— 系统管理：菜单（树形管理）
+// pc-admin/src/views/menu.js —— 系统管理：菜单（树状结构扁平为表格，保留层级与全部字段）
 
 const TYPE_OPTS = [{ label: '目录', value: 0 }, { label: '菜单', value: 1 }, { label: '按钮', value: 2 }];
+const TYPE_MAP = [{ label: '目录', type: 'info' }, { label: '菜单', type: 'primary' }, { label: '按钮', type: 'warning' }];
 
 
 export default {
   name: 'Menu',
   mixins: [formatMixin, listPageMixin, crudDialogMixin],
   data() {
-    // tree/defaultProps 为树结构自有；loading 由 listPageMixin 提供；dialogVisible/submitting/form 由 crudDialogMixin 提供
+    // tree 为树结构；loading 由 listPageMixin 提供；dialogVisible/submitting/form 由 crudDialogMixin 提供
     return {
-      tree: [], defaultProps: { children: 'children', label: 'name' },
+      tree: [],
       isEdit: false, parentName: '',
       typeOptions: TYPE_OPTS
     };
+  },
+  computed: {
+    // 扁平表格列定义：ID / 名称（缩进）/ 类型 / 路由 / 组件 / 权限标识 / 排序 / 父级ID / 层级
+    columns() {
+      return [
+        { prop: 'id', label: 'ID', width: 70, align: 'right' },
+        { prop: 'name', label: '菜单名称', minWidth: 200 },
+        { prop: 'type', label: '类型', width: 90, align: 'center',
+          tag: (v) => TYPE_MAP[v] || { label: v, type: 'info' } },
+        { prop: 'path', label: '路由地址', minWidth: 150, format: (v) => v || '—' },
+        { prop: 'component', label: '组件', minWidth: 110, format: (v) => v || '—' },
+        { prop: 'perms', label: '权限标识', minWidth: 160, format: (v) => v || '—' },
+        { prop: 'sort', label: '排序', width: 80, align: 'right' },
+        { prop: 'parentId', label: '父级ID', width: 90, align: 'right',
+          format: (v) => (v === 0 || v == null ? '顶级' : v) },
+        { prop: '_depth', label: '层级', width: 80, align: 'center' }
+      ];
+    },
+    treeFlatCount() {
+      let n = 0;
+      const walk = (l) => (l || []).forEach(x => { n++; if (x.children) walk(x.children); });
+      walk(this.tree);
+      return n;
+    }
   },
   mounted() { this.load(); },
   methods: {
@@ -73,9 +91,6 @@ export default {
       try { this.tree = await systemApi.menuTree(); }
       catch (e) { notifyError(this, e, '加载失败'); }
       finally { this.loading = false; }
-    },
-    typeTag(t) {
-      return [{ label: '目录', type: 'info' }, { label: '菜单', type: 'primary' }, { label: '按钮', type: 'warning' }][t] || { label: t, type: 'info' };
     },
     openAdd(node) {
       this.isEdit = false;
