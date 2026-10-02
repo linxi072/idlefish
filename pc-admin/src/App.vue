@@ -1,7 +1,7 @@
 <template>
   <Login v-if="!loggedIn" @logged-in="onLoggedIn"></Login>
   <div v-else class="layout">
-    <aside class="sidebar" :class="{collapsed}" :style="{width: collapsed ? '64px' : '220px'}">
+    <aside class="sidebar" :class="{collapsed, 'mobile-open': mobileOpen}">
       <div class="brand"><span class="logo">闲</span><span class="brand-name">闲置集后台</span></div>
       <el-menu :default-active="$route.name" @select="go" class="menu" :collapse="collapsed" :collapse-transition="false">
         <template v-for="m in menus" :key="m.key || m.group">
@@ -20,8 +20,8 @@
     <main class="main">
       <header class="topbar">
         <div class="tb-left">
-          <el-button text class="collapse-btn" @click="collapsed = !collapsed" :aria-label="collapsed ? '展开菜单' : '收起菜单'">
-            <el-icon><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
+          <el-button text class="collapse-btn" @click="toggleSidebar" :aria-label="(isMobile ? mobileOpen : collapsed) ? '展开菜单' : '收起菜单'">
+            <el-icon><Fold v-if="!isMobile && !collapsed" /><Expand v-else /></el-icon>
           </el-button>
           <el-breadcrumb separator="/" class="tb-crumb">
             <el-breadcrumb-item>运营后台</el-breadcrumb-item>
@@ -41,6 +41,7 @@
         <router-view></router-view>
       </section>
     </main>
+    <div class="sidebar-backdrop" v-if="mobileOpen" @click="mobileOpen = false"></div>
   </div>
 </template>
 
@@ -57,26 +58,38 @@ export default {
       user: null,
       bellUnread: 0,
       collapsed: false,
+      mobileOpen: false,
+      isMobile: false,
       menus: [
         { key: 'dashboard', label: '控制台', icon: 'DataLine' },
-        { key: 'items', label: '商品审核', icon: 'Goods' },
-        { key: 'review', label: '评价审核', icon: 'Star' },
-        { key: 'orders', label: '订单管理', icon: 'Box' },
-        { key: 'dispute', label: '维权工单', icon: 'Scale' },
-        { key: 'users', label: '用户管理', icon: 'User' },
-        { key: 'categories', label: '类目管理', icon: 'Files' },
-        { key: 'risk', label: '风控审计', icon: 'Shield' },
-        { key: 'analytics', label: '运营 BI', icon: 'TrendCharts' },
-        { key: 'marketing', label: '营销驾驶舱', icon: 'Aim' },
-        { key: 'member', label: '会员等级', icon: 'Medal' },
-        { key: 'recommend', label: '首页推荐', icon: 'Cpu' },
-        { key: 'invite', label: '邀请拉新', icon: 'Connection' },
-        { key: 'search-term', label: '搜索词运营', icon: 'Search' },
-        { group: '财务与运营', icon: 'Wallet', children: [
-          { key: 'wallet', label: '资金财务', icon: 'CreditCard' },
-          { key: 'attributes', label: '属性模板', icon: 'PriceTag' },
+        { group: '用户管理', icon: 'User', children: [
+          { key: 'users', label: '用户列表', icon: 'User' },
+          { key: 'member', label: '会员等级', icon: 'Medal' },
+          { key: 'invite', label: '邀请拉新', icon: 'Connection' }
+        ] },
+        { group: '商品与内容', icon: 'ShoppingCart', children: [
+          { key: 'items', label: '商品审核', icon: 'Goods' },
+          { key: 'categories', label: '类目管理', icon: 'Files' },
+          { key: 'review', label: '评价审核', icon: 'Star' },
+          { key: 'recommend', label: '首页推荐', icon: 'Cpu' },
+          { key: 'search-term', label: '搜索词运营', icon: 'Search' }
+        ] },
+        { group: '订单管理', icon: 'Tickets', children: [
+          { key: 'orders', label: '订单管理', icon: 'Box' },
+          { key: 'dispute', label: '维权工单', icon: 'Scale' }
+        ] },
+        { group: '营销管理', icon: 'Promotion', children: [
+          { key: 'marketing', label: '营销驾驶舱', icon: 'Aim' },
           { key: 'coupon', label: '发券管理', icon: 'Ticket' },
           { key: 'activity', label: '活动管理', icon: 'MagicStick' }
+        ] },
+        { group: '财务运营', icon: 'Wallet', children: [
+          { key: 'wallet', label: '资金财务', icon: 'CreditCard' },
+          { key: 'attributes', label: '属性模板', icon: 'PriceTag' }
+        ] },
+        { key: 'risk', label: '风控审计', icon: 'Shield' },
+        { group: '报表管理', icon: 'DataAnalysis', children: [
+          { key: 'analytics', label: '运营 BI', icon: 'TrendCharts' }
         ] },
         { key: 'notify', label: '消息中心', icon: 'Bell' },
         { group: '系统管理', icon: 'Setting', children: [
@@ -111,9 +124,22 @@ export default {
       this.$router.push({ name: 'dashboard' });
     },
     go(key) { this.$router.push({ name: key }); },
+    // 折叠按钮：桌面端切换 220/64px 折叠栏；移动端切换抽屉开合
+    toggleSidebar() {
+      if (this.isMobile) this.mobileOpen = !this.mobileOpen;
+      else this.collapsed = !this.collapsed;
+    },
+    onResize() {
+      this.isMobile = window.innerWidth <= 1024;
+      if (!this.isMobile) this.mobileOpen = false; // 回到桌面端时收起抽屉，避免残留遮罩
+    },
     async refreshBell() {
       try { this.bellUnread = await notifyApi.unreadCount(); } catch (e) { this.bellUnread = 0; }
     }
+  },
+  watch: {
+    // 路由切换后自动收起移动端抽屉
+    $route() { this.mobileOpen = false; }
   },
   mounted() {
     // D-18 路由守卫：初始化时若本地存在令牌，则校验其有效性（防篡改/过期令牌直接进入后台）。
@@ -130,6 +156,9 @@ export default {
     window.addEventListener('notify-unread', (e) => {
       this.bellUnread = (e.detail && e.detail.unread) || 0;
     });
+    // 响应式：监听视口尺寸，切换桌面端/移动端布局
+    window.addEventListener('resize', this.onResize);
+    this.onResize();
   }
 };
 </script>

@@ -12,7 +12,7 @@
     </div>
 
     <el-row :gutter="20" style="margin-top:20px">
-      <el-col :span="14">
+      <el-col :xs="24" :sm="24" :md="14">
         <el-card shadow="never">
           <template #header><span>近 12 日成交趋势</span></template>
           <div ref="trendChart" style="height:240px" v-if="hasEcharts"></div>
@@ -25,7 +25,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="10">
+      <el-col :xs="24" :sm="24" :md="10">
         <el-card shadow="never">
           <template #header><span>待办事项</span></template>
           <ul class="todo">
