@@ -1,0 +1,38 @@
+{
+  "domain": "trust",
+  "description": "信任体系可视化（ITER-U02）：商品详情信任条 / 订单信任视图 / 保障条款，只读聚合",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/trust/item",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.sellerCredit", "data.inspectionBadge", "data.riskFlag"],
+      "notes": "REQ-01/02/03/08/09/10/11 商品详情信任条；封禁/高风险 orderRestricted=true 限制下单"
+    },
+    {
+      "method": "GET",
+      "path": "/api/trust/order",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.logistics", "data.aftersale"],
+      "notes": "REQ-05/07 订单信任视图：物流时间轴 + 售后进度（无工单 hasDispute=false）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/trust/guarantee-terms",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data.steps"],
+      "notes": "REQ-04 完整保障条款（可展开）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/trust/item",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.sellerCredit", "data.inspectionBadge"],
+      "notes": "PC 后台商品信任视图（验货标 + 信用摘要），便于客服判断"
+    }
+  ]
+}

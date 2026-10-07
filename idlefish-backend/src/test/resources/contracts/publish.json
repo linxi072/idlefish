@@ -1,0 +1,38 @@
+{
+  "domain": "publish-assist",
+  "description": "小程序发布流程智能化（ITER-U01）：图片识别 / 属性模板 / 估价 / 草稿，AI 可降级不阻塞发布",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/publish-assist/recognize",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.available"],
+      "notes": "REQ-01 图片识别建议类目；AI 不可用 available=false，前端手工选择（不阻塞发布）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/publish-assist/attributes",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-03 按类目加载属性模板（真实数据）；类目不存在抛 CATEGORY_NOT_FOUND"
+    },
+    {
+      "method": "GET",
+      "path": "/api/publish-assist/price",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.hasData"],
+      "notes": "REQ-04 估价建议（分）；AI/基准价均无则 hasData=false，前端隐藏区间"
+    },
+    {
+      "method": "POST",
+      "path": "/api/publish-assist/draft",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.title"],
+      "notes": "REQ-02 草稿生成；AI 优先，否则规则模板兜底（始终可用）"
+    }
+  ]
+}
