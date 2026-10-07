@@ -212,6 +212,22 @@ public class IdlefishProperties {
         private double errorRateThreshold = 0.05;
         /** 支付验签失败累计阈值（近周期，超过即告警）。 */
         private long verifyFailureThreshold = 5;
+        /**
+         * P99 延迟 SLO 阈值（毫秒）：任意 {@code *.latency} 计时器的 P99 超过即告警（REQ-08）。
+         * 默认 2000ms。
+         */
+        private long p99ThresholdMs = 2000;
+        /**
+         * 资损级重复流水阈值（次）：{@code fund.flow.duplicate} 计数器超过即告警（REQ-07）。
+         * 该指标代表被 CAS 拦截的可疑重复出款/入账尝试；默认 1（即超过 1 次，2 次及以上即告警，
+         * 留出单次并发竞态的良性余量，避免误报）。
+         */
+        private long duplicateFlowThreshold = 1;
+        /**
+         * 支付回调超时/对账缺口阈值（次）：{@code pay.callback.timeout} 计数器超过即告警（REQ-06）。
+         * 默认 3。
+         */
+        private long callbackTimeoutThreshold = 3;
         /** 同类告警冷却时间（分钟），冷却期内不重复发送。 */
         private long cooldownMinutes = 30;
     }

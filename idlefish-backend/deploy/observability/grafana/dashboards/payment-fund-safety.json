@@ -1,0 +1,43 @@
+{
+  "uid": "idlefish-payment-fund-safety",
+  "title": "支付与资金安全",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "资损级重复流水累计 (REQ-07)",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "idlefish_counter{name=\"fund.flow.duplicate\"}", "refId": "A" } ],
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2, "type": "stat", "title": "支付回调超时/对账缺口累计 (REQ-06)",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "idlefish_counter{name=\"pay.callback.timeout\"}", "refId": "A" } ],
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 }
+    },
+    {
+      "id": 3, "type": "stat", "title": "支付验签失败累计",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "idlefish_counter{name=\"pay.notify.v3.failure\"}", "refId": "A" } ],
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 }
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "重复资金流水增量（近5m）",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "increase(idlefish_counter{name=\"fund.flow.duplicate\"}[5m])", "refId": "A" } ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 }
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "退款/提现 CAS 跳过 & 出款失败",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [
+        { "expr": "idlefish_counter{name=\"refund.cas.skip\"}", "refId": "A", "legendFormat": "refund.cas.skip" },
+        { "expr": "idlefish_counter{name=\"withdraw.transfer.failure\"}", "refId": "B", "legendFormat": "withdraw.transfer.failure" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 }
+    }
+  ]
+}

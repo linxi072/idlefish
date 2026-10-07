@@ -1,0 +1,40 @@
+{
+  "uid": "idlefish-business-overview",
+  "title": "业务总览",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "支付成功累计",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "idlefish_counter{name=\"pay.notify.v3.success\"}", "refId": "A" } ],
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2, "type": "stat", "title": "支付落地(pay.paid)累计",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "idlefish_counter{name=\"pay.paid\"}", "refId": "A" } ],
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 }
+    },
+    {
+      "id": 3, "type": "stat", "title": "退款成功累计",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "idlefish_counter{name=\"refund.success\"}", "refId": "A" } ],
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 }
+    },
+    {
+      "id": 4, "type": "stat", "title": "提现审批通过累计",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "idlefish_counter{name=\"withdraw.approve\"}", "refId": "A" } ],
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 }
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "接口 QPS（按路由）",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "rate(idlefish_counter{name=~\"http.request\\\\..*\"}[2m])", "refId": "A" } ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 }
+    }
+  ]
+}

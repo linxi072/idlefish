@@ -1,0 +1,28 @@
+# Prometheus 抓取配置（T01 可观测性生产化）
+# 应用需以 -Pmicrometer 激活（暴露 /actuator/prometheus），详见 docker-compose.yml。
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'idlefish-prod'
+
+rule_files:
+  - /etc/prometheus/alert.rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: 'idlefish-backend'
+    metrics_path: '/actuator/prometheus'
+    scheme: http
+    static_configs:
+      - targets: ['idlefish-backend:8080']
+        labels:
+          service: 'idlefish-backend'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

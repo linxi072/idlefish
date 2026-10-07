@@ -96,4 +96,40 @@ class AlertEvaluatorTest {
         verify(notificationService, never()).notify(ArgumentMatchers.any(), ArgumentMatchers.any(),
                 ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
     }
+
+    /**
+     * REQ-08：任意 *.latency 计时器 P99 超过 p99ThresholdMs（默认 2000）即触发 P99 SLO 告警。
+     */
+    @Test
+    void p99_slo_triggers_alert() {
+        metrics.record("http.latency./api/x", 3000);
+        evaluator.evaluate();
+        verify(notificationService).notify(ArgumentMatchers.eq(1L), ArgumentMatchers.eq(NotificationType.SYSTEM_ALERT),
+                ArgumentMatchers.eq("alert:p99_slo"), ArgumentMatchers.any(), ArgumentMatchers.any());
+    }
+
+    /**
+     * REQ-07：fund.flow.duplicate 计数器超过 duplicateFlowThreshold（默认 1，即 2 次及以上）即触发资损级告警。
+     */
+    @Test
+    void fund_flow_duplicate_triggers_alert() {
+        metrics.increment("fund.flow.duplicate");
+        metrics.increment("fund.flow.duplicate");
+        evaluator.evaluate();
+        verify(notificationService).notify(ArgumentMatchers.eq(1L), ArgumentMatchers.eq(NotificationType.SYSTEM_ALERT),
+                ArgumentMatchers.eq("alert:fund_flow_duplicate"), ArgumentMatchers.any(), ArgumentMatchers.any());
+    }
+
+    /**
+     * REQ-06：pay.callback.timeout 计数器超过 callbackTimeoutThreshold（默认 3，即 4 次及以上）即触发告警。
+     */
+    @Test
+    void pay_callback_timeout_triggers_alert() {
+        for (int i = 0; i < 4; i++) {
+            metrics.increment("pay.callback.timeout");
+        }
+        evaluator.evaluate();
+        verify(notificationService).notify(ArgumentMatchers.eq(1L), ArgumentMatchers.eq(NotificationType.SYSTEM_ALERT),
+                ArgumentMatchers.eq("alert:pay_callback_timeout"), ArgumentMatchers.any(), ArgumentMatchers.any());
+    }
 }

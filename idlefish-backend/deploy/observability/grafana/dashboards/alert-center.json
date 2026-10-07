@@ -1,0 +1,34 @@
+{
+  "uid": "idlefish-alert-center",
+  "title": "告警中心",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "重复流水增量（触发 REQ-07 告警）",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "increase(idlefish_counter{name=\"fund.flow.duplicate\"}[5m])", "refId": "A" } ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "回调超时/对账缺口增量（触发 REQ-06）",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "increase(idlefish_counter{name=\"pay.callback.timeout\"}[5m])", "refId": "A" } ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "接口错误率（触发错误率告警）",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "(idlefish_counter{name=\"http.status.5xx\"}/sum(idlefish_counter{name=~\"http.request\\\\..*\"}))*100", "refId": "A" } ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "验签失败增量（触发验签告警）",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "increase(idlefish_counter{name=\"pay.notify.v3.failure\"}[5m])", "refId": "A" } ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    }
+  ]
+}

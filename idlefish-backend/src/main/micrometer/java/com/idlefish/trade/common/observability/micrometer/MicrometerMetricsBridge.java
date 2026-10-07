@@ -94,6 +94,13 @@ public class MicrometerMetricsBridge {
                         .tag("name", sanitize(orig)).baseUnit("milliseconds").register(meterRegistry);
                 Gauge.builder("idlefish_timer_max_ms", this, obj -> timerValue(name, "maxMs"))
                         .tag("name", sanitize(orig)).baseUnit("milliseconds").register(meterRegistry);
+                // T01 生产化：桥接分位数（最近 N 样本），供 P99 SLO 看板与告警（REQ-08）
+                Gauge.builder("idlefish_timer_p50_ms", this, obj -> timerValue(name, "p50Ms"))
+                        .tag("name", sanitize(orig)).baseUnit("milliseconds").register(meterRegistry);
+                Gauge.builder("idlefish_timer_p95_ms", this, obj -> timerValue(name, "p95Ms"))
+                        .tag("name", sanitize(orig)).baseUnit("milliseconds").register(meterRegistry);
+                Gauge.builder("idlefish_timer_p99_ms", this, obj -> timerValue(name, "p99Ms"))
+                        .tag("name", sanitize(orig)).baseUnit("milliseconds").register(meterRegistry);
             }
         }
     }

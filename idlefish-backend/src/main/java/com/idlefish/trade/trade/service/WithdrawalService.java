@@ -155,6 +155,12 @@ public class WithdrawalService {
      * 成功路径先置 done 态（资金已实际出账）再写流水，保证状态为权威来源。
      */
     public Withdrawal approve(Long id) {
+        // T01 生产化：包裹审批出款全过程，输出结构化 span（REQ-04）并采集耗时，
+        // 供 P99 SLO 告警与链路追踪。
+        return metrics.timed("withdrawal.transfer", () -> approveInner(id));
+    }
+
+    private Withdrawal approveInner(Long id) {
         Withdrawal w = withdrawalMapper.selectById(id);
         if (w == null) {
             throw new BizException(Code.NOT_FOUND, "提现单不存在");
@@ -196,6 +202,8 @@ public class WithdrawalService {
         int affected = withdrawalMapper.update(doneUpd, new LambdaQueryWrapper<Withdrawal>()
                 .eq(Withdrawal::getId, id).eq(Withdrawal::getStatus, "pending"));
         if (affected == 0) {
+            // REQ-07：成功 CAS 被拦截（并发/双节点审批竞态），记一次被拦截的重复出款尝试。
+            metrics.increment("fund.flow.duplicate");
             return withdrawalMapper.selectById(id); // 已被其它线程/节点审批完成
         }
 

@@ -15,11 +15,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * 阈值告警引擎（F-12.3）：周期性从 {@link MetricsRegistry} 读取指标，评估三类异常：
+ * 阈值告警引擎（F-12.3，T01 生产化扩展）：周期性从 {@link MetricsRegistry} 读取指标，评估六类异常：
  * <ul>
  *   <li>慢请求：按路由均值的 {@code http.latency.*} 超过 {@code slowRequestMs}</li>
  *   <li>错误率：{@code http.status.5xx} / {@code http.request.*} 超过 {@code errorRateThreshold}</li>
  *   <li>支付验签失败：{@code pay.notify.v3.failure} + {@code pay.notify.verify.failure} 累计超过 {@code verifyFailureThreshold}</li>
+ *   <li>P99 延迟 SLO（REQ-08）：任意 {@code *.latency} 计时器 P99 超过 {@code p99ThresholdMs}</li>
+ *   <li>资损级重复流水（REQ-07）：{@code fund.flow.duplicate} 超过 {@code duplicateFlowThreshold}</li>
+ *   <li>支付回调超时/对账缺口（REQ-06）：{@code pay.callback.timeout} 超过 {@code callbackTimeoutThreshold}</li>
  * </ul>
  * 越界则通过 {@link NotificationService} 向管理员发送 {@link NotificationType#SYSTEM_ALERT}（best-effort）。
  * 带冷却去重，避免同一类告警在冷却期内重复轰炸。
@@ -33,6 +36,8 @@ public class AlertEvaluator {
     private static final String C_STATUS_5XX = "http.status.5xx";
     private static final String C_VERIFY_V3 = "pay.notify.v3.failure";
     private static final String C_VERIFY_FORM = "pay.notify.verify.failure";
+    private static final String C_DUP_FLOW = "fund.flow.duplicate";
+    private static final String C_CALLBACK_TIMEOUT = "pay.callback.timeout";
     private static final String T_LATENCY = "http.latency.";
 
     private final MetricsRegistry metrics;
@@ -63,6 +68,8 @@ public class AlertEvaluator {
         long totalReq = sumPrefix(counters, C_REQUEST);
         long err5xx = valueOf(counters, C_STATUS_5XX);
         long verifyFail = valueOf(counters, C_VERIFY_V3) + valueOf(counters, C_VERIFY_FORM);
+        long dupFlow = valueOf(counters, C_DUP_FLOW);
+        long callbackTimeout = valueOf(counters, C_CALLBACK_TIMEOUT);
         double errorRate = totalReq > 0 ? (double) err5xx / totalReq : 0d;
 
         if (errorRate > obs.getErrorRateThreshold()) {
@@ -75,6 +82,7 @@ public class AlertEvaluator {
                     "近周期支付回调验签失败累计 " + verifyFail + " 次，超阈值 " + obs.getVerifyFailureThreshold());
         }
         StringBuilder slow = new StringBuilder();
+        StringBuilder p99 = new StringBuilder();
         for (Map<String, Object> t : timers) {
             String name = String.valueOf(t.get("name"));
             if (name.startsWith(T_LATENCY)) {
@@ -82,10 +90,27 @@ public class AlertEvaluator {
                 if (avg > obs.getSlowRequestMs()) {
                     slow.append(name).append(" 均值 ").append(avg).append("ms；");
                 }
+                long p99ms = ((Number) t.get("p99Ms")).longValue();
+                if (p99ms > obs.getP99ThresholdMs()) {
+                    p99.append(name).append(" P99 ").append(p99ms).append("ms；");
+                }
             }
         }
         if (slow.length() > 0) {
             fire("slow_request", obs, "慢请求告警", slow.toString());
+        }
+        if (p99.length() > 0) {
+            fire("p99_slo", obs, "P99 延迟 SLO 告警（REQ-08）", p99.toString());
+        }
+        if (dupFlow > obs.getDuplicateFlowThreshold()) {
+            fire("fund_flow_duplicate", obs, "资损级重复流水告警（REQ-07）",
+                    "检测到重复资金流水 " + dupFlow + " 次，超阈值 " + obs.getDuplicateFlowThreshold()
+                            + "，疑似重复出款/入账，请立即核查资金安全");
+        }
+        if (callbackTimeout > obs.getCallbackTimeoutThreshold()) {
+            fire("pay_callback_timeout", obs, "支付回调超时/对账缺口告警（REQ-06）",
+                    "支付回调超时或对账未平 " + callbackTimeout + " 次，超阈值 " + obs.getCallbackTimeoutThreshold()
+                            + "，请核查微信支付回调与对账链路");
         }
     }
 

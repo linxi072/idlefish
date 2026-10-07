@@ -105,6 +105,12 @@ public class PayService {
      * 仅处理 trade_state=SUCCESS；其余状态（如 REFUND/CLOSED）忽略。
      */
     public void notifyV3(String body, String timestamp, String nonce, String serial, String signature) {
+        // T01 生产化：包裹回调处理全过程，输出结构化 span（REQ-04）并采集耗时，
+        // 供 P99 SLO 告警（pay.callback.apply.latency）与链路追踪。
+        metrics.timedRun("pay.callback.apply", () -> notifyV3Inner(body, timestamp, nonce, serial, signature));
+    }
+
+    private void notifyV3Inner(String body, String timestamp, String nonce, String serial, String signature) {
         // 真实支付：始终校验微信 v3 节点签名（已移除 mock 旁路，防伪造回调）
         boolean ok = escrow.verifySignature(timestamp, nonce, body, signature);
         if (!ok) {

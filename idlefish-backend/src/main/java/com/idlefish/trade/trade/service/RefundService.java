@@ -293,6 +293,12 @@ public class RefundService {
     // ---------- 内部工具 ----------
 
     private void doRefund(Refund r) {
+        // T01 生产化：以 timedRun 包裹退款出款全过程，输出结构化 span（REQ-04）并采集耗时，
+        // 供 P99 SLO 告警与链路追踪。
+        metrics.timedRun("refund.pay", () -> doRefundInner(r));
+    }
+
+    private void doRefundInner(Refund r) {
         // P0-2 并发安全：以 CAS 将状态由 wait_seller 推进到 refunding，
         // 仅当 affected==1 才执行真实出款，杜绝并发/集群下重复退款
         // （如「手动同意」与「48h 自动同意」定时任务竞态、双节点同时触发）。
@@ -303,7 +309,9 @@ public class RefundService {
                 .eq(Refund::getStatus, RefundStatus.WAIT_SELLER.getCode()));
         if (affected == 0) {
             // 状态已被其它线程/节点推进（本节点为竞态失败方），放弃执行真实出款，避免双退。
+            // REQ-07：记一次被 CAS 拦截的重复退款尝试，供资损级重复流水告警。
             metrics.increment("refund.cas.skip");
+            metrics.increment("fund.flow.duplicate");
             return;
         }
 

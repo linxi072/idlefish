@@ -1,0 +1,64 @@
+# Prometheus 告警规则（T01 可观测性生产化）
+# 指标命名来自 MicrometerMetricsBridge 桥接的 idlefish_* 系列 Gauge（零依赖 MetricsRegistry 镜像）。
+groups:
+  - name: idlefish_alerts
+    rules:
+      # 接口错误率（5xx / 总请求）超 5%
+      - alert: IdlefishHighErrorRate
+        expr: (idlefish_counter{name="http.status.5xx"} / sum(idlefish_counter{name=~"http.request\\..*"})) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "接口错误率超阈值"
+          description: "近周期 5xx 错误率 {{ $value | humanizePercentage }} 超过 5%（Req: 错误率）"
+
+      # 支付回调验签失败激增
+      - alert: IdlefishPaymentVerifyFailure
+        expr: increase(idlefish_counter{name="pay.notify.v3.failure"}[5m]) > 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "支付回调验签失败激增"
+          description: "近 5 分钟支付回调验签失败 {{ $value }} 次（Req: 验签失败阈值 5）"
+
+      # P99 延迟 SLO 突破（REQ-08）：任意 *.latency 计时器 P99 > 2000ms
+      - alert: IdlefishP99LatencySLO
+        expr: idlefish_timer_p99_ms{name=~".*\\.latency"} > 2000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 延迟 SLO 突破 (REQ-08)"
+          description: "计时器 {{ $labels.name }} 的 P99 = {{ $value }}ms 超过 2000ms"
+
+      # 资损级重复流水（REQ-07）：被 CAS 拦截的重复资金流水 > 1（即 2 次及以上）
+      - alert: IdlefishFundFlowDuplicate
+        expr: increase(idlefish_counter{name="fund.flow.duplicate"}[5m]) > 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "资损级重复流水 (REQ-07)"
+          description: "近 5 分钟检测到 {{ $value }} 次被 CAS 拦截的重复资金流水，疑似重复出款/入账，请立即核查"
+
+      # 支付回调超时/对账缺口（REQ-06）：> 3 次
+      - alert: IdlefishCallbackTimeout
+        expr: increase(idlefish_counter{name="pay.callback.timeout"}[5m]) > 3
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "支付回调超时/对账缺口 (REQ-06)"
+          description: "近 5 分钟支付回调超时或对账未平 {{ $value }} 次"
+
+      # 慢请求（按路由均值 > 1000ms）
+      - alert: IdlefishSlowRequest
+        expr: (idlefish_timer_sum_ms{name=~"http.latency\\..*"}/idlefish_timer_count{name=~"http.latency\\..*"}) > 1000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "慢请求告警"
+          description: "路由 {{ $labels.name }} 平均耗时 {{ $value }}ms 超过 1000ms"

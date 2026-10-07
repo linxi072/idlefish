@@ -1,6 +1,7 @@
 package com.idlefish.trade.trade.service;
 
 import com.idlefish.trade.common.enums.PayStatus;
+import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.trade.entity.FundFlow;
@@ -29,6 +30,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,8 +54,8 @@ class ReconciliationServiceTest {
     @Mock private FundFlowMapper fundFlowMapper;
     @Mock private NotificationService notificationService;
 
-    private ReconciliationService service() {
-        return new ReconciliationService(payOrderMapper, fundFlowMapper, notificationService, 1L);
+    private ReconciliationService service(MetricsRegistry metrics) {
+        return new ReconciliationService(payOrderMapper, fundFlowMapper, notificationService, metrics, 1L);
     }
 
     @Test
@@ -71,7 +73,7 @@ class ReconciliationServiceTest {
         flow.setCreatedAt(now);
         when(fundFlowMapper.selectList(ArgumentMatchers.any())).thenReturn(List.of(flow));
 
-        Map<String, Object> report = service().reconcileWithAlert(LocalDate.now());
+        Map<String, Object> report = service(new MetricsRegistry()).reconcileWithAlert(LocalDate.now());
 
         assertTrue((Boolean) report.get("matched"));
         verify(notificationService, never()).notify(ArgumentMatchers.any(), ArgumentMatchers.any(),
@@ -93,12 +95,39 @@ class ReconciliationServiceTest {
         flow.setCreatedAt(now);
         when(fundFlowMapper.selectList(ArgumentMatchers.any())).thenReturn(List.of(flow));
 
-        Map<String, Object> report = service().reconcileWithAlert(LocalDate.now());
+        Map<String, Object> report = service(new MetricsRegistry()).reconcileWithAlert(LocalDate.now());
 
         assertFalse((Boolean) report.get("matched"));
         verify(notificationService).notify(ArgumentMatchers.eq(1L),
                 ArgumentMatchers.eq(NotificationType.SYSTEM_ALERT), ArgumentMatchers.any(),
                 ArgumentMatchers.any(), ArgumentMatchers.any());
+    }
+
+    /**
+     * REQ-06 回归测试：对账不平且存在已支付订单时，应累加 {@code pay.callback.timeout} 计数器，
+     * 供 AlertEvaluator 升级为「支付回调超时/对账缺口」告警。
+     */
+    @Test
+    void mismatch_with_paid_orders_increments_callback_timeout() {
+        LocalDateTime now = LocalDateTime.now();
+        PayOrder po = new PayOrder();
+        po.setStatus(PayStatus.SUCCESS.getCode());
+        po.setAmount(100L);
+        po.setPaidAt(now);
+        when(payOrderMapper.selectList(ArgumentMatchers.any())).thenReturn(List.of(po));
+
+        FundFlow flow = new FundFlow();
+        flow.setType("PAY");
+        flow.setAmount(80L);
+        flow.setCreatedAt(now);
+        when(fundFlowMapper.selectList(ArgumentMatchers.any())).thenReturn(List.of(flow));
+
+        MetricsRegistry reg = new MetricsRegistry();
+        Map<String, Object> report = service(reg).reconcileWithAlert(LocalDate.now());
+
+        assertFalse((Boolean) report.get("matched"));
+        assertEquals(1L, reg.counter("pay.callback.timeout"),
+                "对账不平且存在已支付订单，应累加 pay.callback.timeout");
     }
 
     /**
@@ -116,7 +145,7 @@ class ReconciliationServiceTest {
         when(payOrderMapper.selectList(ArgumentMatchers.any())).thenReturn(List.of(po));
         when(fundFlowMapper.selectList(ArgumentMatchers.any())).thenReturn(List.of());
 
-        service().reconcile(LocalDate.now());
+        service(new MetricsRegistry()).reconcile(LocalDate.now());
 
         ArgumentCaptor<LambdaQueryWrapper<PayOrder>> captor =
                 ArgumentCaptor.forClass(LambdaQueryWrapper.class);

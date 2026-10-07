@@ -1,0 +1,32 @@
+{
+  "uid": "idlefish-latency-slo",
+  "title": "延迟 SLO（REQ-08）",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "P99 延迟（*.latency 计时器，毫秒）",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "idlefish_timer_p99_ms{name=~\"\\\\.latency$\"}", "refId": "A" } ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "P95 / 均值 / 最大 延迟",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [
+        { "expr": "idlefish_timer_p95_ms{name=~\"\\\\.latency$\"}", "refId": "A", "legendFormat": "p95" },
+        { "expr": "idlefish_timer_max_ms{name=~\"\\\\.latency$\"}", "refId": "B", "legendFormat": "max" },
+        { "expr": "idlefish_timer_sum_ms{name=~\"\\\\.latency$\"}/idlefish_timer_count{name=~\"\\\\.latency$\"}", "refId": "C", "legendFormat": "avg" }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 }
+    },
+    {
+      "id": 3, "type": "stat", "title": "P99 超 2000ms 的计时器数",
+      "datasource": { "type": "prometheus", "uid": "prom-idlefish" },
+      "targets": [ { "expr": "count(idlefish_timer_p99_ms{name=~\"\\\\.latency$\"} > 2000)", "refId": "A" } ],
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 16 }
+    }
+  ]
+}

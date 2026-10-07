@@ -2,6 +2,7 @@ package com.idlefish.trade.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.idlefish.trade.common.enums.PayStatus;
+import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.trade.entity.FundFlow;
@@ -28,14 +29,16 @@ public class ReconciliationService {
     private final PayOrderMapper payOrderMapper;
     private final FundFlowMapper fundFlowMapper;
     private final NotificationService notificationService;
+    private final MetricsRegistry metrics;
     private final Long alertAdminUserId;
 
     public ReconciliationService(PayOrderMapper payOrderMapper, FundFlowMapper fundFlowMapper,
-                                 NotificationService notificationService,
+                                 NotificationService notificationService, MetricsRegistry metrics,
                                  @Value("${idlefish.notify.alert-admin-user-id:1}") Long alertAdminUserId) {
         this.payOrderMapper = payOrderMapper;
         this.fundFlowMapper = fundFlowMapper;
         this.notificationService = notificationService;
+        this.metrics = metrics;
         this.alertAdminUserId = alertAdminUserId;
     }
 
@@ -79,6 +82,11 @@ public class ReconciliationService {
         Map<String, Object> report = reconcile(day);
         if (Boolean.FALSE.equals(report.get("matched"))) {
             long diff = ((Number) report.get("diff")).longValue();
+            long paidOrderCount = ((Number) report.get("paidOrderCount")).longValue();
+            // REQ-06：存在已支付订单却对账不平，标记支付回调超时/对账缺口，供 AlertEvaluator 升级告警
+            if (paidOrderCount > 0) {
+                metrics.increment("pay.callback.timeout");
+            }
             notificationService.notify(alertAdminUserId, NotificationType.SYSTEM_ALERT,
                     "reconcile:" + report.get("day"), "资金对账差异",
                     "对账日 " + report.get("day") + " 期望 " + report.get("expectedAmount")
