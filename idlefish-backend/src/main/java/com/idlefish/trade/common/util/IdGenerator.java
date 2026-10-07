@@ -40,4 +40,14 @@ public class IdGenerator {
     public static String disputeNo() {
         return next("DP");
     }
+
+    /** 验货单号（F-02）。 */
+    public static String inspectionNo() {
+        return next("IV");
+    }
+
+    /** 鉴定报告编号（F-02）。 */
+    public static String reportNo() {
+        return next("RP");
+    }
 }

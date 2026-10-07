@@ -8,6 +8,7 @@ import com.idlefish.trade.item.service.ItemService;
 import com.idlefish.trade.marketing.service.CouponService;
 import com.idlefish.trade.marketing.service.PointService;
 import com.idlefish.trade.trade.service.ActivityService;
+import com.idlefish.trade.inspection.service.InspectionService;
 import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.risk.service.TrackService;
 import com.idlefish.trade.trade.entity.Order;
@@ -58,6 +59,7 @@ class OrderServiceConfirmReceiveTest {
     @Mock private CouponService couponService;
     @Mock private PointService pointService;
     @Mock private ActivityService activityService;
+    @Mock private InspectionService inspectionService;
     @Mock private IdempotentService idempotentService;
     @Mock private DistributedLock distributedLock;
     @Mock private PlatformTransactionManager txManager;
@@ -66,7 +68,7 @@ class OrderServiceConfirmReceiveTest {
         return new OrderService(orderMapper, payOrderMapper, logisticsMapper, itemService, itemMapper,
                 addressService, logisticService, settlementService, trackService, new ObjectMapper(),
                 delayQueueService, notificationService, creditService, couponService, pointService,
-                activityService, idempotentService, distributedLock, txManager);
+                activityService, idempotentService, distributedLock, inspectionService, txManager);
     }
 
     private Order shippingOrder() {

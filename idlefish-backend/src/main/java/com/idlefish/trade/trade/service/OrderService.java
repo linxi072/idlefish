@@ -36,6 +36,7 @@ import com.idlefish.trade.trade.service.ActivityService;
 import com.idlefish.trade.marketing.service.PointService;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
+import com.idlefish.trade.inspection.service.InspectionService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -79,6 +80,9 @@ public class OrderService {
     /** 分布式锁：下单库存争抢互斥（多实例安全）。 */
     private final DistributedLock distributedLock;
 
+    /** 鉴定验货服务（F-02）：发货冻结窗口校验。 */
+    private final InspectionService inspectionService;
+
     /** 事务模板：显式事务边界，保证"锁包住事务"。 */
     private final TransactionTemplate txTemplate;
 
@@ -104,7 +108,7 @@ public class OrderService {
                         CreditService creditService, com.idlefish.trade.marketing.service.CouponService couponService,
                         PointService pointService, ActivityService activityService,
                         IdempotentService idempotentService, DistributedLock distributedLock,
-                        PlatformTransactionManager txManager) {
+                        InspectionService inspectionService, PlatformTransactionManager txManager) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.logisticsMapper = logisticsMapper;
@@ -123,6 +127,7 @@ public class OrderService {
         this.activityService = activityService;
         this.idempotentService = idempotentService;
         this.distributedLock = distributedLock;
+        this.inspectionService = inspectionService;
         this.txTemplate = new TransactionTemplate(txManager);
     }
 
@@ -311,6 +316,10 @@ public class OrderService {
     /** 卖家发货。 */
     public void ship(Long sellerId, String orderNo, String logisticsNo) {
         Order o = ownedSeller(sellerId, orderNo);
+        // REQ-04 验货中冻结发货：存在进行中验货单则禁止发货
+        if (inspectionService.isShippingFrozen(orderNo)) {
+            throw new BizException(Code.STATE_NOT_ALLOWED, "该订单验货中，发货已冻结");
+        }
         if (!OrderStatus.PAID.getCode().equals(o.getStatus())) {
             throw new BizException(Code.STATE_NOT_ALLOWED, "仅已支付订单可发货");
         }

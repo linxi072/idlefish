@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS t_item (
     view_count       INT          DEFAULT 0,
     like_count       INT          DEFAULT 0,
     fav_count        INT          DEFAULT 0,
+    inspection_status VARCHAR(16)  DEFAULT 'NONE' COMMENT '验货标识：NONE/INSPECTING/PASSED/REJECTED',
     version          INT          DEFAULT 0,
     deleted          INT          DEFAULT 0,
     created_at       DATETIME,
@@ -774,6 +775,58 @@ CREATE TABLE IF NOT EXISTS t_dispute (
     KEY idx_dispute_buyer (buyer_id),
     KEY idx_dispute_seller (seller_id),
     KEY idx_dispute_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===================== F-02 鉴定验货履约 =====================
+-- 验货单：买家送检 → 机构收件 → 验货 → 通过/不通过/异常。验货中冻结订单发货（REQ-04），
+-- 服务费按「分」计入资金流水（REQ-10）。状态流转见 InspectionStateMachine。
+CREATE TABLE IF NOT EXISTS t_inspection_order (
+    id                    BIGINT       PRIMARY KEY,
+    inspection_no         VARCHAR(32)  NOT NULL COMMENT '验货单号（唯一，IV 前缀）',
+    order_no              VARCHAR(64)  NOT NULL COMMENT '关联订单号',
+    item_id               BIGINT       NOT NULL COMMENT '关联商品 ID',
+    seller_id             BIGINT       NOT NULL COMMENT '卖家',
+    buyer_id              BIGINT       NOT NULL COMMENT '送检买家',
+    type                  VARCHAR(16)  NOT NULL COMMENT '验货类型：STANDARD 标准 / ACCURATE 精密',
+    status                VARCHAR(20)  NOT NULL COMMENT 'WAIT_PICKUP/IN_TRANSIT/INSPECTING/PASSED/REJECTED/EXCEPTION/CANCELED',
+    fee_amount            BIGINT       NOT NULL DEFAULT 0 COMMENT '服务费（分，REQ-10）',
+    agency_id             BIGINT       DEFAULT NULL COMMENT '鉴定机构 ID',
+    report_id             BIGINT       DEFAULT NULL COMMENT '关联报告 ID',
+    related_dispute_id    BIGINT       DEFAULT NULL COMMENT '关联维权工单 ID（REQ-06）',
+    timeout_at            DATETIME     DEFAULT NULL COMMENT '超时时刻（REQ-09）',
+    received_at           DATETIME     DEFAULT NULL COMMENT '机构收件时间',
+    started_at            DATETIME     DEFAULT NULL COMMENT '验货开始时间',
+    finished_at           DATETIME     DEFAULT NULL COMMENT '验货完成时间',
+    remark                VARCHAR(255) DEFAULT NULL COMMENT '备注',
+    created_at            DATETIME,
+    updated_at            DATETIME,
+    UNIQUE KEY uk_inspection_no (inspection_no),
+    KEY idx_inspection_order (order_no),
+    KEY idx_inspection_item (item_id),
+    KEY idx_inspection_buyer (buyer_id),
+    KEY idx_inspection_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 鉴定报告快照（F-02）：机构回传后落库，不可篡改（REQ-03）。
+CREATE TABLE IF NOT EXISTS t_inspection_report (
+    id                    BIGINT       PRIMARY KEY,
+    report_no             VARCHAR(32)  NOT NULL COMMENT '报告编号（唯一）',
+    inspection_no         VARCHAR(32)  NOT NULL COMMENT '关联验货单号',
+    order_no              VARCHAR(64)  NOT NULL COMMENT '关联订单号',
+    item_id               BIGINT       NOT NULL COMMENT '关联商品 ID',
+    agency_id             BIGINT       DEFAULT NULL COMMENT '鉴定机构 ID',
+    grade                 VARCHAR(8)   DEFAULT NULL COMMENT '评级：A/B/C/D',
+    pass                  TINYINT(1)   DEFAULT NULL COMMENT '是否通过（REQ-03）：1 通过 / 0 不通过',
+    func_items            TEXT         COMMENT '功能项检测结果（JSON）',
+    flaws                 TEXT         COMMENT '瑕疵项（JSON）',
+    cover_images          TEXT         COMMENT '报告封面/图（逗号分隔 URL）',
+    raw_json              TEXT         COMMENT '机构原始回传报文（不可篡改存证）',
+    report_version        VARCHAR(16)  DEFAULT '1.0' COMMENT '报告版本',
+    created_at            DATETIME,
+    updated_at            DATETIME,
+    UNIQUE KEY uk_report_no (report_no),
+    KEY idx_report_inspection (inspection_no),
+    KEY idx_report_order (order_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- 幂等记录（F-18 幂等框架）：三态 PROCESSING/SUCCESS/FAILED

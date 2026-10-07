@@ -29,6 +29,10 @@ public enum NotificationType {
     DISPUTE_CREATED("dispute_created", "维权发起"),
     DISPUTE_PLATFORM("dispute_platform", "维权平台介入"),
     DISPUTE_RESOLVED("dispute_resolved", "维权裁决"),
+    INSPECTION_CREATED("inspection_created", "验货送检"),
+    INSPECTION_RECEIVED("inspection_received", "机构收件"),
+    INSPECTION_RESULT("inspection_result", "验货结果"),
+    INSPECTION_EXCEPTION("inspection_exception", "验货异常"),
     SYSTEM_ALERT("system_alert", "系统告警");
 
     private final String code;

@@ -303,6 +303,14 @@ public class ItemService {
         setStatus(itemId, ItemStatus.SOLD);
     }
 
+    /** F-02 验货通过后置「已验」标识（REQ-07）。 */
+    public void markInspected(Long itemId) {
+        Item upd = new Item();
+        upd.setId(itemId);
+        upd.setInspectionStatus("PASSED");
+        itemMapper.updateById(upd);
+    }
+
     /** 跨模块只读读取商品实体（收藏服务等调用）。 */
     public Item view(Long itemId) {
         return getById(itemId);

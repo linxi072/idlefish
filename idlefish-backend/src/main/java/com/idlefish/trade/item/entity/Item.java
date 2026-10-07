@@ -39,6 +39,9 @@ public class Item extends BaseEntity {
     private Integer likeCount;
     private Integer favCount;
 
+    /** 验货标识（F-02）：NONE 未验 / INSPECTING 验货中 / PASSED 已验通过 / REJECTED 已验不通过。 */
+    private String inspectionStatus;
+
     @Version
     private Integer version;     // 乐观锁，防超卖
 }
