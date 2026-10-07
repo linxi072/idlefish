@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -72,11 +73,12 @@ class WithdrawalServiceTest {
         when(fundEscrowService.transfer("WD1", 1000L, "oXXX")).thenReturn("BILL1");
         when(withdrawalMapper.selectList(any())).thenReturn(List.of());
         when(fundFlowMapper.selectList(any())).thenReturn(List.of());
+        when(withdrawalMapper.update(any(), any())).thenReturn(1); // CAS 推进命中（affected=1）
 
         service.approve(1L);
 
         ArgumentCaptor<Withdrawal> cap = ArgumentCaptor.forClass(Withdrawal.class);
-        verify(withdrawalMapper).updateById(cap.capture());
+        verify(withdrawalMapper).update(cap.capture(), any());
         assertEquals("done", cap.getValue().getStatus());
         assertEquals("BILL1", cap.getValue().getTransferNo());
         verify(fundFlowMapper).insert(any(FundFlow.class));
@@ -90,16 +92,39 @@ class WithdrawalServiceTest {
         when(userMapper.selectById(2L)).thenReturn(userWithOpenid());
         when(fundEscrowService.transfer(anyString(), anyLong(), anyString()))
                 .thenThrow(new BizException(Code.FUND_TRANSFER_FAILED, "channel down"));
+        when(withdrawalMapper.update(any(), any())).thenReturn(1); // CAS 记录失败原因命中
 
         assertThrows(BizException.class, () -> service.approve(1L));
 
         ArgumentCaptor<Withdrawal> cap = ArgumentCaptor.forClass(Withdrawal.class);
-        verify(withdrawalMapper).updateById(cap.capture());
+        verify(withdrawalMapper).update(cap.capture(), any());
         assertEquals("pending", cap.getValue().getStatus()); // 保持冻结，余额未扣减
         assertNotNull(cap.getValue().getFailReason());
         verify(fundFlowMapper, never()).insert(any(FundFlow.class)); // 不出款流水
         verify(notificationService).notify(eq(1L), eq(NotificationType.SYSTEM_ALERT), any(), any(), any());
         verify(notificationService).notify(eq(2L), eq(NotificationType.WITHDRAW_REJECT), any(), any(), any());
         verify(metrics).increment("withdraw.transfer.failure");
+    }
+
+    /**
+     * P0-5 核心回归：模拟「双审批竞态」——两次 approve 都先读到 pending（stale read），
+     * 首次 CAS 推进命中（affected=1）并写资金流水；第二次 CAS 因状态已为 done 而 affected=0，
+     * 必须跳过记账，避免重复写入提现资金流水（重复出账口径）。
+     */
+    @Test
+    void approve_concurrent_secondSkipsFundFlow() {
+        when(withdrawalMapper.selectById(1L)).thenReturn(pendingWithdrawal());
+        when(userMapper.selectById(2L)).thenReturn(userWithOpenid());
+        when(fundEscrowService.transfer(anyString(), anyLong(), anyString())).thenReturn("BILL1");
+        when(withdrawalMapper.selectList(any())).thenReturn(List.of());
+        when(fundFlowMapper.selectList(any())).thenReturn(List.of());
+        // 首次 CAS 命中返回 1，第二次（竞态失败方）返回 0
+        when(withdrawalMapper.update(any(), any())).thenReturn(1, 0);
+
+        service.approve(1L);
+        service.approve(1L);
+
+        verify(fundFlowMapper, times(1)).insert(any(FundFlow.class));
+        verify(withdrawalMapper, times(2)).update(any(), any());
     }
 }

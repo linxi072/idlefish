@@ -80,8 +80,22 @@ const api = {
   getCategoryTree() { return route(() => mock.getCategoryTree(), () => http.get('/api/category/tree', null, false)); },
 
   // ===== 商品 / 搜索 =====
-  search(params) { return route(() => mock.search(params), () => http.get('/api/search', params, false)); },
-  recommend(params) { return route(() => mock.search(params), () => http.get('/api/search/recommend', params, false)); },
+  // 真实分支将后端 IPage{records,total} 归一化为 {items,total}，与 mock 路径及消费方（search.js/category.js 读 r.items/r.total）保持一致，
+  // 消除真实联调时首页/搜索结果空白风险（P0-6）。
+  search(params) {
+    return route(
+      () => mock.search(params),
+      () => http.get('/api/search', params, false)
+        .then((p) => ({ items: (p && p.records) || [], total: (p && p.total) || 0 }))
+    );
+  },
+  recommend(params) {
+    return route(
+      () => mock.search(params),
+      () => http.get('/api/search/recommend', params, false)
+        .then((p) => ({ items: (p && p.records) || [], total: (p && p.total) || 0 }))
+    );
+  },
   getItemDetail(id) { return route(() => mock.getItemDetail(id), () => http.get('/api/item/detail/' + id, null, false)); },
   publish(data) { return route(() => mock.publish(data), () => http.post('/api/item/publish', data)); },
   myItems() { return route(() => mock.myItems(), () => http.get('/api/item/mine')); },

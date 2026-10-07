@@ -1,18 +1,22 @@
 package com.idlefish.trade.trade.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.IdlefishProperties;
+import com.idlefish.trade.trade.entity.PayOrder;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
@@ -30,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -131,5 +136,37 @@ class RealWechatEscrowServiceImplTest {
         when(restTemplate.exchange(anyString(), any(), any(), eq(String.class)))
                 .thenThrow(new RuntimeException("network"));
         assertFalse(service.queryTransfer("WD1"));
+    }
+
+    /**
+     * P0-3 分账幂等回归：profitShare 的 out_order_no 必须确定且与支付单一一对应
+     * （"PS_" + payNo），禁止随机量。捕获两次 POST 请求体，断言：
+     * 1) out_order_no 恒为 PS_PAY123；2) 两次调用取值一致（微信分账重试幂等，不会重复分账）。
+     */
+    @Test
+    void profitShare_outOrderNo_idempotent_across_retries() throws Exception {
+        PayOrder po = new PayOrder();
+        po.setPayNo("PAY123");
+        po.setTransactionId("TXN123");
+        when(payOrderMapper.selectOne(any()))
+                .thenReturn(po);
+        when(restTemplate.postForObject(anyString(), any(), eq(String.class)))
+                .thenReturn("{\"order_id\":\"ORDER123\"}");
+
+        String first = service.profitShare("PAY123", 1000L, "mchReceiver", 950L);
+        String second = service.profitShare("PAY123", 1000L, "mchReceiver", 950L);
+
+        assertEquals("ORDER123", first);
+        assertEquals("ORDER123", second);
+
+        ArgumentCaptor<HttpEntity> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate, times(2)).postForObject(anyString(), captor.capture(), eq(String.class));
+        ObjectMapper om = new ObjectMapper();
+        JsonNode b1 = om.readTree((String) captor.getAllValues().get(0).getBody());
+        JsonNode b2 = om.readTree((String) captor.getAllValues().get(1).getBody());
+        String out1 = b1.path("out_order_no").asText();
+        String out2 = b2.path("out_order_no").asText();
+        assertEquals("PS_PAY123", out1, "out_order_no 应确定为 PS_+payNo");
+        assertEquals(out1, out2, "重试必须使用相同 out_order_no 以保证分账幂等");
     }
 }

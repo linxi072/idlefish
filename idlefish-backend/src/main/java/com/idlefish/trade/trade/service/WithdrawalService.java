@@ -171,10 +171,14 @@ public class WithdrawalService {
         } catch (BizException e) {
             // 真实出款失败：回滚（保持 pending，资金仍冻结未扣减），记录原因并告警
             Withdrawal failUpd = new Withdrawal();
-            failUpd.setId(id);
             failUpd.setStatus("pending");
             failUpd.setFailReason(truncate(e.getMessage()));
-            withdrawalMapper.updateById(failUpd);
+            // P0-5：以 CAS（仅当仍处于 pending 时）记录失败原因，避免竞态失败方覆盖成功方的 done 状态
+            int failAffected = withdrawalMapper.update(failUpd, new LambdaQueryWrapper<Withdrawal>()
+                    .eq(Withdrawal::getId, id).eq(Withdrawal::getStatus, "pending"));
+            if (failAffected == 0) {
+                throw e; // 已被其它线程/节点完成审批，放弃覆盖
+            }
             metrics.increment("withdraw.transfer.failure");
             notificationService.notify(ADMIN_ALERT_USER_ID, NotificationType.SYSTEM_ALERT, "WD" + id, "提现出款失败",
                     "提现单 WD" + id + " 金额 " + (w.getAmount() / 100.0) + " 元出款失败：" + e.getMessage());
@@ -183,13 +187,17 @@ public class WithdrawalService {
             throw e;
         }
 
-        // 出款成功：先置成功态（资金已实际出账，务必落库），再写流水
+        // 出款成功：以 CAS（pending→done）推进，affected==1 才记账；并发审批竞态下仅胜出线程写资金流水，
+        // 避免重复出款/重复记账，也防止失败方将已完成的 done 状态覆盖回 pending。
         Withdrawal doneUpd = new Withdrawal();
-        doneUpd.setId(id);
         doneUpd.setStatus("done");
         doneUpd.setTransferNo(transferNo);
         doneUpd.setDoneAt(LocalDateTime.now());
-        withdrawalMapper.updateById(doneUpd);
+        int affected = withdrawalMapper.update(doneUpd, new LambdaQueryWrapper<Withdrawal>()
+                .eq(Withdrawal::getId, id).eq(Withdrawal::getStatus, "pending"));
+        if (affected == 0) {
+            return withdrawalMapper.selectById(id); // 已被其它线程/节点审批完成
+        }
 
         long balance = withdrawableBalance(w.getUserId());
         fundFlowMapper.insert(FundFlowBuilder.of("WD" + IdGenerator.fundNo(), w.getUserId(), "OUT", "WITHDRAW", w.getAmount())

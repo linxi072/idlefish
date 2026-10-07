@@ -187,7 +187,9 @@ public class RealWechatEscrowServiceImpl implements FundEscrowService {
         ObjectNode body = objectMapper.createObjectNode();
         body.put("appid", p.getAppid());
         body.put("mchid", p.getMchid());
-        body.put("out_order_no", "PS_" + payNo + "_" + System.nanoTime());
+        // P0-3 分账幂等：out_order_no 必须与支付单一一对应且确定，禁止使用 nanoTime 等随机量。
+        // 微信分账 API 对相同 out_order_no 重试幂等返回原结果；若每次随机则会被当作新分账导致重复分账/报错。
+        body.put("out_order_no", "PS_" + payNo);
         body.put("transaction_id", po.getTransactionId());
         ObjectNode receiver = objectMapper.createObjectNode();
         receiver.put("type", "MERCHANT_ID");

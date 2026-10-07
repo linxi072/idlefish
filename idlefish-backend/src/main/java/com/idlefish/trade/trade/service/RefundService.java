@@ -293,10 +293,19 @@ public class RefundService {
     // ---------- 内部工具 ----------
 
     private void doRefund(Refund r) {
-        Refund mid = new Refund();
-        mid.setId(r.getId());
-        mid.setStatus(RefundStatus.REFUNDING.getCode());
-        refundMapper.updateById(mid);
+        // P0-2 并发安全：以 CAS 将状态由 wait_seller 推进到 refunding，
+        // 仅当 affected==1 才执行真实出款，杜绝并发/集群下重复退款
+        // （如「手动同意」与「48h 自动同意」定时任务竞态、双节点同时触发）。
+        Refund refunding = new Refund();
+        refunding.setStatus(RefundStatus.REFUNDING.getCode());
+        int affected = refundMapper.update(refunding, new LambdaQueryWrapper<Refund>()
+                .eq(Refund::getId, r.getId())
+                .eq(Refund::getStatus, RefundStatus.WAIT_SELLER.getCode()));
+        if (affected == 0) {
+            // 状态已被其它线程/节点推进（本节点为竞态失败方），放弃执行真实出款，避免双退。
+            metrics.increment("refund.cas.skip");
+            return;
+        }
 
         payService.refund(r.getPayNo(), r.getAmount());
 
@@ -304,7 +313,9 @@ public class RefundService {
         done.setId(r.getId());
         done.setStatus(RefundStatus.REFUNDED.getCode());
         done.setRefundAt(LocalDateTime.now());
-        refundMapper.updateById(done);
+        refundMapper.update(done, new LambdaQueryWrapper<Refund>()
+                .eq(Refund::getId, r.getId())
+                .eq(Refund::getStatus, RefundStatus.REFUNDING.getCode()));
         metrics.increment("refund.success");
 
         // 退款为原路退回，不计入钱包余额口径

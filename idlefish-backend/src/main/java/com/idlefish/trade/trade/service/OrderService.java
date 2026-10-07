@@ -493,8 +493,13 @@ public class OrderService {
         }
         Order upd = new Order();
         upd.setId(o.getId());
+        upd.setVersion(o.getVersion());
         upd.setStatus(OrderStatus.COMPLETED.getCode());
-        orderMapper.updateById(upd);
+        // P0-4 并发安全：与手动 confirmReceive 一致，借助 @Version 乐观锁（WHERE id=? AND version=?）做 CAS，
+        // 仅 affected==1 才结算。杜绝「手动确认」与「自动确认/延时队列」竞态下的重复结算（资损）。
+        if (orderMapper.updateById(upd) == 0) {
+            return;
+        }
         itemService.markSold(o.getItemId());
         settlementService.onTradeSuccess(o.getOrderNo());
 

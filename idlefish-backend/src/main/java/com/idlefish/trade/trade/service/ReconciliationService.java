@@ -1,6 +1,7 @@
 package com.idlefish.trade.trade.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.idlefish.trade.common.enums.PayStatus;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.trade.entity.FundFlow;
@@ -48,7 +49,7 @@ public class ReconciliationService {
 
         // 期望：当日已支付订单的金额合计
         List<PayOrder> paid = payOrderMapper.selectList(new LambdaQueryWrapper<PayOrder>()
-                .eq(PayOrder::getStatus, "paid")
+                .eq(PayOrder::getStatus, PayStatus.SUCCESS.getCode())
                 .ge(PayOrder::getPaidAt, start)
                 .lt(PayOrder::getPaidAt, end));
         long expected = paid.stream().mapToLong(PayOrder::getAmount).sum();
