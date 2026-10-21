@@ -17,6 +17,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.idlefish.trade.user.mapper",
         "com.idlefish.trade.item.mapper",
         "com.idlefish.trade.im.mapper",
+        "com.idlefish.trade.inspection.mapper",
         "com.idlefish.trade.risk.mapper",
         "com.idlefish.trade.notify.mapper",
         "com.idlefish.trade.system.mapper",
