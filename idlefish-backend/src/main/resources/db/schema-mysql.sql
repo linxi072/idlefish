@@ -894,3 +894,55 @@ CREATE TABLE IF NOT EXISTS t_reconcile_diff (
     KEY idx_diff_biz (biz_no),
     KEY idx_diff_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===================== 估价引擎（ITER-F03）=====================
+-- 历史成交样本（REQ-05）：支付成功回流，按 (品类, 成色) 维度分位估价与校准。
+-- 金额恒「分」整型；dealAt 作为日历聚合键。
+CREATE TABLE IF NOT EXISTS t_price_sample (
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
+    item_id         BIGINT       DEFAULT NULL COMMENT '关联商品 ID',
+    category_id     BIGINT       NOT NULL COMMENT '类目 ID',
+    condition_level INT          DEFAULT NULL COMMENT '成色等级 1~5（1 全新 ~ 5 功能完好）',
+    deal_price_fen  BIGINT       NOT NULL DEFAULT 0 COMMENT '成交价（分，REQ-01）',
+    deal_at         DATETIME     DEFAULT NULL COMMENT '成交时间',
+    source          VARCHAR(16)  DEFAULT 'deal' COMMENT '样本来源：deal(真实成交)/manual(人工录入)',
+    created_at      DATETIME,
+    updated_at      DATETIME,
+    PRIMARY KEY (id),
+    KEY idx_sample_category (category_id),
+    KEY idx_sample_cat_cond (category_id, condition_level),
+    KEY idx_sample_deal_at (deal_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 品类估价配置（REQ-08）：运营可配置品类基准价与全局系数覆盖；category_id 唯一。
+CREATE TABLE IF NOT EXISTS t_price_estimate_config (
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
+    category_id     BIGINT       NOT NULL COMMENT '类目 ID（唯一）',
+    base_price_fen  BIGINT       DEFAULT NULL COMMENT '品类基准价（全新参考，分，REQ-01）',
+    multiplier      DECIMAL(10,4) DEFAULT '1.0000' COMMENT '运营系数覆盖（默认 1.0）',
+    operator_id     BIGINT       DEFAULT NULL COMMENT '最近操作人（管理员 ID）',
+    status          VARCHAR(16)  NOT NULL DEFAULT 'ENABLED' COMMENT 'ENABLED/DISABLED',
+    created_at      DATETIME,
+    updated_at      DATETIME,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_config_category (category_id),
+    KEY idx_config_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 估价审计/留痕（REQ-08 系数覆盖 / REQ-10 异常低价送审 / RECALC 自动重算）。
+CREATE TABLE IF NOT EXISTS t_price_estimate_audit (
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
+    category_id     BIGINT       DEFAULT NULL COMMENT '关联类目 ID（ABNORMAL_LOW 时为商品所属类目）',
+    biz_type        VARCHAR(16)  NOT NULL COMMENT '业务类型：CONFIG_OVERRIDE/ABNORMAL_LOW/RECALC',
+    biz_id          BIGINT       DEFAULT NULL COMMENT '业务主键：ABNORMAL_LOW→商品 ID；其余→配置 ID',
+    before_json     TEXT         COMMENT '变更前快照（JSON）',
+    after_json      TEXT         COMMENT '变更后快照（JSON）',
+    operator_id     BIGINT       DEFAULT NULL COMMENT '操作人（管理员 ID；系统行为为 0）',
+    reason          VARCHAR(255) DEFAULT NULL COMMENT '操作说明/原因',
+    created_at      DATETIME,
+    updated_at      DATETIME,
+    PRIMARY KEY (id),
+    KEY idx_audit_category (category_id),
+    KEY idx_audit_biz_type (biz_type),
+    KEY idx_audit_biz_id (biz_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

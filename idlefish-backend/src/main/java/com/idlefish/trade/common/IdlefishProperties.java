@@ -34,6 +34,7 @@ public class IdlefishProperties {
     private Observability observability = new Observability();
     private Point point = new Point();
     private Invite invite = new Invite();
+    private Pricing pricing = new Pricing();
 
     @Data
     public static class Jwt {
@@ -292,5 +293,23 @@ public class IdlefishProperties {
         private Long rewardCouponId;
         /** 是否仅首单返券（1=仅首单，防刷；0=每单返，慎用）。 */
         private int firstOrderOnly = 1;
+    }
+
+    /**
+     * 估价引擎配置（ITER-F03）：异常低价送审告警接收者、样本清洗与兜底开关。
+     */
+    @Data
+    public static class Pricing {
+        /** 异常低价送审告警接收者（管理员账号 userId）；为空回退到 notify.alertAdminUserId。 */
+        private Long alertAdminUserId;
+        /** 估价功能总开关（默认开启）。关闭后 hasData=false，由前端隐藏入口不阻塞（REQ-06）。 */
+        private boolean enabled = true;
+        /** 样本清洗 IQR 倍数（异常值剔除，默认 1.5）。 */
+        private double iqrFactor = 1.5;
+        /** 同成色样本不足该数量时回落规则兜底（默认 5，REQ-03）。 */
+        private int minSampleCount = 5;
+        /** 偏离判定阈值：低于下限比例（默认 0.5=50%）、高于上限比例（默认 1.0=100%，REQ-09）。 */
+        private double lowDeviationRatio = 0.5;
+        private double highDeviationRatio = 1.0;
     }
 }

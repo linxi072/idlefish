@@ -23,6 +23,7 @@ import com.idlefish.trade.item.vo.ItemDetailVO;
 import com.idlefish.trade.item.vo.ItemVO;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
+import com.idlefish.trade.pricing.service.PricingService;
 import com.idlefish.trade.item.vo.SellerVO;
 import com.idlefish.trade.item.dto.AuditResult;
 import com.idlefish.trade.item.service.ContentAuditService;
@@ -63,13 +64,15 @@ public class ItemService {
     /** 分布式锁：替代原单实例本地锁，使多实例部署下库存扣减仍然互斥。 */
     private final DistributedLock distributedLock;
 
+    private final PricingService pricingService;
+
     private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     public ItemService(ItemMapper itemMapper, CategoryService categoryService,
                        UserService userService, ItemStateMachine stateMachine, ObjectMapper objectMapper,
                        ItemStatusLogMapper itemStatusLogMapper, ContentAuditService contentAuditService,
                        @Lazy SearchService searchService, NotificationService notificationService,
-                       DistributedLock distributedLock) {
+                       DistributedLock distributedLock, PricingService pricingService) {
         this.itemMapper = itemMapper;
         this.categoryService = categoryService;
         this.userService = userService;
@@ -80,6 +83,7 @@ public class ItemService {
         this.searchService = searchService;
         this.notificationService = notificationService;
         this.distributedLock = distributedLock;
+        this.pricingService = pricingService;
     }
 
     /** 发布商品：初始为 DRAFT 草稿。 */
@@ -105,6 +109,11 @@ public class ItemService {
         item.setLikeCount(0);
         item.setFavCount(0);
         itemMapper.insert(item);
+        // ITER-F03：异常低价送审标记（REQ-10，best-effort，不阻断发布）
+        try {
+            pricingService.evaluateListing(item);
+        } catch (Exception ignore) {
+        }
         return item.getId();
     }
 

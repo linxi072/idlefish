@@ -27,7 +27,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.idlefish.trade.marketing.invite.mapper",
         "com.idlefish.trade.member.mapper",
         "com.idlefish.trade.search.term.mapper",
-        "com.idlefish.trade.common.idempotent.mapper"
+        "com.idlefish.trade.common.idempotent.mapper",
+        "com.idlefish.trade.pricing.mapper"
 })
 @EnableScheduling
 public class TradeApplication {

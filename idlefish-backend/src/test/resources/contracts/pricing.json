@@ -1,0 +1,70 @@
+{
+  "domain": "pricing",
+  "description": "AI 智能定价/估价引擎（ITER-F03）：数据驱动估价、偏离提示、异常低价送审、运营系数覆盖留痕",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/price/estimate",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.hasData"],
+      "notes": "REQ-02 估价区间+样本数；无样本/基准价 hasData=false（REQ-06 前端隐藏入口，不阻塞）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/price/deviation",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.deviation"],
+      "notes": "REQ-09 偏离判定；deviation=LOW/HIGH/NONE，提示不阻断定价"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/price/config",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-08 读取品类估价配置（无则 data=null）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/price/config",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": [],
+      "notes": "REQ-08 保存/更新品类配置（基准价/系数/状态），落审计留痕"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/price/override",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": [],
+      "notes": "REQ-08 运营系数覆盖（在既有配置上调整并留痕）；配置不存在抛 PRICING_CONFIG_NOT_FOUND"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/price/abnormal",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-10 异常低价送审列表（风控关注）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/price/recalibrate",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": [],
+      "notes": "REQ-05 基于样本重算品类基准价；categoryId 可空=全量"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/price/audit-log",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-08 估价操作审计日志（配置/系数覆盖/重算留痕查询）"
+    }
+  ]
+}

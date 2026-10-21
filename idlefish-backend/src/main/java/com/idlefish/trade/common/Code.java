@@ -45,6 +45,8 @@ public enum Code {
     INSPECTION_NOT_FOUND(30023, "验货单不存在"),
     INSPECTION_STATE_NOT_ALLOWED(30024, "当前验货单状态不允许该操作"),
     INSPECTION_EXISTS(30025, "该订单已存在进行中的验货单"),
+    /** 估价配置不存在（ITER-F03：运营系数覆盖需先配置基准价）。 */
+    PRICING_CONFIG_NOT_FOUND(30026, "估价配置不存在"),
     /** 幂等：同一请求正在处理中（重复提交被拦截，F-18 幂等框架）。 */
     BIZ_PROCESSING(30022, "处理中，请勿重复提交"),
 

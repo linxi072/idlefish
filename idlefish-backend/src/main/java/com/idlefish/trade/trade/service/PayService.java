@@ -19,6 +19,7 @@ import com.idlefish.trade.marketing.service.PointService;
 import com.idlefish.trade.marketing.invite.service.InviteService;
 import com.idlefish.trade.member.service.MemberLevelService;
 import com.idlefish.trade.notify.enums.NotificationType;
+import com.idlefish.trade.pricing.service.PricingService;
 import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -42,13 +43,14 @@ public class PayService {
     private final PointService pointService;
     private final InviteService inviteService;
     private final MemberLevelService memberLevelService;
+    private final PricingService pricingService;
 
     public PayService(PayOrderMapper payOrderMapper, OrderMapper orderMapper,
                       FundFlowMapper fundFlowMapper, FundEscrowService escrow,
                       ObjectMapper objectMapper,
                       @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
                       MetricsRegistry metrics, PointService pointService, InviteService inviteService,
-                      MemberLevelService memberLevelService) {
+                      MemberLevelService memberLevelService, PricingService pricingService) {
         this.payOrderMapper = payOrderMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
@@ -60,6 +62,7 @@ public class PayService {
         this.pointService = pointService;
         this.inviteService = inviteService;
         this.memberLevelService = memberLevelService;
+        this.pricingService = pricingService;
     }
 
     /** 预下单：返回渠道支付参数。 */
@@ -215,6 +218,12 @@ public class PayService {
         try {
             memberLevelService.addGrowth(order.getBuyerId(),
                     com.idlefish.trade.member.MemberLevelCalculator.growthFromTrade(po.getAmount()));
+        } catch (Exception ignore) {
+        }
+
+        // ITER-F03：成交价回流估价样本（REQ-05，best-effort，不影响支付主流程）
+        try {
+            pricingService.recordDeal(order, po);
         } catch (Exception ignore) {
         }
     }
