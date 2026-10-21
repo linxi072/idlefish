@@ -1,0 +1,62 @@
+{
+  "domain": "ab-experiment",
+  "description": "AB 实验管理（ITER-F04 搜索推荐深化 / REQ-06 稳定分桶、REQ-07 一键回滚）：创建/列表/查看/更新/回滚/分桶。受统一后台鉴权。",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/admin/ab-experiment",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.id", "data.status"],
+      "notes": "创建实验（DRAFT）；名称唯一 + 与 RUNNING 实验时间窗不重叠校验，冲突抛 AB_EXPERIMENT_CONFLICT(30030)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/ab-experiment",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "实验列表（按创建时间倒序）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/ab-experiment/current",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "当前生效实验（RUNNING 且时间窗内；无则 data 为 null）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/ab-experiment/{id}",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.id", "data.status"],
+      "notes": "单个实验；不存在抛 AB_EXPERIMENT_NOT_FOUND(30029)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/ab-experiment/{id}/update",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.id", "data.status"],
+      "notes": "更新实验（仅非空字段生效）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/ab-experiment/{id}/rollback",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.status"],
+      "notes": "一键回滚 RUNNING→ROLLED_BACK，幂等；非 RUNNING 抛 BIZ_ERROR(30006)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/ab-experiment/{id}/assign",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.group", "data.effective"],
+      "notes": "按「实验 + 用户」分桶（调试 / 验证分组稳定性）"
+    }
+  ]
+}

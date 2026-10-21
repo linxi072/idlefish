@@ -53,6 +53,10 @@ public enum Code {
     ACCEPTANCE_NOT_FOUND(30027, "验收用例不存在"),
     /** 真机验收闭环（ITER-F01）：验收未闭环（存在未通过用例或未关闭缺陷）禁止关单。 */
     ACCEPTANCE_NOT_CLOSED(30028, "验收未闭环，存在未通过用例或未关闭缺陷"),
+    /** AB 实验不存在（ITER-F04 搜索推荐深化 / REQ-06 稳定分桶与回滚）。 */
+    AB_EXPERIMENT_NOT_FOUND(30029, "实验不存在"),
+    /** AB 实验配置冲突：名称重复或时间窗重叠（ITER-F04 / REQ-06）。 */
+    AB_EXPERIMENT_CONFLICT(30030, "实验配置冲突（名称或时间窗重叠）"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

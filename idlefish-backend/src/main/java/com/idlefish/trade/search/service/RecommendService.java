@@ -8,6 +8,7 @@ import com.idlefish.trade.item.service.ItemService;
 import com.idlefish.trade.item.vo.ItemVO;
 import com.idlefish.trade.risk.entity.TrackEvent;
 import com.idlefish.trade.risk.mapper.TrackEventMapper;
+import com.idlefish.trade.search.enhance.service.UserRealtimeFeatureService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -32,11 +33,14 @@ public class RecommendService {
     private final ItemMapper itemMapper;
     private final ItemService itemService;
     private final TrackEventMapper trackEventMapper;
+    private final UserRealtimeFeatureService featureService;
 
-    public RecommendService(ItemMapper itemMapper, ItemService itemService, TrackEventMapper trackEventMapper) {
+    public RecommendService(ItemMapper itemMapper, ItemService itemService, TrackEventMapper trackEventMapper,
+                           UserRealtimeFeatureService featureService) {
         this.itemMapper = itemMapper;
         this.itemService = itemService;
         this.trackEventMapper = trackEventMapper;
+        this.featureService = featureService;
     }
 
     /** 首页推荐流（兼容旧调用，无用户上下文）。 */
@@ -60,6 +64,15 @@ public class RecommendService {
         LocalDateTime now = LocalDateTime.now();
         // 用户兴趣向量（类目权重），未登录则为空
         Map<Long, Double> catWeights = buildInterestWeights(userId);
+        // F04 REQ-01/09：实时兴趣/搜索意图叠加长期画像（60s 窗口，best-effort）
+        if (userId != null && featureService != null) {
+            Map<Long, Double> rt = featureService.getRealtimeInterest(userId);
+            if (rt != null) {
+                for (Map.Entry<Long, Double> e : rt.entrySet()) {
+                    catWeights.merge(e.getKey(), e.getValue(), Double::sum);
+                }
+            }
+        }
 
         List<ItemVO> sorted = all.stream()
                 .sorted(Comparator.comparingDouble((Item it) -> -score(it, targetCity, now, catWeights)))

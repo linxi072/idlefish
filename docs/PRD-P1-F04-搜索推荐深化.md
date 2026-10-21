@@ -4,7 +4,7 @@
 |---|---|
 | 编号 | ITER-F04 |
 | 维度 / 优先级 | 功能完善 / **P1** |
-| 状态 | 待评审 |
+| 状态 | 部分实现（沙箱可运行子集：AB 实验框架 / 实时兴趣特征 / 降级安全融合召回 / 零结果兜底；向量召回与语义相似留作 ITER-T04 搜推服务化） |
 | 建议负责 | 后端负责人（算法/检索） |
 | 关联模块 | F-14.1 ES 检索（ik 分词/筛选聚合/索引重建）、F-14.2 个性化推荐（行为加权 + 热度衰减 + 冷启动）、F-14.3 搜索词运营（热搜/历史/屏蔽词/同义词）、F-14.5 运营 BI |
 | 被依赖 | ITER-T04（搜推服务化） |
@@ -164,3 +164,41 @@ F-14.1~F-14.3 已交付可用的检索与推荐能力：ES ik 分词 + 筛选聚
 | 风险 | AB 实验框架自研成本高 | 先做最简分桶 + 埋点对比，不做复杂统计显著性引擎 |
 | 风险 | 推荐理由标签引发用户不适（过度精准） | 提供关闭个性化开关，理由标签克制表达 |
 | 风险 | 指标提升不达预期 | 以 AB 实测为准，设定止损线，不达标则回滚并复盘 |
+
+---
+
+## 十二、实现说明（ITER-F04 沙箱可运行子集，2026-10-21）
+
+> 本轮落地**不引入任何新依赖、不破坏 `mvn -o` 离线构建**的沙箱可运行子集；向量召回与语义相似度计算明确留给被依赖项 **ITER-T04 搜推服务化**（独立服务，远程调用降级安全端口 `SemanticRecallPort`）。
+
+### 12.1 已落地能力（映射 REQ）
+
+| 模块 | 文件 | 覆盖 REQ |
+|---|---|---|
+| AB 实验实体/映射 | `search/enhance/entity/AbExperiment.java`、`mapper/AbExperimentMapper.java` | REQ-06/07 |
+| 稳定分桶纯函数 | `search/enhance/service/BucketAssigner.java`（FNV-1a 32 位确定性哈希 + floorMod） | REQ-06 |
+| 多路融合纯函数 | `search/enhance/service/SearchFusion.java`（按 id 去重保高优先级、打分降序、异常安全） | REQ-02/03 |
+| AB 实验服务 | `search/enhance/service/AbExperimentService.java`（名称唯一 + 时间窗重叠校验、一键回滚幂等、分桶委托纯函数） | REQ-06/07 |
+| 实时兴趣/意图特征 | `search/enhance/service/UserRealtimeFeatureService.java`（Redis 60s 窗口、best-effort 降级，反哺 `RecommendService.feed`） | REQ-01/09 |
+| 语义召回端口 + 同义词近似实现 | `search/enhance/service/SemanticRecallPort.java`、`SynonymExpansionRecall.java`（复用 F-14.3 同义词，降级安全） | REQ-02/03（近似） |
+| 搜索增强编排 | `search/enhance/service/SearchEnhanceService.java`（屏蔽词拦截→融合→实时加权→AB 偏移→零结果兜底） | REQ-02/03/04/06/08/09 |
+| 后台管理接口 | `search/enhance/controller/AdminAbExperimentController.java`（8 端点：创建/列表/当前/详情/更新/回滚/分桶） | REQ-06/07 |
+| 搜索增强接口 | `search/enhance/controller/SearchEnhanceController.java`（增强检索 / 猜你想找 / 行为回传，免登录） | REQ-02/03/04/08/09 |
+| DDL | `t_ab_experiment`（追加至 `schema-mysql.sql`） | REQ-06/07 |
+| 契约 | `contracts/ab-experiment.json`、`contracts/search-enhance.json`（自动纳入 `ContractConsistencyTest` 漂移断言） | — |
+| 单测 | `BucketAssignerTest`/`SearchFusionTest`/`UserRealtimeFeatureServiceTest`/`AbExperimentServiceTest`/`SearchEnhanceServiceTest` 共 5 类 | — |
+
+### 12.2 降级安全设计（关键）
+
+- **语义召回**：`SemanticRecallPort` 约定「不可用返回空列表、绝不抛异常」；`SynonymExpansionRecall` 以 F-14.3 同义词扩展近似，整条链路 `try/catch` 降级为纯关键词召回（REQ-03 不空结果/不报错）。
+- **实时特征**：`UserRealtimeFeatureService` 全写操作 best-effort，Redis 不可用静默降级，读取缺失/异常返回空集合，绝不阻断主流程。
+- **屏蔽词**：命中即返回空页，不报错、不记录（REQ-08），且大小写不敏感（继承 `SearchTermFilter.normalize`）。
+- **零结果兜底**：融合为空时自动切换「猜你想找」（同义词扩展 + 热搜词合并去重，REQ-04）。
+- **AB 偏移**：分桶异常不影响检索主流程（recallBoost 默认 1.0）。
+
+### 12.3 明确未落地（留作 ITER-T04 / 后续）
+
+- **向量召回**：真·向量相似度检索未实现，`SemanticRecallPort` 当前仅为同义词近似；ITER-T04 以独立搜推服务替换实现，零依赖改造。
+- **REQ-05 冷启动精细化**：当前推荐流 `RecommendService.feed` 已含冷启动保量（`buildInterestWeights`），本迭代未新增独立兜底策略类。
+- **REQ-10 ES 重建降级**：沿用 F-14.1 既有降级路径，本迭代未改动。
+- **PC 后台「实验管理」Tab / BI 看板**：端点已就绪，前端 Tab 与看板为后续前端迭代；埋点 `ab_bucket_assign` 等已通过 `MetricsRegistry` 埋入。

@@ -986,3 +986,22 @@ CREATE TABLE IF NOT EXISTS t_acceptance_defect (
     KEY idx_defect_status (status),
     KEY idx_defect_severity (severity)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- AB 实验（ITER-F04 搜索推荐深化 / REQ-06 稳定分桶、REQ-07 一键回滚）：实验配置与分桶依据。
+-- status: DRAFT(草稿) / RUNNING(运行中) / ROLLED_BACK(已回滚)。
+-- name 唯一（运营识别 + 冲突校验）；treatment_percent 为实验组流量占比 0~100。
+CREATE TABLE IF NOT EXISTS t_ab_experiment (
+    id                  BIGINT       PRIMARY KEY,
+    name                VARCHAR(64)  NOT NULL COMMENT '实验名称（唯一，便于冲突校验与运营识别）',
+    status              VARCHAR(16)  NOT NULL DEFAULT 'DRAFT' COMMENT 'DRAFT/RUNNING/ROLLED_BACK',
+    treatment_percent   INT          NOT NULL DEFAULT 0 COMMENT '实验组流量占比 0~100',
+    strategy_params     VARCHAR(4096) DEFAULT NULL COMMENT '策略参数 JSON（如 recallBoost/semanticRecall）',
+    start_at            DATETIME     DEFAULT NULL COMMENT '生效起始时间（空=立即生效）',
+    end_at              DATETIME     DEFAULT NULL COMMENT '生效结束时间（空=长期）',
+    creator             VARCHAR(64)  DEFAULT NULL COMMENT '创建人标识',
+    description         VARCHAR(255) DEFAULT NULL COMMENT '实验说明',
+    created_at          DATETIME,
+    updated_at          DATETIME,
+    UNIQUE KEY uk_ab_name (name),
+    KEY idx_ab_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

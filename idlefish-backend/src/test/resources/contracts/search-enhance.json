@@ -1,0 +1,30 @@
+{
+  "domain": "search-enhance",
+  "description": "搜索增强（ITER-F04 / REQ-02/03/04/06/08/09）：增强检索、零结果兜底「猜你想找」、实时行为回传。免登录（/api/search/** 已放行）。",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/search/enhance/query",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "增强检索：屏蔽词命中返回空不报错(REQ-08)；关键词+同义词融合(REQ-02/03)；实时加权(REQ-01/09)；AB 偏移(REQ-06)；零结果自动兜底(REQ-04)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search/enhance/guess",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "零结果兜底「猜你想找」(REQ-04)：同义词扩展 + 热搜词召回，合并去重"
+    },
+    {
+      "method": "POST",
+      "path": "/api/search/enhance/behavior",
+      "auth": "none",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "实时行为回传(REQ-01)：view_item/favorite/order_create/pay 更新 60s 内实时兴趣，反哺搜索与推荐(REQ-09)"
+    }
+  ]
+}
