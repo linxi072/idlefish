@@ -8,6 +8,10 @@ import com.idlefish.trade.trade.entity.FundFlow;
 import com.idlefish.trade.trade.entity.PayOrder;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
+import com.idlefish.trade.trade.mapper.RefundMapper;
+import com.idlefish.trade.trade.mapper.SettlementMapper;
+import com.idlefish.trade.trade.mapper.ReconcileBillMapper;
+import com.idlefish.trade.trade.mapper.ReconcileDiffMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
@@ -52,10 +56,15 @@ class ReconciliationServiceTest {
 
     @Mock private PayOrderMapper payOrderMapper;
     @Mock private FundFlowMapper fundFlowMapper;
+    @Mock private RefundMapper refundMapper;
+    @Mock private SettlementMapper settlementMapper;
+    @Mock private ReconcileBillMapper reconcileBillMapper;
+    @Mock private ReconcileDiffMapper reconcileDiffMapper;
     @Mock private NotificationService notificationService;
 
     private ReconciliationService service(MetricsRegistry metrics) {
-        return new ReconciliationService(payOrderMapper, fundFlowMapper, notificationService, metrics, 1L);
+        return new ReconciliationService(payOrderMapper, fundFlowMapper, refundMapper, settlementMapper,
+                reconcileBillMapper, reconcileDiffMapper, notificationService, metrics, 1L);
     }
 
     @Test

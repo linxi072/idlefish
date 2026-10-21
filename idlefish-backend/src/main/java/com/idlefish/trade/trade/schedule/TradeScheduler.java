@@ -3,6 +3,7 @@ package com.idlefish.trade.trade.schedule;
 import com.idlefish.trade.common.observability.TraceContext;
 import com.idlefish.trade.trade.service.OrderService;
 import com.idlefish.trade.trade.service.RefundService;
+import com.idlefish.trade.trade.entity.ReconcileBill;
 import com.idlefish.trade.trade.service.SettlementService;
 import com.idlefish.trade.trade.service.ReconciliationService;
 import org.slf4j.Logger;
@@ -10,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
+import java.util.List;
 
 /**
  * 交易域定时任务（PRD §4.4 超时与结算规则）：
@@ -102,16 +103,18 @@ public class TradeScheduler {
         }
     }
 
-    /** 每日 02:00：资金对账（PRD §F4），差异自动向管理员告警。 */
+    /** 每日 02:00：多维资金对账（ITER-T02 / PRD §F4），差异自动落库并告警。 */
     @Scheduled(cron = "0 0 2 * * *")
     public void reconcileDaily() {
         TraceContext.ensure();
         try {
-            Map<String, Object> report = reconciliationService.reconcileWithAlert(null);
-            if (Boolean.FALSE.equals(report.get("matched"))) {
-                log.warn("[scheduler] 资金对账存在差异: {}", report);
+            List<ReconcileBill> bills = reconciliationService.reconcileAll(null);
+            long mismatched = bills.stream()
+                    .filter(b -> Boolean.FALSE.equals(b.getMatched())).count();
+            if (mismatched > 0) {
+                log.warn("[scheduler] 资金对账完成，存在 {} 个维度不平: {}", mismatched, bills);
             } else {
-                log.info("[scheduler] 资金对账完成: {}", report);
+                log.info("[scheduler] 资金对账完成，全部平账: {}", bills);
             }
         } catch (Exception e) {
             log.error("[scheduler] reconcileDaily failed", e);

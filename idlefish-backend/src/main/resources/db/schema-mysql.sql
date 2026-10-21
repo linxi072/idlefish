@@ -846,3 +846,51 @@ CREATE TABLE IF NOT EXISTS t_idempotent_record (
     KEY idx_idem_expire (expire_at),
     KEY idx_idem_create (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 资金对账账单（ITER-T02 / F-11.4 深化）：日终多维对账结果持久化（REQ-06/07/08）。
+-- (reconcile_date, dimension) 唯一；金额恒以「分」整型，避免浮点资损。
+-- 维度 PAY/REFUND/SETTLE；FREEZE 因提现无独立冻结终态而排除，避免误报。
+CREATE TABLE IF NOT EXISTS t_reconcile_bill (
+    id                BIGINT       NOT NULL AUTO_INCREMENT,
+    reconcile_date    DATE         NOT NULL COMMENT '对账自然日',
+    dimension         VARCHAR(16)  NOT NULL COMMENT '对账维度：PAY/REFUND/SETTLE',
+    expected_count    INT          NOT NULL DEFAULT 0 COMMENT '平台侧预期笔数',
+    actual_count      INT          NOT NULL DEFAULT 0 COMMENT '资金流水侧实际笔数',
+    expected_amount   BIGINT       NOT NULL DEFAULT 0 COMMENT '预期金额合计（分）',
+    actual_amount     BIGINT       NOT NULL DEFAULT 0 COMMENT '实际金额合计（分）',
+    diff_amount       BIGINT       NOT NULL DEFAULT 0 COMMENT '金额差异（分，实际-预期）',
+    matched           TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '笔数+金额是否一致：1 是 / 0 否',
+    status            VARCHAR(16)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING/RESOLVED/CLOSED',
+    alert_sent        TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否已发送差异告警',
+    note              VARCHAR(255) DEFAULT NULL COMMENT '备注/关闭说明',
+    created_at        DATETIME,
+    updated_at        DATETIME,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_date_dimension (reconcile_date, dimension),
+    KEY idx_bill_date (reconcile_date),
+    KEY idx_bill_dimension (dimension),
+    KEY idx_bill_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 资金对账差异明细（ITER-T02 / REQ-07）：账单级不平的逐笔下钻工单，供人工核验。
+CREATE TABLE IF NOT EXISTS t_reconcile_diff (
+    id                BIGINT       NOT NULL AUTO_INCREMENT,
+    bill_id           BIGINT       NOT NULL COMMENT '关联 t_reconcile_bill.id',
+    dimension         VARCHAR(16)  NOT NULL COMMENT '对账维度：PAY/REFUND/SETTLE',
+    biz_no            VARCHAR(64)  NOT NULL COMMENT '业务单号 orderNo/refundNo/settleNo',
+    expected_amount   BIGINT       NOT NULL DEFAULT 0 COMMENT '平台侧金额（分）',
+    actual_amount     BIGINT       NOT NULL DEFAULT 0 COMMENT '资金流水侧金额（分）',
+    diff_amount       BIGINT       NOT NULL DEFAULT 0 COMMENT '金额差异（分，实际-预期）',
+    expected_count    INT          NOT NULL DEFAULT 0 COMMENT '平台侧笔数',
+    actual_count      INT          NOT NULL DEFAULT 0 COMMENT '资金流水侧笔数',
+    status            VARCHAR(16)  NOT NULL DEFAULT 'OPEN' COMMENT 'OPEN/RESOLVED/CLOSED',
+    handle_note       VARCHAR(255) DEFAULT NULL COMMENT '处理说明',
+    handler_id        BIGINT       DEFAULT NULL COMMENT '处理人（管理员 ID）',
+    created_at        DATETIME,
+    updated_at        DATETIME,
+    PRIMARY KEY (id),
+    KEY idx_diff_bill (bill_id),
+    KEY idx_diff_dimension (dimension),
+    KEY idx_diff_biz (biz_no),
+    KEY idx_diff_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
