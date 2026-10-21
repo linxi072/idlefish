@@ -1,6 +1,7 @@
 package com.idlefish.trade.trade.schedule;
 
 import com.idlefish.trade.common.observability.TraceContext;
+import com.idlefish.trade.common.observability.ObservabilityGuardService;
 import com.idlefish.trade.trade.service.OrderService;
 import com.idlefish.trade.trade.service.RefundService;
 import com.idlefish.trade.trade.entity.ReconcileBill;
@@ -35,13 +36,15 @@ public class TradeScheduler {
     private final RefundService refundService;
     private final SettlementService settlementService;
     private final ReconciliationService reconciliationService;
+    private final ObservabilityGuardService observabilityGuard;
 
     public TradeScheduler(OrderService orderService, RefundService refundService, SettlementService settlementService,
-                          ReconciliationService reconciliationService) {
+                          ReconciliationService reconciliationService, ObservabilityGuardService observabilityGuard) {
         this.orderService = orderService;
         this.refundService = refundService;
         this.settlementService = settlementService;
         this.reconciliationService = reconciliationService;
+        this.observabilityGuard = observabilityGuard;
     }
 
     /** 每 60 秒扫描：关闭超时未支付订单。 */
@@ -118,6 +121,17 @@ public class TradeScheduler {
             }
         } catch (Exception e) {
             log.error("[scheduler] reconcileDaily failed", e);
+        }
+    }
+
+    /** 每 5 分钟：可观测性守卫（T01 防御网），扫描卡单/重复流水转化为计数信号（REQ-06/07）。 */
+    @Scheduled(fixedDelay = 300_000)
+    public void observabilityGuard() {
+        TraceContext.ensure();
+        try {
+            observabilityGuard.guard();
+        } catch (Exception e) {
+            log.error("[scheduler] observabilityGuard failed", e);
         }
     }
 }

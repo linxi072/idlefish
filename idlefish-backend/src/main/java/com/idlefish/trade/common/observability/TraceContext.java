@@ -22,6 +22,10 @@ public final class TraceContext {
 
     public static final String MDC_KEY = "traceId";
     public static final String HEADER = "X-Trace-Id";
+    /** 业务单号 MDC key（订单号 / 支付单号等），供日志与结构化 span 透传（T01，REQ-02）。 */
+    public static final String ORDER_ID_KEY = "orderId";
+    /** 资金业务单号 MDC key（bizNo / 结算单号 / 提现单号等），供日志与结构化 span 透传（T01，REQ-02）。 */
+    public static final String BIZ_NO_KEY = "bizNo";
 
     private TraceContext() {
     }
@@ -47,6 +51,36 @@ public final class TraceContext {
     /** 生成新的 traceId。 */
     public static String newTraceId() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /** 将业务单号（订单号 / 支付单号）写入 MDC，使后续日志与 span 可关联该单（REQ-02）。 */
+    public static void putOrderId(String orderId) {
+        if (orderId != null && !orderId.isBlank()) {
+            MDC.put(ORDER_ID_KEY, orderId);
+        }
+    }
+
+    /** 将资金业务单号（bizNo / 结算单号 / 提现单号）写入 MDC（REQ-02）。 */
+    public static void putBizNo(String bizNo) {
+        if (bizNo != null && !bizNo.isBlank()) {
+            MDC.put(BIZ_NO_KEY, bizNo);
+        }
+    }
+
+    /** 清除业务单号 MDC。 */
+    public static void clearOrderId() {
+        MDC.remove(ORDER_ID_KEY);
+    }
+
+    /** 清除资金业务单号 MDC。 */
+    public static void clearBizNo() {
+        MDC.remove(BIZ_NO_KEY);
+    }
+
+    /** 清除全部业务上下文 MDC（orderId/bizNo），避免线程复用泄漏。 */
+    public static void clearBiz() {
+        MDC.remove(ORDER_ID_KEY);
+        MDC.remove(BIZ_NO_KEY);
     }
 
     /** 捕获当前 MDC 上下文，返回可在子线程中恢复并自动还原父线程上下文的 Runnable。 */

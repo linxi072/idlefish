@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.idempotent.IdempotentService;
+import com.idlefish.trade.common.observability.TraceContext;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.common.observability.MetricsRegistry;
@@ -156,8 +157,14 @@ public class WithdrawalService {
      */
     public Withdrawal approve(Long id) {
         // T01 生产化：包裹审批出款全过程，输出结构化 span（REQ-04）并采集耗时，
-        // 供 P99 SLO 告警与链路追踪。
-        return metrics.timed("withdrawal.transfer", () -> approveInner(id));
+        // 供 P99 SLO 告警与链路追踪。注入 bizNo（WD+id），使出款 span/日志可按单检索（REQ-02）。
+        String bizNo = "WD" + id;
+        TraceContext.putBizNo(bizNo);
+        try {
+            return metrics.timed("withdrawal.transfer", () -> approveInner(id));
+        } finally {
+            TraceContext.clearBizNo();
+        }
     }
 
     private Withdrawal approveInner(Long id) {

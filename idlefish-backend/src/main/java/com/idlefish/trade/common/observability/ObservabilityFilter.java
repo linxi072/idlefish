@@ -1,6 +1,7 @@
 package com.idlefish.trade.common.observability;
 
 import com.idlefish.trade.common.IdlefishProperties;
+import com.idlefish.trade.common.observability.TraceContext;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -76,6 +77,9 @@ public class ObservabilityFilter implements Filter {
             metrics.increment("http.status." + (status / 100) + "xx");
             log.info("{} {} -> {} ({}ms)", req.getMethod(), route, status, millis);
             MDC.remove(MDC_KEY);
+            // T01：清除业务上下文，避免线程池复用泄漏到后续无关请求
+            MDC.remove(TraceContext.ORDER_ID_KEY);
+            MDC.remove(TraceContext.BIZ_NO_KEY);
         }
     }
 

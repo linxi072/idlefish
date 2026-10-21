@@ -231,6 +231,20 @@ public class IdlefishProperties {
         private long callbackTimeoutThreshold = 3;
         /** 同类告警冷却时间（分钟），冷却期内不重复发送。 */
         private long cooldownMinutes = 30;
+        /**
+         * 监控端点收敛令牌（T01 内网收敛，REQ-10 / §九）：内网之外访问
+         * {@code /actuator/prometheus|metrics|env|...} 等敏感端点须携带
+         * {@code X-Actuator-Token} 且与此值一致；留空则仅依赖内网 IP 收敛（不强制令牌）。
+         * 生产建议经 {@code IDLEFISH_OBSERVABILITY_ACTUATOR_TOKEN} 注入高强度随机串，
+         * 配合网关仅允许内网/运维网段抓取。
+         */
+        private String actuatorToken = "";
+        /**
+         * 卡单守卫窗口（分钟，T01 防御网）：{@code status='pending_pay' 且 created_at} 早于
+         * 当前时间减去该值的订单视为异常卡单，转化为 {@code pay.callback.timeout} 计数（REQ-06）。
+         * 默认 30 分钟，与 {@code TradeScheduler.closeExpired} 关单窗口对齐（关单失败则需告警介入）。
+         */
+        private long stuckOrderMinutes = 30;
     }
 
     @Data

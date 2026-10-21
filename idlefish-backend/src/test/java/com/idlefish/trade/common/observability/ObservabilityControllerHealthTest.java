@@ -15,18 +15,17 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * F-12.5 依赖健康探活单元测试（纯 Mockito，离线可跑，不触发真实 TCP/MySQL）。
+ * F-12.5 / T01 依赖健康探活单元测试（纯 Mockito，离线可跑，不触发真实 TCP/MySQL）。
  * <ul>
  *   <li>MySQL 探活：mock DataSource 正常/异常；</li>
  *   <li>可选依赖聚合：local 缓存 + 无外部配置 → 整体 UP；Redis 配置但不可达 → DEGRADED；</li>
- *   <li>host:port 解析：覆盖 scheme/host:port/纯 host 三种形态。</li>
+ *   <li>host:port 解析：覆盖 scheme/host:port/纯 host 三种形态（纯函数，单测直测）；</li>
+ *   <li>探活逻辑统一复用 {@link DependencyProbes}，端点聚合与 HealthIndicator 同源。</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
@@ -38,18 +37,33 @@ class ObservabilityControllerHealthTest {
     @Mock
     private DataSource dataSource;
 
-    private ObservabilityController controller() {
-        return new ObservabilityController(metrics, dataSource, new IdlefishProperties());
+    private DependencyProbes probes(DataSource ds, IdlefishProperties props) {
+        return new DependencyProbes(ds, props);
+    }
+
+    private ObservabilityController controller(MetricsRegistry m, DependencyProbes p) {
+        return new ObservabilityController(m, p);
     }
 
     @Test
-    void mysqlDown_whenConnectionFails() throws Exception {
+    void mysqlDown_whenConnectionFails() {
         // 默认 mock：getConnection 返回 null → createStatement NPE → 捕获为 DOWN
-        Map<String, Object> health = controller().health();
+        DependencyProbes probes = probes(dataSource, new IdlefishProperties());
+        assertEquals("DOWN", probes.probeMysql().getStatus());
+        Map<String, Object> health = controller(metrics, probes).health();
         assertEquals("DOWN", health.get("status"));
         @SuppressWarnings("unchecked")
         Map<String, Object> mysql = (Map<String, Object>) ((Map<?, ?>) health.get("dependencies")).get("mysql");
         assertEquals("DOWN", mysql.get("status"));
+    }
+
+    @Test
+    void mysqlUp_whenSelect1Succeeds() throws Exception {
+        Connection conn = mock(Connection.class);
+        Statement stmt = mock(Statement.class);
+        when(dataSource.getConnection()).thenReturn(conn);
+        when(conn.createStatement()).thenReturn(stmt);
+        assertEquals("UP", probes(dataSource, new IdlefishProperties()).probeMysql().getStatus());
     }
 
     @Test
@@ -59,12 +73,14 @@ class ObservabilityControllerHealthTest {
         when(dataSource.getConnection()).thenReturn(conn);
         when(conn.createStatement()).thenReturn(stmt);
 
-        // 隔离外部 TCP 探活：mock 所有可选依赖可达，验证聚合逻辑 happy path
-        // （MySQL UP + 各可选依赖可达 => 整体 UP）。不依赖真实环境是否装有 Redis/ES。
-        ObservabilityController spy = org.mockito.Mockito.spy(new ObservabilityController(metrics, dataSource, new IdlefishProperties()));
-        doReturn(true).when(spy).tcpReachable(anyString(), anyInt(), anyInt());
-
-        Map<String, Object> health = spy.health();
+        // 通过匿名子类固定 tcpReachable=true，验证聚合 happy path（隔离真实网络）。
+        DependencyProbes probes = new DependencyProbes(dataSource, new IdlefishProperties()) {
+            @Override
+            protected boolean tcpReachable(String host, int port, int timeoutMs) {
+                return true;
+            }
+        };
+        Map<String, Object> health = controller(metrics, probes).health();
         @SuppressWarnings("unchecked")
         Map<String, Object> deps = (Map<String, Object>) health.get("dependencies");
 
@@ -83,11 +99,13 @@ class ObservabilityControllerHealthTest {
         when(dataSource.getConnection()).thenReturn(conn);
         when(conn.createStatement()).thenReturn(stmt);
 
-        IdlefishProperties props = new IdlefishProperties();
-        ObservabilityController spy = org.mockito.Mockito.spy(new ObservabilityController(metrics, dataSource, props));
-        doReturn(false).when(spy).tcpReachable(anyString(), anyInt(), anyInt());
-
-        Map<String, Object> health = spy.health();
+        DependencyProbes probes = new DependencyProbes(dataSource, new IdlefishProperties()) {
+            @Override
+            protected boolean tcpReachable(String host, int port, int timeoutMs) {
+                return false;
+            }
+        };
+        Map<String, Object> health = controller(metrics, probes).health();
         @SuppressWarnings("unchecked")
         Map<String, Object> deps = (Map<String, Object>) health.get("dependencies");
 
@@ -105,10 +123,13 @@ class ObservabilityControllerHealthTest {
 
         IdlefishProperties props = new IdlefishProperties();
         props.getSearch().setHosts(List.of("http://127.0.0.1:9200"));
-        ObservabilityController spy = org.mockito.Mockito.spy(new ObservabilityController(metrics, dataSource, props));
-        doReturn(false).when(spy).tcpReachable(anyString(), anyInt(), anyInt());
-
-        Map<String, Object> health = spy.health();
+        DependencyProbes probes = new DependencyProbes(dataSource, props) {
+            @Override
+            protected boolean tcpReachable(String host, int port, int timeoutMs) {
+                return false;
+            }
+        };
+        Map<String, Object> health = controller(metrics, probes).health();
         @SuppressWarnings("unchecked")
         Map<String, Object> deps = (Map<String, Object>) health.get("dependencies");
         assertEquals("DEGRADED", health.get("status"));
@@ -117,24 +138,23 @@ class ObservabilityControllerHealthTest {
 
     @Test
     void parseHostPort_variousForms() {
-        ObservabilityController c = controller();
         // scheme + host + port
-        String[] a = c.parseHostPort("http://127.0.0.1:9200", 9200);
+        String[] a = DependencyProbes.parseHostPort("http://127.0.0.1:9200", 9200);
         assertEquals("127.0.0.1", a[0]);
         assertEquals("9200", a[1]);
         // https scheme default port
-        String[] b = c.parseHostPort("https://mq.example.com/path", 443);
+        String[] b = DependencyProbes.parseHostPort("https://mq.example.com/path", 443);
         assertEquals("mq.example.com", b[0]);
         assertEquals("443", b[1]);
         // pure host:port
-        String[] d = c.parseHostPort("oss-cn-hangzhou.aliyuncs.com:443", 443);
+        String[] d = DependencyProbes.parseHostPort("oss-cn-hangzhou.aliyuncs.com:443", 443);
         assertEquals("oss-cn-hangzhou.aliyuncs.com", d[0]);
         assertEquals("443", d[1]);
         // pure host -> default port
-        String[] e = c.parseHostPort("oss-cn-hangzhou.aliyuncs.com", 443);
+        String[] e = DependencyProbes.parseHostPort("oss-cn-hangzhou.aliyuncs.com", 443);
         assertEquals("oss-cn-hangzhou.aliyuncs.com", e[0]);
         assertEquals("443", e[1]);
         // null
-        assertEquals(null, c.parseHostPort(null, 443));
+        assertNull(DependencyProbes.parseHostPort(null, 443));
     }
 }

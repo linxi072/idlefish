@@ -7,6 +7,7 @@ import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.common.observability.MetricsRegistry;
+import com.idlefish.trade.common.observability.TraceContext;
 import com.idlefish.trade.risk.entity.RiskEvent;
 import com.idlefish.trade.risk.mapper.RiskEventMapper;
 import com.idlefish.trade.trade.entity.FundFlow;
@@ -93,12 +94,16 @@ public class SettlementService {
         }
         // 真实微信分账：交易成功后即时将卖家应得款项分账至接收方（生产为卖家子商户号）；
         // 异常不阻断结算单生成（结算仍按 T+1 放款兜底）。
+        // 注入 orderId 到 MDC，使分账 span/日志可按单检索（REQ-02）。
+        TraceContext.putOrderId(orderNo);
         try {
             metrics.timed("settle.profitshare", () -> escrow.profitShare(o.getPayNo(), o.getPayAmount(),
                     props.getPay().getMchid(), sellerAmount));
         } catch (Exception e) {
             metrics.increment("settle.profitshare.failure");
             log.warn("微信分账发起失败（不影响结算单）orderNo={}: {}", orderNo, e.getMessage());
+        } finally {
+            TraceContext.clearOrderId();
         }
     }
 

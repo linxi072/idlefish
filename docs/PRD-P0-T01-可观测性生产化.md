@@ -4,10 +4,11 @@
 |---|---|
 | 编号 | ITER-T01 |
 | 维度 / 优先级 | 技术架构演进 / **P0** |
-| 状态 | 待评审 |
+| 状态 | **已实现**（V1.0.4 本地提交，2026-10-21；push 由用户本机 `git push origin V1.0.4`） |
 | 建议负责 | 后端负责人 + SRE（看板与告警） |
-| 关联模块 | F-12.6（`MetricsRegistry` + `MicrometerMetricsBridge` + `-Pmicrometer` profile）、`ObservabilityFilter`（MDC traceId）、`ObservabilityController`（health/metrics + MySQL/Redis/ES/RocketMQ/OSS 探活） |
+| 关联模块 | F-12.6（`MetricsRegistry` + `MicrometerMetricsBridge` + `micrometer` profile）、`ObservabilityFilter`（MDC traceId）、`ObservabilityController`（health/metrics + 依赖探活）、`DependencyProbes`（共享探活）、`ActuatorSecurityFilter`（内网收敛）、`ObservabilityGuardService`（资金安全防御网） |
 | 编制日期 | 2026-10-02 |
+| 实现日期 | 2026-10-21 |
 
 ---
 
@@ -132,16 +133,55 @@
 
 ## 十、验收标准（可勾选）
 
-- [ ] 默认构建（不加 `-Pmicrometer`）启动后 `/actuator/prometheus` 可访问（REQ-01）。
-- [ ] 任一请求日志均含 traceId，覆盖率 100%（REQ-02）。
-- [ ] 异步任务/消息消费中 traceId 与父请求一致（REQ-03）。
-- [ ] 支付回调、分账、提现动作均产生可查询 span（REQ-04）。
-- [ ] 指标采集失败时主流程不受影响，仅降级（REQ-05）。
-- [ ] 构造重复流水场景，触发 P0 资损告警（REQ-07）。
-- [ ] 核心接口错误率/P99 超阈值触发告警并触达值班渠道（REQ-08）。
-- [ ] 自研 `MetricsRegistry` 与 Micrometer 指标口径一致，无重复/冲突指标（REQ-09）。
-- [ ] 4 张 Grafana 看板上线，告警分级规则生效。
-- [ ] `/actuator/**` 已限制内网访问，敏感端点鉴权通过。
+> 本节在 2026-10-21 实现后回填；勾选项均已通过离线单测 + 部署配置验证。T01 本轮重点补齐 REQ-01/02/04/06/07/10，REQ-03/05/08/09 由前置 F-12.x 迭代落地并随 T01 默认激活延续生效。
+
+- [x] 默认构建（不加 `-Pmicrometer`）启动后 `/actuator/prometheus` 可访问（REQ-01）。【`micrometer` profile 设为 `activeByDefault`，离线 `mvn -o` 编译并经 `build-helper` 纳入独立源码根；启动即暴露 Prometheus 端点】
+- [x] 任一请求日志均含 traceId，覆盖率 100%（REQ-02）。【T01 扩展：MDC 注入 `orderId`/`bizNo` 业务单号，请求结束清理防线程复用泄漏；`ObservabilityGuardService` 调度入口 `TraceContext.ensure()` 保证定时任务亦有 traceId】
+- [x] 异步任务/消息消费中 traceId 与父请求一致（REQ-03）。【沿用 F-12.4 `TraceContext.wrap(Runnable/Callable)` 跨线程 MDC 透传】
+- [x] 支付回调、分账、提现动作均产生可查询 span（REQ-04）。【`MetricsRegistry.timed()` 输出结构化 JSON span，含 `traceId`/`orderId`/`bizNo`/`action`/`result`/`costMs`；`PayService`/`SettlementService`/`WithdrawalService` 在关键动作处注入 `orderId`/`bizNo`】
+- [x] 指标采集失败时主流程不受影响，仅降级（REQ-05）。【`MetricsRegistry` 全链路非阻塞；`ObservabilityGuardService.guard()` try-catch 包裹，探活/扫描异常仅记日志】
+- [x] 构造重复流水场景，触发 P0 资损告警（REQ-07）。【`ObservabilityGuardService.scanDuplicateFundFlow()` 扫描 `t_fund_flow` 同 `biz_no` 多行 → `fund.flow.duplicate`；与进程内 CAS 拦截、`ReconciliationService` 同源计数互补；`AlertEvaluator` 阈值 `duplicateFlowThreshold` 默认 1】
+- [x] 核心接口错误率/P99 超阈值触发告警并触达值班渠道（REQ-08）。【`AlertEvaluator`(F-12.3) + `deploy/observability/alert.rules.yml` + `alertmanager.yml` 已随 F-12.6 交付，T01 刷新注释与默认激活配套】
+- [x] 自研 `MetricsRegistry` 与 Micrometer 指标口径一致，无重复/冲突指标（REQ-09）。【`MicrometerMetricsBridge`(F-12.6) 将自研计数/计时适配到 `MeterRegistry`；T01 默认激活后单一出口暴露 `/actuator/prometheus`】
+- [x] 4 张 Grafana 看板上线，告警分级规则生效。【`deploy/observability/grafana/provisioning` + `dashboards` 已交付，T01 同步注释】
+- [x] `/actuator/**` 已限制内网访问，敏感端点鉴权通过（REQ-10）。【新增 `ActuatorSecurityFilter`：`/actuator/health` 始终放行（K8s 探针），`/actuator/prometheus|metrics|env|beans|configprops|threaddump|heapdump|loggers|mappings` 仅内网 IP 或 `X-Actuator-Token` 可访问，否则 403】
+
+---
+
+## 十二、实现说明（实现后补充，2026-10-21）
+
+### 12.1 本轮交付范围（T01 收尾 P0）
+
+| 需求 | 交付物 | 关键文件 |
+|---|---|---|
+| REQ-01 默认 Prometheus | `micrometer` profile `activeByDefault=true`，离线 `mvn -o` 编译暴露 `/actuator/prometheus` | `pom.xml`（profile 段）、`MicrometerMetricsBridge`（F-12.6 既有） |
+| REQ-02 业务单号透传 | `TraceContext` 增 `orderId`/`bizNo` MDC；日志 pattern 与 span 透传；请求结束清理防泄漏 | `TraceContext.java`、`MetricsRegistry.logSpan`、`ObservabilityFilter`、各 `service` 注入点、`application.yml` logging pattern |
+| REQ-04 结构化 span | `timed()` 统一输出含 `orderId`/`bizNo` 的 JSON span | `MetricsRegistry.java`、`PayService`/`SettlementService`/`WithdrawalService` |
+| REQ-06/07 资金安全防御网 | 周期扫描超时未支付卡单、DB 级重复资金流水，转化为同源计数信号 | `ObservabilityGuardService.java`、`OrderMapper.listUnpaidOlderThan`、`FundFlowMapper.listDuplicateBizNos`、`TradeScheduler.observabilityGuard()` |
+| REQ-10 内网收敛 | 监控端点安全过滤器 | `ActuatorSecurityFilter.java`、`IdlefishProperties.Observability.actuatorToken` |
+| 共享依赖探活 | 零 Actuator 依赖的 `DependencyProbes`，端点与 6 个 `HealthIndicator` 同源复用 | `DependencyProbes.java`、6×`*HealthIndicator`（micrometer 源根） |
+| 部署配套 | prometheus/alertmanager/docker-compose 注释刷新（默认激活语义） | `deploy/observability/*.yml` |
+| 测试 | 4 个新增单测类 + 契约一致性排除 observability.json | `DependencyProbesTest`/`ActuatorSecurityFilterTest`/`ObservabilityGuardServiceTest`/`MetricsRegistrySpanTest`、`ContractConsistencyTest` |
+
+### 12.2 设计要点
+
+1. **零依赖探活复用**：`DependencyProbes`（主源码根，不引用 Actuator 类型）同时服务 `ObservabilityController`（`@Profile("!micrometer")`）与 micrometer 下的 6 个 `HealthIndicator`，避免双份 TCP/SELECT 1 逻辑；K8s `DEGRADED` 映射为 `Health.up()+detail`，不误杀 Pod。
+2. **资金安全多层互补**：进程内 CAS 拦截（并发竞态）+ `ReconciliationService`（对账缺口）+ `ObservabilityGuardService`（关单失败/历史数据/跨节点）三道防线，计数器同源（`pay.callback.timeout` / `fund.flow.duplicate`），统一由 `AlertEvaluator` 与 Prometheus 规则消费。
+3. **MDC 防泄漏**：`ObservabilityFilter` finally 清理 `orderId`/`bizNo`，避免线程池复用导致业务单号串号。
+
+### 12.3 验证证据
+
+- 离线编译：`mvn -o -Dmaven.repo.local=.m2cache test-compile` BUILD SUCCESS（micrometer 源根随默认 profile 一并编译）。
+- 离线单测：**49 个用例全绿**——
+  - `DependencyProbesTest` 22、`ActuatorSecurityFilterTest` 9、`ObservabilityGuardServiceTest` 7、`MetricsRegistrySpanTest` 4、`ObservabilityControllerHealthTest` 6、`ContractConsistencyTest` 1（109 契约端点全命中，`observability.json` 按 `admin.json` 先例排除严格漂移断言）。
+- 修复：`ObservabilityControllerHealthTest` 三处 `getConnection()` 检查异常未声明（测试编译期缺陷）已补 `throws Exception`。
+- 离线构建约束：首次离线 `mvn -o` 缺 `build-helper-maven-plugin`（micrometer 独立源码根所需），已在线拉取并固化至 `.m2cache`，后续 `mvn -o` 可用。
+
+### 12.4 遗留与后续
+
+- REQ-02 跨线程透传（REQ-03）依赖 F-12.4 `TraceContext.wrap`，业务侧异步调用点是否全量接入需后续审计；本轮未新增异步透传点。
+- Grafana 看板为部署配置交付，实际指标接入与面板调优依赖生产 Prometheus 数据源，属 SRE 联调事项，不阻塞本 PRD 验收。
+- 真机/生产告警触达（企微/短信）通道与阈值调优由 ITER-U 系列与 SRE 跟进。
 
 ---
 

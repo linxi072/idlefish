@@ -2,6 +2,7 @@ package com.idlefish.trade.common.observability;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -80,17 +81,28 @@ public class MetricsRegistry {
     /**
      * 输出结构化 JSON span 日志。字段：
      * {@code traceId}（取自 {@link TraceContext#current()}，缺失则为空串）、
+     * {@code orderId}/{@code bizNo}（取自 MDC，资金链路关键动作时由业务层注入，缺失则省略，REQ-02）、
      * {@code action}、{@code result}（success/failure）、{@code costMs}、{@code ts}（毫秒时间戳）。
-     * 日志级别 INFO，可通过调整 logger 级别抑制；JSON 行可被日志平台按字段解析。
+     * 日志级别 INFO，可通过调整 logger 级别抑制；JSON 行可被日志平台按字段解析（REQ-04）。
      */
     private void logSpan(String action, boolean success, long costMs) {
         String traceId = TraceContext.current();
-        String span = "{\"traceId\":\"" + (traceId == null ? "" : traceId)
-                + "\",\"action\":\"" + action
-                + "\",\"result\":\"" + (success ? "success" : "failure")
-                + "\",\"costMs\":" + costMs
-                + ",\"ts\":" + System.currentTimeMillis() + "}";
-        log.info(span);
+        String orderId = MDC.get(TraceContext.ORDER_ID_KEY);
+        String bizNo = MDC.get(TraceContext.BIZ_NO_KEY);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"traceId\":\"").append(traceId == null ? "" : traceId).append('"');
+        if (orderId != null && !orderId.isBlank()) {
+            sb.append(",\"orderId\":\"").append(orderId).append('"');
+        }
+        if (bizNo != null && !bizNo.isBlank()) {
+            sb.append(",\"bizNo\":\"").append(bizNo).append('"');
+        }
+        sb.append(",\"action\":\"").append(action)
+                .append("\",\"result\":\"").append(success ? "success" : "failure")
+                .append("\",\"costMs\":").append(costMs)
+                .append(",\"ts\":").append(System.currentTimeMillis()).append('}');
+        log.info(sb.toString());
     }
 
     /** 计时并记录（无返回值场景）。 */

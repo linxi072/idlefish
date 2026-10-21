@@ -1,5 +1,7 @@
 # Prometheus 抓取配置（T01 可观测性生产化）
-# 应用需以 -Pmicrometer 激活（暴露 /actuator/prometheus），详见 docker-compose.yml。
+# 自 T01 起 micrometer profile 默认激活（pom.xml activeByDefault=true），应用启动即暴露
+# /actuator/prometheus，无需再显式 -Pmicrometer。docker-compose.yml 沿用 SPRING_PROFILES_ACTIVE
+# 显式声明 micrometer 仅为可读性与兼容旧编排，省略该 profile 亦自动激活（REQ-01 默认满足）。
 global:
   scrape_interval: 15s
   evaluation_interval: 15s

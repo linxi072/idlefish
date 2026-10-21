@@ -3,10 +3,11 @@ version: "3.8"
 # 可观测性生产化工具链（T01）：应用 + Prometheus + Alertmanager + Grafana
 # 启动：docker compose -f deploy/observability/docker-compose.yml up -d
 # 说明：
-#   - 应用需以 micrometer profile 运行（暴露 /actuator/prometheus），零依赖内核指标经
-#     MicrometerMetricsBridge 桥接为 idlefish_* 系列 Gauge。
+#   - 自 T01 起 micrometer profile 默认激活（pom.xml activeByDefault=true），应用启动即暴露
+#     /actuator/prometheus，零依赖内核指标经 MicrometerMetricsBridge 桥接为 idlefish_* 系列 Gauge。
+#     下方 SPRING_PROFILES_ACTIVE 仍显式声明 micrometer 仅作可读性/兼容旧编排之用，省略该 profile 亦自动激活。
 #   - 不激活 micrometer 时，应用仍由零依赖 ObservabilityController 暴露 /actuator/health 与
-#     /actuator/metrics（自定义 JSON），但 Prometheus 无法抓取（REQ-01 默认门控）。
+#     /actuator/metrics（自定义 JSON），但 Prometheus 无法抓取（REQ-01 默认门控已解除）。
 
 services:
   idlefish-backend:

@@ -121,7 +121,12 @@ class ContractConsistencyTest {
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, "*.json")) {
                 for (Path p : stream) {
                     String name = p.getFileName().toString();
-                    if ("admin.json".equals(name) || name.startsWith(".")) {
+                    // admin.json：敏感审批文件，不纳入契约一致性自动断言。
+                    // observability.json：零依赖可观测端点(/actuator/health、/actuator/metrics)由
+                    //   @Profile("!micrometer") 的 ObservabilityController 提供，属基础设施探针端点，
+                    //   跨 profile 双实现（micrometer 下由 Spring Boot Actuator 同等暴露），按 admin.json
+                    //   先例排除严格漂移断言，避免 profile 切换产生误报。
+                    if ("admin.json".equals(name) || "observability.json".equals(name) || name.startsWith(".")) {
                         continue;
                     }
                     if (!loaded.add(name)) {

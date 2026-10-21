@@ -30,10 +30,11 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
 
-# 零依赖可观测性：traceId 透传至日志（MDC），HTTP 请求指标在 /actuator/metrics 暴露
+# 零依赖可观测性：traceId / orderId / bizNo 透传至日志（MDC），HTTP 请求指标在 /actuator/metrics 暴露
+# orderId/bizNo 由资金链路关键动作（支付/结算/提现/退款）经 TraceContext 注入，便于按单检索（REQ-02）。
 logging:
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level traceId=%X{traceId:-} %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level traceId=%X{traceId:-} orderId=%X{orderId:-} bizNo=%X{bizNo:-} %logger{36} - %msg%n"
   level:
     root: INFO
 
@@ -73,6 +74,11 @@ idlefish:
     error-rate-threshold: ${IDLEFISH_OBSERVABILITY_ERR_RATE:0.05}
     verify-failure-threshold: ${IDLEFISH_OBSERVABILITY_VERIFY_FAIL:5}
     cooldown-minutes: ${IDLEFISH_OBSERVABILITY_COOLDOWN:30}
+    # 监控端点收敛令牌（T01 内网收敛）：内网之外访问 /actuator/prometheus|metrics|env 须携带
+    # X-Actuator-Token；留空则仅依赖内网 IP 收敛。生产经 IDLEFISH_OBSERVABILITY_ACTUATOR_TOKEN 注入。
+    actuator-token: "${IDLEFISH_OBSERVABILITY_ACTUATOR_TOKEN:}"
+    # 卡单守卫窗口（分钟，T01 防御网）：超时未支付订单超过该时长仍未关单则告警（REQ-06）
+    stuck-order-minutes: ${IDLEFISH_OBSERVABILITY_STUCK_MIN:30}
   redis:
     host: 127.0.0.1
     port: 6379

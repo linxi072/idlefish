@@ -117,21 +117,28 @@
       - 数据源：MySQL 8.1.0（离线已缓存），本地运行需自备 MySQL 实例（application.yml 默认 127.0.0.1:3306/idlefish）。
       - Profile：原 local/prod 双 profile 隔离已不再需要，默认构建即包含全部依赖；
         prod profile 仅用于通过 spring.profiles.active=prod 启动参数切换数据源/SQL 方言，缓存恒为 Redis。
-      - micrometer profile（F-12.6 可观测性增强）：仅在显式指定 -Pmicrometer 时引入
+      - micrometer profile（F-12.6 可观测性增强，T01 起默认激活）：通过 activeByDefault 默认引入
         spring-boot-starter-actuator + micrometer-registry-prometheus，并通过 build-helper 将独立的
-        src/main/micrometer/java 源码根纳入编译。该 profile 专属源码（MicrometerMetricsBridge）把零依赖
-        MetricsRegistry 桥接为 /actuator/prometheus 指标。默认离线 mvn -o 不激活此 profile，
-        actuator/micrometer 不在 classpath，离线编译与运行完全不受影响。
+        src/main/micrometer/java 源码根纳入编译。离线 .m2 已缓存上述依赖，
+        故默认离线 mvn -o 也能编译并暴露 /actuator/prometheus（REQ-01）。如需关闭，可显式
+        -P!micrometer 或 -Dspring.profiles.default 覆盖。该 profile 专属源码（MicrometerMetricsBridge
+        + 6 个 DependencyHealthIndicator）把零依赖 MetricsRegistry 桥接为 Prometheus 指标，并复用
+        DependencyProbes 提供 K8s liveness/readiness 聚合。
       说明：H2 内存库已彻底移除。
     -->
 
     <!--
-      F-12.6 Micrometer / Prometheus 可观测性增强（需联网下载依赖）。
-      仅 -Pmicrometer 激活；默认构建与离线 mvn -o 不受影响。
+      F-12.6 Micrometer / Prometheus 可观测性增强（T01 起默认激活，REQ-01）。
+      离线 .m2 已缓存 actuator + micrometer-registry-prometheus，故默认离线 mvn -o 即可编译暴露
+      /actuator/prometheus。activeByDefault 表示未显式指定其它 profile 时自动生效；
+      若需临时关闭可 -P!micrometer（注意：关闭后 ObservabilityController 端点接管 /actuator/health）。
     -->
     <profiles>
         <profile>
             <id>micrometer</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <dependencies>
                 <dependency>
                     <groupId>org.springframework.boot</groupId>

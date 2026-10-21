@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
+import com.idlefish.trade.common.observability.TraceContext;
 import com.idlefish.trade.common.enums.OrderStatus;
 import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.common.enums.PayStatus;
@@ -65,17 +66,22 @@ public class PayService {
         this.pricingService = pricingService;
     }
 
-    /** 预下单：返回渠道支付参数。 */
+    /** 预下单：返回渠道支付参数。注入 orderId 到 MDC，使 span 与日志可按单检索（REQ-02）。 */
     public PrepayResult prepay(String orderNo) {
-        PayOrder po = payOrderMapper.selectOne(
-                new LambdaQueryWrapper<PayOrder>().eq(PayOrder::getOrderNo, orderNo));
-        if (po == null) {
-            throw new BizException(Code.ORDER_NOT_FOUND);
+        TraceContext.putOrderId(orderNo);
+        try {
+            PayOrder po = payOrderMapper.selectOne(
+                    new LambdaQueryWrapper<PayOrder>().eq(PayOrder::getOrderNo, orderNo));
+            if (po == null) {
+                throw new BizException(Code.ORDER_NOT_FOUND);
+            }
+            if (!PayStatus.WAIT.getCode().equals(po.getStatus())) {
+                throw new BizException(Code.STATE_NOT_ALLOWED, "订单非待支付状态");
+            }
+            return metrics.timed("pay.prepay", () -> escrow.prepay(po.getPayNo(), po.getAmount()));
+        } finally {
+            TraceContext.clearOrderId();
         }
-        if (!PayStatus.WAIT.getCode().equals(po.getStatus())) {
-            throw new BizException(Code.STATE_NOT_ALLOWED, "订单非待支付状态");
-        }
-        return metrics.timed("pay.prepay", () -> escrow.prepay(po.getPayNo(), po.getAmount()));
     }
 
     /** 支付结果通知（幂等 + 防伪造）：遗留表单式回调（演示/兼容）。 */
@@ -110,7 +116,12 @@ public class PayService {
     public void notifyV3(String body, String timestamp, String nonce, String serial, String signature) {
         // T01 生产化：包裹回调处理全过程，输出结构化 span（REQ-04）并采集耗时，
         // 供 P99 SLO 告警（pay.callback.apply.latency）与链路追踪。
-        metrics.timedRun("pay.callback.apply", () -> notifyV3Inner(body, timestamp, nonce, serial, signature));
+        // orderId 由 notifyV3Inner 在解密后注入 MDC，本方法负责请求级清理（避免线程复用泄漏）。
+        try {
+            metrics.timedRun("pay.callback.apply", () -> notifyV3Inner(body, timestamp, nonce, serial, signature));
+        } finally {
+            TraceContext.clearOrderId();
+        }
     }
 
     private void notifyV3Inner(String body, String timestamp, String nonce, String serial, String signature) {
@@ -135,6 +146,8 @@ public class PayService {
             metrics.increment("pay.notify.v3.ignored");
             return; // 非支付成功状态不处理
         }
+        PayOrder po = requirePayOrder(payNo);
+        TraceContext.putOrderId(po.getOrderNo()); // 注入业务单号，关联后续 span/日志（REQ-02）
         applyPaid(payNo, transactionId, amount);
         metrics.increment("pay.notify.v3.success");
     }
@@ -250,18 +263,23 @@ public class PayService {
         }
     }
 
-    /** 发起退款（被 RefundService 调用）。 */
+    /** 发起退款（被 RefundService 调用）。注入 orderId，使退款 span 可按单检索（REQ-02）。 */
     public void refund(String payNo, Long amount) {
-        String refundId = metrics.timed("pay.refund", () -> escrow.refund(payNo, amount));
         PayOrder po = payOrderMapper.selectOne(
                 new LambdaQueryWrapper<PayOrder>().eq(PayOrder::getPayNo, payNo));
         if (po == null) {
             throw new BizException(Code.ORDER_NOT_FOUND);
         }
-        PayOrder upd = new PayOrder();
-        upd.setId(po.getId());
-        upd.setStatus(PayStatus.REFUNDED.getCode());
-        payOrderMapper.updateById(upd);
+        TraceContext.putOrderId(po.getOrderNo());
+        try {
+            metrics.timed("pay.refund", () -> escrow.refund(payNo, amount));
+            PayOrder upd = new PayOrder();
+            upd.setId(po.getId());
+            upd.setStatus(PayStatus.REFUNDED.getCode());
+            payOrderMapper.updateById(upd);
+        } finally {
+            TraceContext.clearOrderId();
+        }
     }
 
 }
