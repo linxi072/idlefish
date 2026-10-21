@@ -49,6 +49,10 @@ public enum Code {
     PRICING_CONFIG_NOT_FOUND(30026, "估价配置不存在"),
     /** 幂等：同一请求正在处理中（重复提交被拦截，F-18 幂等框架）。 */
     BIZ_PROCESSING(30022, "处理中，请勿重复提交"),
+    /** 真机验收闭环（ITER-F01）：验收用例不存在。 */
+    ACCEPTANCE_NOT_FOUND(30027, "验收用例不存在"),
+    /** 真机验收闭环（ITER-F01）：验收未闭环（存在未通过用例或未关闭缺陷）禁止关单。 */
+    ACCEPTANCE_NOT_CLOSED(30028, "验收未闭环，存在未通过用例或未关闭缺陷"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

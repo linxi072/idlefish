@@ -1,0 +1,94 @@
+{
+  "domain": "acceptance",
+  "description": "真机验收闭环管理（ITER-F01 / F-11.5）：PRD 验收用例追踪、真机缺陷登记回链(REQ-09)、验收闭环编排。覆盖 REQ-01~REQ-09 的验收追踪与缺陷闭环；支付/出款/验签等真实能力由对应领域服务保证，本模块仅追踪+回链+闭环。",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/admin/acceptance/seed",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "幂等构造 PRD 验收用例 REQ-01~REQ-09；已存在则直接返回"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/acceptance/cases",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "验收用例列表（按 id 升序）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/acceptance/cases/{id}",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.reqCode", "data.status"],
+      "notes": "单个验收用例；不存在抛 ACCEPTANCE_NOT_FOUND(30027)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/acceptance/cases/{id}/result",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.status"],
+      "notes": "回填用例结果 PASSED/FAILED/SKIPPED；非法结论抛 PARAM_INVALID(10002)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/acceptance/defects",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "缺陷列表（按 id 升序）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/acceptance/defects/{id}",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.title", "data.status"],
+      "notes": "单个缺陷；不存在抛 ACCEPTANCE_NOT_FOUND(30027)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/acceptance/defects",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.id", "data.status"],
+      "notes": "REQ-09 登记真机缺陷并回链 PRD；初始状态 OPEN；linkedPrd 缺省 PRD-P0-F01-真机验收闭环"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/acceptance/defects/{id}/fix",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.status"],
+      "notes": "OPEN→FIXED；非法状态转移抛 STATE_NOT_ALLOWED(30002)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/acceptance/defects/{id}/close",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.status"],
+      "notes": "FIXED→CLOSED；非法状态转移抛 STATE_NOT_ALLOWED(30002)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/acceptance/closure",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.status", "data.closable", "data.openCases"],
+      "notes": "计算当前验收闭环状态（纯函数：NOT_RUN/OPEN_CASES/OPEN_DEFECTS/CLOSED）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/acceptance/close",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.status"],
+      "notes": "关单：仅当 CLOSED 成功；未闭环抛 ACCEPTANCE_NOT_CLOSED(30028)"
+    }
+  ]
+}

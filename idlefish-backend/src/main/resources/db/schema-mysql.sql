@@ -946,3 +946,43 @@ CREATE TABLE IF NOT EXISTS t_price_estimate_audit (
     KEY idx_audit_biz_type (biz_type),
     KEY idx_audit_biz_id (biz_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 真机验收用例（ITER-F01 / F-11.5）：PRD「第十节 验收」REQ-01~REQ-09 的逐条追踪项。
+-- status: NOT_RUN(未执行) / PASSED(通过) / FAILED(未通过) / SKIPPED(沙箱不适用已跳过)。
+CREATE TABLE IF NOT EXISTS t_acceptance_case (
+    id           BIGINT       NOT NULL AUTO_INCREMENT,
+    req_code     VARCHAR(16)  NOT NULL COMMENT '关联需求编号 REQ-01~REQ-09',
+    title        VARCHAR(128) NOT NULL COMMENT '用例标题',
+    category     VARCHAR(16)  NOT NULL DEFAULT 'PAY' COMMENT '分类 PAY/IM/SIGN/CONFIG/DEFECT',
+    status       VARCHAR(16)  NOT NULL DEFAULT 'NOT_RUN' COMMENT 'NOT_RUN/PASSED/FAILED/SKIPPED',
+    executor     VARCHAR(64)  DEFAULT NULL COMMENT '验收执行人',
+    result_note  VARCHAR(512) DEFAULT NULL COMMENT '结果备注',
+    executed_at  DATETIME     DEFAULT NULL COMMENT '验收执行时间',
+    prd_link     VARCHAR(255) DEFAULT NULL COMMENT '关联 PRD 文档标识',
+    created_at   DATETIME,
+    updated_at   DATETIME,
+    PRIMARY KEY (id),
+    KEY idx_case_req (req_code),
+    KEY idx_case_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 真机验收缺陷（ITER-F01 / REQ-09）：真机缺陷登记并回链 PRD。
+-- status: OPEN(待修复) / FIXED(已修复待验证) / CLOSED(已闭环)；severity: P0/P1/P2。
+CREATE TABLE IF NOT EXISTS t_acceptance_defect (
+    id           BIGINT       NOT NULL AUTO_INCREMENT,
+    case_id      BIGINT       DEFAULT NULL COMMENT '关联验收用例 ID（可空）',
+    req_code     VARCHAR(16)  DEFAULT NULL COMMENT '关联需求编号 REQ-01~REQ-09',
+    title        VARCHAR(128) NOT NULL COMMENT '缺陷标题',
+    severity     VARCHAR(8)   NOT NULL DEFAULT 'P1' COMMENT 'P0/P1/P2',
+    status       VARCHAR(16)  NOT NULL DEFAULT 'OPEN' COMMENT 'OPEN/FIXED/CLOSED',
+    linked_prd   VARCHAR(255) DEFAULT NULL COMMENT '回链 PRD 文档标识',
+    description  VARCHAR(1024) DEFAULT NULL COMMENT '缺陷描述',
+    fixed_at     DATETIME     DEFAULT NULL COMMENT '修复时间',
+    closed_at    DATETIME     DEFAULT NULL COMMENT '闭环时间',
+    created_at   DATETIME,
+    updated_at   DATETIME,
+    PRIMARY KEY (id),
+    KEY idx_defect_case (case_id),
+    KEY idx_defect_status (status),
+    KEY idx_defect_severity (severity)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

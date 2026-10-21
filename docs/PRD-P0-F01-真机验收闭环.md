@@ -4,7 +4,7 @@
 |---|---|
 | 编号 | ITER-F01（对应 F-11.5） |
 | 维度 / 优先级 | 功能完善 / **P0（上线阻断项）** |
-| 状态 | 待评审 |
+| 状态 | 部分实现（后端验收闭环管理已落地，沙箱可编译/测试；真机/商户号执行待用户本机） |
 | 建议负责 | 后端负责人（资金链路）+ 测试负责人（用例执行） |
 | 关联文档 | `docs/真机联调验证手册.md`、`docs/运维部署手册.md`、`scripts/pay-callback-sim.js`、`scripts/im-loadtest.js` |
 | 编制日期 | 2026-10-02 |
@@ -149,3 +149,31 @@
 | 风险 | 沙箱无法执行（需真机/商户资质） | 由本机/真机环境执行，沙箱仅维护用例与脚本 |
 | 风险 | 分账比例与商户资质不匹配导致大面积失败 | 先在体验版小额验证，再放量 |
 | 风险 | 回调公网暴露被伪造 | 依赖 REQ-01 恒定验签，且校验回调来源 IP 白名单 |
+
+---
+
+## 十二、实现说明（沙箱可落地子集，V1.0.4 提交）
+
+> 第十节 9 项「真机验收」仍需真实商户号 + 真机环境执行（PRD 明确沙箱不可做，且不伪造）。
+> 本迭代落地**沙箱可运行的后端闭环管理子系统**，承载 REQ-09「缺陷登记回链 PRD」与验收闭环编排，
+> 使真机验收过程可追踪、可闭环、可审计；REQ-01~REQ-08 的真实能力已由既有领域服务保证，本模块不重复实现。
+
+**后端模块（新增 `com.idlefish.trade.acceptance` 包）**
+- 实体 `AcceptanceCase`（验收用例，REQ-01~09 逐条追踪）/ `AcceptanceDefect`（真机缺陷，REQ-09 回链）；
+- 纯函数 `AcceptanceClosureCalculator` + `ClosureStatus` 枚举：依据用例与缺陷推导闭环状态
+  （`NOT_RUN` / `OPEN_CASES` / `OPEN_DEFECTS` / `CLOSED`，附带 `isClosable()` 门禁）；
+- `AcceptanceService`：seed 幂等构造 REQ-01~09 九用例 / 结果回填 / 缺陷登记 / 修复-闭环状态机 / 闭环计算 / 关单门禁；
+- `AdminAcceptanceController`（`/api/admin/acceptance/*`，11 端点）/ `AcceptanceSeeder`（`ApplicationRunner` 幂等种子，表缺失不阻断启动）。
+
+**数据库与契约**
+- `schema-mysql.sql` 追加 `t_acceptance_case` / `t_acceptance_defect`（均 `IF NOT EXISTS`）；
+- `contracts/acceptance.json` 声明 11 个 admin 端点，已通过 `ContractConsistencyTest`（无漂移）。
+
+**测试**
+- `AcceptanceClosureCalculatorTest`（11 例，状态机与计数）/ `AcceptanceServiceTest`（14 例，Mockito 桩接 Mapper）；
+- 离线 `mvn -o test -Dtest=Acceptance*Test` → 24 用例全绿，`ContractConsistencyTest` 全绿。
+
+**REQ-09 落点**
+- `registerDefect` 将真机缺陷登记为 `t_acceptance_defect` 并回链 PRD（`linkedPrd` 缺省 `PRD-P0-F01-真机验收闭环`）；
+- 状态机 `OPEN → FIXED → CLOSED` 驱动验收闭环；`closeAcceptance` 仅当全部用例 PASSED 且无未关闭缺陷时关单，
+  否则抛 `ACCEPTANCE_NOT_CLOSED(30028)`。闭环状态由纯函数实时推导（不落地冗余快照），天然幂等、可重算。
