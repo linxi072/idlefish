@@ -27,10 +27,9 @@ import com.idlefish.trade.pricing.service.PricingService;
 import com.idlefish.trade.item.vo.SellerVO;
 import com.idlefish.trade.item.dto.AuditResult;
 import com.idlefish.trade.item.service.ContentAuditService;
-import com.idlefish.trade.search.service.SearchService;
+import com.idlefish.trade.search.serving.SearchSyncService;
 import com.idlefish.trade.user.entity.User;
 import com.idlefish.trade.user.service.UserService;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
@@ -52,7 +51,7 @@ public class ItemService {
     private final ObjectMapper objectMapper;
     private final ItemStatusLogMapper itemStatusLogMapper;
     private final ContentAuditService contentAuditService;
-    private final SearchService searchService;
+    private final SearchSyncService searchSyncService;
     private final NotificationService notificationService;
 
     /** 库存锁等待上限（毫秒）：超时快速失败，避免线程无限阻塞。 */
@@ -71,7 +70,7 @@ public class ItemService {
     public ItemService(ItemMapper itemMapper, CategoryService categoryService,
                        UserService userService, ItemStateMachine stateMachine, ObjectMapper objectMapper,
                        ItemStatusLogMapper itemStatusLogMapper, ContentAuditService contentAuditService,
-                       @Lazy SearchService searchService, NotificationService notificationService,
+                       NotificationService notificationService, SearchSyncService searchSyncService,
                        DistributedLock distributedLock, PricingService pricingService) {
         this.itemMapper = itemMapper;
         this.categoryService = categoryService;
@@ -80,7 +79,7 @@ public class ItemService {
         this.objectMapper = objectMapper;
         this.itemStatusLogMapper = itemStatusLogMapper;
         this.contentAuditService = contentAuditService;
-        this.searchService = searchService;
+        this.searchSyncService = searchSyncService;
         this.notificationService = notificationService;
         this.distributedLock = distributedLock;
         this.pricingService = pricingService;
@@ -134,6 +133,10 @@ public class ItemService {
             upd.setAuditReason("内容未通过审核");
         }
         itemMapper.updateById(upd);
+        if (pass) {
+            // ITER-T04：提交审核通过 → 搜推索引同步（best-effort）
+            searchSyncService.onItemChanged(itemId, SearchSyncService.EVENT_UPSERT);
+        }
     }
 
     /** 管理员审核（演示驳回/通过）。 */
@@ -160,7 +163,8 @@ public class ItemService {
                 "您的商品《" + item.getTitle() + "》" + (pass ? "已通过审核并上架"
                         : ("未通过审核" + (reason != null ? ("：" + reason) : ""))));
         if (pass) {
-            searchService.indexItem(getById(itemId));
+            // ITER-T04：审核通过 → 搜推索引同步（消息异步 + 本地双写，best-effort 不阻断审核）
+            searchSyncService.onItemChanged(itemId, SearchSyncService.EVENT_UPSERT);
         }
     }
 
@@ -185,18 +189,24 @@ public class ItemService {
             upd.setDeliveryType(normalizeDeliveryType(dto.getDeliveryType()));
         }
         itemMapper.updateById(upd);
+        // ITER-T04：编辑（标题/价格/类目/城市等变更）→ 搜推索引同步（best-effort）
+        searchSyncService.onItemChanged(dto.getItemId(), SearchSyncService.EVENT_UPSERT);
     }
 
     public void offShelf(Long sellerId, Long itemId) {
         Item item = mustOwn(sellerId, itemId);
         stateMachine.validate(ItemStatus.fromCode(item.getStatus()), ItemStatus.OFF_SHELF);
         setStatus(itemId, ItemStatus.OFF_SHELF);
+        // ITER-T04：下架 → 索引移除同步（best-effort）
+        searchSyncService.onItemChanged(itemId, SearchSyncService.EVENT_REMOVE);
     }
 
     public void delete(Long sellerId, Long itemId) {
         Item item = mustOwn(sellerId, itemId);
         stateMachine.validate(ItemStatus.fromCode(item.getStatus()), ItemStatus.OFF_SHELF);
         setStatus(itemId, ItemStatus.OFF_SHELF);
+        // ITER-T04：删除 → 索引移除同步（best-effort）
+        searchSyncService.onItemChanged(itemId, SearchSyncService.EVENT_REMOVE);
     }
 
     /** 买家侧在售商品检索（status=onsale & 审核通过）。 */

@@ -38,6 +38,7 @@ public class IdlefishProperties {
     private Invite invite = new Invite();
     private Pricing pricing = new Pricing();
     private Local local = new Local();
+    private SearchService searchService = new SearchService();
 
     @Data
     public static class Jwt {
@@ -387,5 +388,50 @@ public class IdlefishProperties {
             /** HTTP 超时（毫秒）。 */
             private long timeoutMs = 3000L;
         }
+    }
+
+    /**
+     * 搜推服务化配置（ITER-T04）：双模式开关 + 远程调用参数 + 熔断/隔离 + 同步滞后阈值。
+     * <ul>
+     *   <li>mode=inline（默认）：内联模式，检索/推荐在进程内执行，行为与拆分前一致；</li>
+     *   <li>mode=remote：远程模式，经 HTTP + 服务令牌调用独立部署的搜推服务（/sr/api/**），
+     *       失败由熔断器与降级阶梯兜底，不影响交易主链路（REQ-03/08/10）。</li>
+     * </ul>
+     */
+    @Data
+    public static class SearchService {
+        /** 搜推服务化总开关；关闭后所有调用直接走内联（等价历史行为）。 */
+        private boolean enabled = true;
+        /** 路由模式：inline / remote。 */
+        private Mode mode = Mode.INLINE;
+        /** 远程模式：搜推服务基址（例如 http://search-svc.internal:8080）。 */
+        private String baseUrl = "";
+        /** 远程模式：服务间令牌（X-Service-Token）；服务端未配置时 fail-closed 拒绝（REQ-09）。 */
+        private String serviceToken = "";
+        /** 远程调用读取超时（毫秒）；隔离池任务总超时亦以此为准。 */
+        private long timeoutMs = 2000L;
+        /** 远程调用连接超时（毫秒）。 */
+        private long connectTimeoutMs = 500L;
+        /** 熔断阈值：连续失败次数达到即熔断（REQ-08）。 */
+        private int failureThreshold = 5;
+        /** 熔断持续时间（毫秒）：到期转半开放行单次探测。 */
+        private long openDurationMs = 10_000L;
+        /** 隔离线程池核心线程数（REQ-09）。 */
+        private int corePoolSize = 8;
+        /** 隔离线程池最大线程数（REQ-09）。 */
+        private int maxPoolSize = 32;
+        /** 隔离线程池有界队列容量；饱和即快速失败降级。 */
+        private int queueCapacity = 256;
+        /** 索引同步消息投递开关（REQ-02）；关闭后仅本地双写。 */
+        private boolean syncEnabled = true;
+        /** 索引同步滞后告警阈值（秒，REQ-07）：超过即告警并在响应标注数据时效。 */
+        private long lagAlertSeconds = 60L;
+        /** 搜推滞后/异常告警接收者（管理员 userId）；为空回退 notify.alertAdminUserId。 */
+        private Long alertAdminUserId;
+    }
+
+    /** 搜推路由模式（ITER-T04 / REQ-10）。 */
+    public enum Mode {
+        INLINE, REMOTE
     }
 }

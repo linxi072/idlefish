@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.idlefish.trade.common.Result;
 import com.idlefish.trade.item.dto.ItemQueryDTO;
 import com.idlefish.trade.item.vo.ItemVO;
-import com.idlefish.trade.search.enhance.service.SearchEnhanceService;
+import com.idlefish.trade.search.serving.SearchServingFacade;
+import com.idlefish.trade.search.serving.dto.ItemQuery;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,16 +23,21 @@ import java.util.List;
  * ② 零结果兜底「猜你想找」；
  * ③ 实时行为回传（更新 60s 内实时兴趣，反哺搜索与推荐）。
  * <p>
- * 全部链路降级安全：任一外部依赖异常均降级为安全结果，绝不阻断主流程。
+ * ITER-T04：以上链路统一经 {@link SearchServingFacade} 路由（双模式 + 熔断降级 + 资源隔离），
+ * 全部链路降级安全：任一外部依赖异常均降级为安全结果，绝不阻断主流程（REQ-03）。
+ * 响应头 {@code X-Data-Age-Seconds} 标注索引数据时效（REQ-07）。
  */
 @RestController
 @RequestMapping("/api/search/enhance")
 public class SearchEnhanceController {
 
-    private final SearchEnhanceService searchEnhanceService;
+    /** 数据时效响应头（REQ-07：索引滞后秒数；-1 未知）。 */
+    private static final String DATA_AGE_HEADER = "X-Data-Age-Seconds";
 
-    public SearchEnhanceController(SearchEnhanceService searchEnhanceService) {
-        this.searchEnhanceService = searchEnhanceService;
+    private final SearchServingFacade servingFacade;
+
+    public SearchEnhanceController(SearchServingFacade servingFacade) {
+        this.servingFacade = servingFacade;
     }
 
     /**
@@ -42,8 +49,11 @@ public class SearchEnhanceController {
      */
     @GetMapping("/query")
     public Result<IPage<ItemVO>> query(ItemQueryDTO q,
-                                       @RequestParam(required = false) Long userId) {
-        return Result.ok(searchEnhanceService.enhancedSearch(q, userId));
+                                       @RequestParam(required = false) Long userId,
+                                       HttpServletResponse response) {
+        var outcome = servingFacade.search(ItemQuery.from(q), userId);
+        response.setHeader(DATA_AGE_HEADER, String.valueOf(outcome.getDataAgeSeconds()));
+        return Result.ok(outcome.getData());
     }
 
     /**
@@ -54,13 +64,17 @@ public class SearchEnhanceController {
      */
     @GetMapping("/guess")
     public Result<List<ItemVO>> guess(@RequestParam(required = false) String keyword,
-                                      @RequestParam(defaultValue = "10") int limit) {
-        return Result.ok(searchEnhanceService.guessYouWant(keyword, limit));
+                                      @RequestParam(defaultValue = "10") int limit,
+                                      HttpServletResponse response) {
+        var outcome = servingFacade.guess(keyword, limit);
+        response.setHeader(DATA_AGE_HEADER, String.valueOf(outcome.getDataAgeSeconds()));
+        return Result.ok(outcome.getData());
     }
 
     /**
      * 实时行为回传（REQ-01）：客户端在 view_item / favorite / order_create / pay 时调用，
      * 立即更新 60s 内实时兴趣，并反哺搜索排序与首页推荐流（REQ-09）。
+     * <p>非关键路径：隔离线程池 fire-and-forget，池饱和即丢弃，绝不阻塞或报错。</p>
      *
      * @param userId 用户 ID
      * @param event  事件类型：search/view_item/favorite/order_create/pay
@@ -70,7 +84,7 @@ public class SearchEnhanceController {
     public Result<Boolean> behavior(@RequestParam Long userId,
                                     @RequestParam String event,
                                     @RequestParam String bizId) {
-        searchEnhanceService.recordBehavior(userId, event, bizId);
+        servingFacade.recordBehavior(userId, event, bizId);
         return Result.ok(true);
     }
 }

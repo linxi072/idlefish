@@ -54,7 +54,11 @@ final class ContractLoader {
     static final String EXEMPTIONS_FILE = ".contract-exemptions.json";
 
     static final Set<String> ALLOWED_METHODS = Set.of("GET", "POST", "PUT", "DELETE", "PATCH");
-    static final Set<String> ALLOWED_AUTH = Set.of("none", "user", "admin");
+    /**
+     * 允许的鉴权口径（ITER-T04 新增 service）：none=免登录、user=用户令牌、admin=后台令牌、
+     * service=服务间令牌（搜推独立服务面 /sr/api/**，X-Service-Token，REQ-09）。
+     */
+    static final Set<String> ALLOWED_AUTH = Set.of("none", "user", "admin", "service");
 
     /** 排除原因（仅这三类 + 隐藏文件，其它跳过一律视为覆盖漏洞，REQ-02）。 */
     static final String SKIP_ADMIN = "admin.json（敏感审批文件，按既有先例排除）";

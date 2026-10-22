@@ -183,3 +183,22 @@ idlefish:
       app-key: "${IDLEFISH_LOCAL_PROVIDER_APP_KEY:}"
       app-secret: "${IDLEFISH_LOCAL_PROVIDER_APP_SECRET:}"
       timeout-ms: ${IDLEFISH_LOCAL_PROVIDER_TIMEOUT:3000}
+
+  search-service:
+    # 搜推服务化（ITER-T04）：双模式路由 + 熔断降级 + 资源隔离 + 索引同步滞后监控。
+    # mode=inline（默认）：进程内执行，行为与拆分前一致；mode=remote：HTTP 调用独立搜推服务（/sr/api/**）
+    enabled: ${IDLEFISH_SEARCH_SERVICE_ENABLED:true}
+    mode: ${IDLEFISH_SEARCH_SERVICE_MODE:inline}
+    # 远程模式：搜推服务基址与服务间令牌（X-Service-Token）；服务端未配置令牌时 fail-closed 拒绝（REQ-09）
+    base-url: "${IDLEFISH_SEARCH_SERVICE_BASE_URL:}"
+    service-token: "${IDLEFISH_SEARCH_SERVICE_TOKEN:}"
+    timeout-ms: ${IDLEFISH_SEARCH_SERVICE_TIMEOUT:2000}        # 远程读取超时 / 隔离池任务总超时（毫秒）
+    connect-timeout-ms: ${IDLEFISH_SEARCH_SERVICE_CONNECT_TIMEOUT:500}
+    failure-threshold: ${IDLEFISH_SEARCH_SERVICE_FAILURE_THRESHOLD:5}   # 连续失败达阈值即熔断（REQ-08）
+    open-duration-ms: ${IDLEFISH_SEARCH_SERVICE_OPEN_MS:10000}          # 熔断持续时长，到期半开探测
+    core-pool-size: ${IDLEFISH_SEARCH_SERVICE_CORE_POOL:8}              # 隔离线程池（REQ-09）
+    max-pool-size: ${IDLEFISH_SEARCH_SERVICE_MAX_POOL:32}
+    queue-capacity: ${IDLEFISH_SEARCH_SERVICE_QUEUE:256}
+    sync-enabled: ${IDLEFISH_SEARCH_SERVICE_SYNC:true}         # 商品变更经 RocketMQ 异步同步（REQ-02）
+    lag-alert-seconds: ${IDLEFISH_SEARCH_SERVICE_LAG_ALERT:60} # 索引滞后告警阈值（秒，REQ-07）
+    alert-admin-user-id: ${IDLEFISH_SEARCH_SERVICE_ALERT_ADMIN:}  # 滞后告警接收者；空则回退 notify.alert-admin-user-id

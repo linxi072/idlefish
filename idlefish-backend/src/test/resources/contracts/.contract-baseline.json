@@ -1,7 +1,7 @@
 {
   "version" : 1,
   "generatedAt" : "2026-10-22",
-  "endpointCount" : 143,
+  "endpointCount" : 149,
   "generatedBy" : "ContractBaselineRegenerateTest（ITER-T03）；不兼容变更请走评审后再生，禁止为绕过门禁随意再生",
   "endpoints" : {
     "DELETE /api/address/{id}" : {
@@ -430,6 +430,30 @@
       "fields" : [ "data.records" ],
       "file" : "trade.json"
     },
+    "GET /sr/api/recommend/feed" : {
+      "auth" : "service",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "search-recommend.json"
+    },
+    "GET /sr/api/search/guess" : {
+      "auth" : "service",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "search-recommend.json"
+    },
+    "GET /sr/api/search/query" : {
+      "auth" : "service",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "search-recommend.json"
+    },
+    "GET /sr/api/status" : {
+      "auth" : "service",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "search-recommend.json"
+    },
     "POST /api/activity/create" : {
       "auth" : "user",
       "expectStatus" : 200,
@@ -855,6 +879,18 @@
       "expectStatus" : 200,
       "fields" : [ "data" ],
       "file" : "trade.json"
+    },
+    "POST /sr/api/behavior" : {
+      "auth" : "service",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "search-recommend.json"
+    },
+    "POST /sr/api/sync/item" : {
+      "auth" : "service",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "search-recommend.json"
     },
     "PUT /api/address/{id}" : {
       "auth" : "user",
