@@ -1,0 +1,866 @@
+{
+  "version" : 1,
+  "generatedAt" : "2026-10-22",
+  "endpointCount" : 143,
+  "generatedBy" : "ContractBaselineRegenerateTest（ITER-T03）；不兼容变更请走评审后再生，禁止为绕过门禁随意再生",
+  "endpoints" : {
+    "DELETE /api/address/{id}" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "auth-item.json"
+    },
+    "GET /api/activity/list" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "trade.json"
+    },
+    "GET /api/address" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "auth-item.json"
+    },
+    "GET /api/admin/ab-experiment" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "ab-experiment.json"
+    },
+    "GET /api/admin/ab-experiment/current" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "ab-experiment.json"
+    },
+    "GET /api/admin/ab-experiment/{id}" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.id", "data.status" ],
+      "file" : "ab-experiment.json"
+    },
+    "GET /api/admin/acceptance/cases" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "acceptance.json"
+    },
+    "GET /api/admin/acceptance/cases/{id}" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.reqCode", "data.status" ],
+      "file" : "acceptance.json"
+    },
+    "GET /api/admin/acceptance/closure" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.closable", "data.openCases", "data.status" ],
+      "file" : "acceptance.json"
+    },
+    "GET /api/admin/acceptance/defects" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "acceptance.json"
+    },
+    "GET /api/admin/acceptance/defects/{id}" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.status", "data.title" ],
+      "file" : "acceptance.json"
+    },
+    "GET /api/admin/dispute/detail" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.disputeNo", "data.status" ],
+      "file" : "dispute.json"
+    },
+    "GET /api/admin/dispute/list" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "dispute.json"
+    },
+    "GET /api/admin/price/abnormal" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "pricing.json"
+    },
+    "GET /api/admin/price/audit-log" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "pricing.json"
+    },
+    "GET /api/admin/price/config" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "pricing.json"
+    },
+    "GET /api/admin/search-term/block-words" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/admin/search-term/hot-words" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/admin/search-term/synonyms" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/admin/trust/item" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.inspectionBadge", "data.sellerCredit" ],
+      "file" : "trust.json"
+    },
+    "GET /api/category/tree" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "auth-item.json"
+    },
+    "GET /api/coupon/available" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "growth.json"
+    },
+    "GET /api/coupon/center" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "growth.json"
+    },
+    "GET /api/coupon/my" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "growth.json"
+    },
+    "GET /api/dispute/detail" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.disputeNo", "data.status" ],
+      "file" : "dispute.json"
+    },
+    "GET /api/dispute/my" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "dispute.json"
+    },
+    "GET /api/favorite/check" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "growth.json"
+    },
+    "GET /api/favorite/list" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "growth.json"
+    },
+    "GET /api/im/conversations" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/im/messages" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/im/unread" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/invite/code" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.code" ],
+      "file" : "growth.json"
+    },
+    "GET /api/invite/invitees" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "growth.json"
+    },
+    "GET /api/item/buyer/list" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "auth-item.json"
+    },
+    "GET /api/item/detail/{id}" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data.itemId", "data.price", "data.priceYuan" ],
+      "file" : "auth-item.json"
+    },
+    "GET /api/item/mine" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "auth-item.json"
+    },
+    "GET /api/local/delivery/detail" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "GET /api/local/delivery/my" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "GET /api/local/delivery/track" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "GET /api/local/recycle/detail" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "GET /api/local/recycle/my" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "GET /api/member/level/mine" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.growthValue", "data.levelCode", "data.levelName", "data.percent" ],
+      "file" : "member.json"
+    },
+    "GET /api/notify/list" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/notify/unread-count" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/orders/{orderNo}" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.orderNo", "data.payAmount", "data.status" ],
+      "file" : "trade.json"
+    },
+    "GET /api/orders/{orderNo}/logistics" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.companyName", "data.logisticsNo", "data.statusText", "data.tracks" ],
+      "file" : "trade.json"
+    },
+    "GET /api/point/balance" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.balance", "data.totalBalance" ],
+      "file" : "growth.json"
+    },
+    "GET /api/point/config" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "growth.json"
+    },
+    "GET /api/point/logs" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "growth.json"
+    },
+    "GET /api/point/preview" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "growth.json"
+    },
+    "GET /api/publish-assist/attributes" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "publish.json"
+    },
+    "GET /api/publish-assist/price" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.hasData" ],
+      "file" : "publish.json"
+    },
+    "GET /api/refunds/{refundNo}" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.refundNo", "data.status" ],
+      "file" : "trade.json"
+    },
+    "GET /api/reviews/item/{itemId}" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "trade.json"
+    },
+    "GET /api/reviews/my" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "trade.json"
+    },
+    "GET /api/reviews/received" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "trade.json"
+    },
+    "GET /api/search/enhance/guess" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "search-enhance.json"
+    },
+    "GET /api/search/enhance/query" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "search-enhance.json"
+    },
+    "GET /api/search/facets" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/search/query" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/search/recommend" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/search/suggest" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/search/term/history" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/search/term/hot" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/track/catalog" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "GET /api/trust/guarantee-terms" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data.steps" ],
+      "file" : "trust.json"
+    },
+    "GET /api/trust/item" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.inspectionBadge", "data.riskFlag", "data.sellerCredit" ],
+      "file" : "trust.json"
+    },
+    "GET /api/trust/order" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.aftersale", "data.logistics" ],
+      "file" : "trust.json"
+    },
+    "GET /api/user/info" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.nickname", "data.userId" ],
+      "file" : "auth-item.json"
+    },
+    "GET /api/wallet/balance" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.balance" ],
+      "file" : "trade.json"
+    },
+    "GET /api/wallet/flows" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records" ],
+      "file" : "trade.json"
+    },
+    "POST /api/activity/create" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/activity/join" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/address" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "auth-item.json"
+    },
+    "POST /api/address/{id}/default" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "auth-item.json"
+    },
+    "POST /api/admin/ab-experiment" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.id", "data.status" ],
+      "file" : "ab-experiment.json"
+    },
+    "POST /api/admin/ab-experiment/{id}/assign" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.effective", "data.group" ],
+      "file" : "ab-experiment.json"
+    },
+    "POST /api/admin/ab-experiment/{id}/rollback" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.status" ],
+      "file" : "ab-experiment.json"
+    },
+    "POST /api/admin/ab-experiment/{id}/update" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.id", "data.status" ],
+      "file" : "ab-experiment.json"
+    },
+    "POST /api/admin/acceptance/cases/{id}/result" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.status" ],
+      "file" : "acceptance.json"
+    },
+    "POST /api/admin/acceptance/close" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.status" ],
+      "file" : "acceptance.json"
+    },
+    "POST /api/admin/acceptance/defects" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.id", "data.status" ],
+      "file" : "acceptance.json"
+    },
+    "POST /api/admin/acceptance/defects/{id}/close" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.status" ],
+      "file" : "acceptance.json"
+    },
+    "POST /api/admin/acceptance/defects/{id}/fix" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.status" ],
+      "file" : "acceptance.json"
+    },
+    "POST /api/admin/acceptance/seed" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "acceptance.json"
+    },
+    "POST /api/admin/dispute/close" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "dispute.json"
+    },
+    "POST /api/admin/dispute/resolve" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "dispute.json"
+    },
+    "POST /api/admin/price/config" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "pricing.json"
+    },
+    "POST /api/admin/price/override" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "pricing.json"
+    },
+    "POST /api/admin/price/recalibrate" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "pricing.json"
+    },
+    "POST /api/admin/search-term/block" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/admin/search-term/hotword/status" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/admin/search-term/synonym" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/admin/search-term/unblock" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/auth/login" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data.refreshToken", "data.token", "data.userId" ],
+      "file" : "auth-item.json"
+    },
+    "POST /api/auth/refresh" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data.token" ],
+      "file" : "auth-item.json"
+    },
+    "POST /api/bargain/accept" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/bargain/create" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/coupon/claim" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "growth.json"
+    },
+    "POST /api/dispute/apply-platform" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "dispute.json"
+    },
+    "POST /api/dispute/cancel" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "dispute.json"
+    },
+    "POST /api/dispute/create" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "dispute.json"
+    },
+    "POST /api/dispute/seller-reply" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "dispute.json"
+    },
+    "POST /api/favorite/toggle" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "growth.json"
+    },
+    "POST /api/file/upload" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/im/send" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/invite/bind" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "growth.json"
+    },
+    "POST /api/item/publish" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "auth-item.json"
+    },
+    "POST /api/item/{id}/submit" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "auth-item.json"
+    },
+    "POST /api/local/delivery/apply" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "POST /api/local/delivery/cancel" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "POST /api/local/delivery/check" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "POST /api/local/delivery/freight" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "POST /api/local/recycle/apply" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "POST /api/local/recycle/cancel" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "POST /api/local/recycle/estimate" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "POST /api/local/recycle/respond" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "local.json"
+    },
+    "POST /api/mq/consume" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/notify/read" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/notify/read-all" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/orders/create" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.orderNo" ],
+      "file" : "trade.json"
+    },
+    "POST /api/orders/{orderNo}/cancel" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/orders/{orderNo}/confirm" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/orders/{orderNo}/ship" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/pay/notify" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/pay/notify/v3" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/pay/prepay" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.payNo", "data.prepayParams" ],
+      "file" : "trade.json"
+    },
+    "POST /api/point/signin" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "growth.json"
+    },
+    "POST /api/price/deviation" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.deviation" ],
+      "file" : "pricing.json"
+    },
+    "POST /api/price/estimate" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.hasData" ],
+      "file" : "pricing.json"
+    },
+    "POST /api/publish-assist/draft" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.title" ],
+      "file" : "publish.json"
+    },
+    "POST /api/publish-assist/recognize" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.available" ],
+      "file" : "publish.json"
+    },
+    "POST /api/refunds/apply" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/refunds/{refundNo}/agree" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/refunds/{refundNo}/cancel" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/refunds/{refundNo}/reject" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/reviews/submit" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "POST /api/search/enhance/behavior" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "search-enhance.json"
+    },
+    "POST /api/search/term/record" : {
+      "auth" : "none",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/track/{event}" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "notify-im-search.json"
+    },
+    "POST /api/user/bind-phone" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "auth-item.json"
+    },
+    "POST /api/wallet/withdraw" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "trade.json"
+    },
+    "PUT /api/address/{id}" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "auth-item.json"
+    }
+  }
+}

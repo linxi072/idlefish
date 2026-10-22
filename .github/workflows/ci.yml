@@ -56,6 +56,30 @@ jobs:
       - name: Build and test (MySQL-backed full suite)
         run: mvn -B -ntp test
 
+  # ITER-T03 契约门禁（REQ-07）：契约一致性与兼容性测试为纯离线用例（无 Spring 上下文、无 MySQL），
+  # 独立成 job 以获得快速反馈；任一失败即 CI 红灯，阻断合流。
+  # 注意：需在仓库 Settings → Branches → Branch protection 将本 job 设为 required check 才真正「禁止合流」；
+  # build-and-test 全量套件同样包含这两个用例（双保险）。
+  contract-gate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: idlefish-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # -Dtest 仅运行契约测试（仍会编译全部测试源码，但不启动 Spring/不连 MySQL）
+      - name: Contract gate (offline consistency + compatibility)
+        run: mvn -B -ntp test -Dtest='ContractConsistencyTest,ContractCompatibilityTest' -DfailIfNoTests=false
+
   # F-15.3 容器化：仅构建镜像验证 Dockerfile 可构建（不实际 push，避免缺凭证失败）。
   # 推送 registry 需凭据就绪后启用下方 push-image 段（见注释）。
   docker-build:

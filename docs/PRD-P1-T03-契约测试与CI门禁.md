@@ -4,9 +4,9 @@
 |---|---|
 | 编号 | ITER-T03 |
 | 维度 / 优先级 | 技术架构演进 / **P1（建议提前到第一批执行）** |
-| 状态 | 待评审 |
+| 状态 | **部分实现（沙箱可运行子集，2026-10-22）** |
 | 建议负责 | 后端负责人 + 测试负责人 |
-| 关联模块 | `ContractConsistencyTest`（**硬编码 8 文件清单**，当前 136 端点）、契约 JSON、`api/modules/*.api.js`、`api/core.js`、CI `.github/workflows/ci.yml`（含 `mysql:8.0` 服务容器） |
+| 关联模块 | `ContractConsistencyTest` + `ContractCompatibilityTest` + `ContractBaselineRegenerateTest` + `ContractLoader`（契约测试包，当前 143 端点）、契约 JSON、`.contract-baseline.json` / `.contract-exemptions.json`、CI `.github/workflows/ci.yml`（`contract-gate` job） |
 | 编制日期 | 2026-10-02 |
 
 ---
@@ -134,16 +134,83 @@ PR 提交 → CI 触发 → 编译 → 单测 → 契约测试（REQ-07）
 
 ## 十、验收标准（可勾选）
 
-- [ ] 契约文件自动扫描，新增文件无需手动登记（REQ-01）。
-- [ ] 测试输出「目录文件数 = 已校验文件数」，不等则失败（REQ-02）。
-- [ ] 不一致时输出端点与字段级 diff（REQ-03）。
-- [ ] 删除字段/改类型判定为不兼容并阻断（REQ-04）。
-- [ ] 新增可选字段/新端点判定为兼容并放行（REQ-05）。
-- [ ] `mvn -o` 离线可跑通（REQ-06）。
-- [ ] CI 中作为阻断门禁，失败禁止合流（REQ-07）。
-- [ ] 契约 JSON 非法时报错定位到文件（REQ-08）。
-- [ ] 不兼容变更输出受影响前端调用清单（REQ-09）。
-- [ ] 豁免需原因 + 过期时间且在报告可见（REQ-10）。
+- [x] 契约文件自动扫描，新增文件无需手动登记（REQ-01）——F-15.4 已重构为目录扫描，T03 复用并加固。
+- [x] 测试输出「目录文件数 = 已校验文件数」，不等则失败（REQ-02）——含子目录 JSON 漏网拦截，负向实证通过。
+- [x] 不一致时输出端点与字段级 diff（REQ-03）——不兼容变更逐项列出 类型/端点/字段/原因。
+- [x] 删除字段/改类型判定为不兼容并阻断（REQ-04）——删端点/删字段/字段类型注解变更/auth 变更/expectStatus 变更均阻断，负向实证通过。
+- [x] 新增可选字段/新端点判定为兼容并放行（REQ-05）——报告「兼容变更-放行」段列出。
+- [x] `mvn -o` 离线可跑通（REQ-06）——纯 Jackson 文件解析 + 反射，无 Spring/MySQL。
+- [x] CI 中作为阻断门禁，失败禁止合流（REQ-07）——`contract-gate` job 已接入（红叉即阻断）；**仓库 Branch protection 需将 `contract-gate` 设为 required check 才真正禁止合流，待用户在 GitHub 仓库设置中勾选**。
+- [x] 契约 JSON 非法时报错定位到文件（REQ-08）——失败信息含文件名 + 行 + 列 + Jackson 原始原因，负向实证通过。
+- [x] 不兼容变更输出受影响前端调用清单（REQ-09）——扫描 `pc-admin/src/api` 与 `miniprogram`（131 个文件）产出 `文件:行号` 清单；目录缺失时降级警告。
+- [x] 豁免需原因 + 过期时间且在报告可见（REQ-10）——`.contract-exemptions.json`；过期即失败，报告「生效豁免」段可见，负向实证通过。
+
+---
+
+## 十二、实现说明（2026-10-22，沙箱可运行子集）
+
+### 12.1 契约测试包结构（`idlefish-backend/src/test/java/com/idlefish/trade/contract/`）
+
+| 文件 | 职责 | 对应 REQ |
+|---|---|---|
+| `ContractLoader.java` | 共享扫描/解析/校验：目录扫描、结构校验、全局端点唯一、覆盖率自校验、非法 JSON 定位、基线/豁免加载 | REQ-01/02/08 |
+| `ContractConsistencyTest.java` | 契约端点 ↔ 代码反射实现集漂移断言（F-15.4 原有能力，改用 Loader 并新增覆盖率报告） | REQ-01/02 |
+| `ContractCompatibilityTest.java` | 基线比对兼容性判定 + 豁免 + 消费者影响清单 + 报告 | REQ-03/04/05/09/10 |
+| `ContractBaselineRegenerateTest.java` | 基线再生工具，`@EnabledIfSystemProperty` 门控，常规运行自动跳过 | REQ-04/05 |
+
+元数据文件（`src/test/resources/contracts/`，点号开头不被契约扫描纳入）：
+- `.contract-baseline.json`：当前 143 端点的共识快照（auth/expectStatus/排序后 fields/deprecated/来源文件）。
+- `.contract-exemptions.json`：豁免登记（key + 可选 field + reason + owner + expiresAt），初始为空。
+
+### 12.2 兼容性判定规则（REQ-04/05）
+
+| 变更 | 判定 | 说明 |
+|---|---|---|
+| 端点删除（基线有、当前无） | **不兼容** | 除非该端点在基线中已标记 `deprecated`（过渡完成，判兼容） |
+| 字段删除 / 类型注解变更 | **不兼容** | `expectFields` 元素支持 `name:type` 注解，`amount:integer→amount:string` 表现为删旧+增新，删旧即拦截 |
+| `auth` 变更 | **不兼容** | 鉴权语义变化（收紧/放开均需评审） |
+| `expectStatus` 变更 | **不兼容** | 响应状态契约变化 |
+| 端点新增 | 兼容 | 报告列出 |
+| 字段新增 | 兼容 | 报告列出（向后兼容） |
+| 端点标记 `deprecated` | 兼容 | 过渡信号；后续移除判兼容 |
+
+### 12.3 基线再生与豁免流程
+
+```bash
+# 1) 有意的不兼容变更：更新契约后重新生成基线（同一次 mvn 调用内兼容性测试仍读旧基线，需二次运行）
+mvn -o test -Dtest=ContractBaselineRegenerateTest -Dcontract.baseline.regenerate=true
+# 2) review 并提交 src/test/resources/contracts/.contract-baseline.json
+# 3) 复验门禁
+mvn -o test -Dtest='ContractConsistencyTest,ContractCompatibilityTest'
+
+# 过渡期放行：在 .contract-exemptions.json 登记（key + 可选 field + reason + owner + expiresAt）
+```
+
+### 12.4 CI 门禁（REQ-07）
+
+`.github/workflows/ci.yml` 新增 `contract-gate` job（无需 MySQL 服务容器，`-Dtest` 仅跑两个契约测试）；
+`build-and-test` 全量套件同样包含这两个用例（双保险）。**仓库 Settings → Branches → Branch protection
+需将 `contract-gate` 添加为 required check**，否则 PR 仅展示红叉而不强制禁止合流（待用户本机在 GitHub 设置）。
+
+### 12.5 负向实证记录（2026-10-22，全部还原）
+
+| 场景 | 期望 | 结果 |
+|---|---|---|
+| 删除契约端点（local.json） | 不兼容阻断 + 前端影响清单 | ✅ 阻断，扫描 131 个前端文件 |
+| 同上 + 有效豁免（2026-12-31 到期） | 放行 + 报告可见 | ✅ 放行，「生效豁免 1 条」 |
+| 同上 + 过期豁免（2026-10-01） | 失败强制清理 | ✅ 失败「豁免配置已过期」 |
+| member.json 注入语法错误 | REQ-08 定位文件行列 | ✅ `member.json @ 行 7 列 4` |
+| JSON 放入子目录 `_nested/` | REQ-02 覆盖率失败 | ✅ `[_nested/member.json]` 未被扫描 |
+| `clean` 后常规运行 | 17 = 13 校验 + 4 排除 | ✅（admin/observability/基线/豁免） |
+
+### 12.6 遗留事项移交表
+
+| 事项 | 归属 | 说明 |
+|---|---|---|
+| Branch protection 勾选 `contract-gate` 为 required check | 用户本机（GitHub 仓库设置） | 沙箱无仓库管理权限 |
+| 契约字段声明精细化（`expectFields` 目前多为 `["data"]`，字段级判定粒度粗） | 后续迭代 | 新契约建议直接声明业务字段（可带 `name:type` 注解） |
+| 前端动态拼接路径的静态解析约定 | 后续迭代 | 当前以「未找到直接引用」提示降级，不误报 |
+| 契约目录卫生：`mvn clean` 后运行（避免 target/test-classes 残留旧文件影响计数报告） | 使用规范 | 已在测试体系说明文档标注 |
 
 ---
 

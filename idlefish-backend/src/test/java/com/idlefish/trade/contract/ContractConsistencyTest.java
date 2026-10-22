@@ -1,7 +1,7 @@
 package com.idlefish.trade.contract;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.idlefish.trade.contract.ContractLoader.EndpointSpec;
+import com.idlefish.trade.contract.ContractLoader.ScanResult;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
@@ -15,18 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URL;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,116 +25,57 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * F-15.4 契约一致性测试（离线、无 MySQL、无 Spring 上下文）。
+ * F-15.4 契约一致性测试 + ITER-T03 覆盖率自校验（离线、无 MySQL、无 Spring 上下文）。
  * <p>
- * 1) 加载 {@code classpath:contracts/*.json} 自研 JSON 契约；
- * 2) 校验每个端点结构合法（method/path/auth/expectStatus/expectFields）；
- * 3) 校验契约内 method+path 唯一；
+ * 1) 经 {@link ContractLoader} 自动扫描 {@code classpath:contracts/*.json}（REQ-01）；
+ * 2) 覆盖率自校验：目录内每个 JSON 要么被校验、要么以显式已知原因排除（REQ-02）；
+ * 3) 结构合法性与全局端点唯一性由 {@link ContractLoader} 统一执行（REQ-08 定位到文件行列）；
  * 4) 用 {@link ClassPathScanningCandidateComponentProvider} 反射扫描
  *    {@code com.idlefish.trade} 下全部 {@code *Controller}，构建「METHOD PATH」实现集；
- * 5) 断言每个契约端点都在代码中真实存在（防契约漂移）。
+ * 5) 断言每个（未标记 deprecated 的）契约端点都在代码中真实存在（防契约漂移）。
+ * <p>
+ * 兼容性判定（删除字段/改类型阻断、新增放行）见 {@link ContractCompatibilityTest}。
  */
 class ContractConsistencyTest {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Set<String> ALLOWED_METHODS = Set.of("GET", "POST", "PUT", "DELETE", "PATCH");
-    private static final Set<String> ALLOWED_AUTH = Set.of("none", "user", "admin");
     private static final String BASE_PACKAGE = "com.idlefish.trade";
 
     @Test
     void allContractEndpointsExistInCode() throws Exception {
-        List<JsonNode> contracts = loadContracts();
-        assertFalse(contracts.isEmpty(), "未找到任何契约文件（classpath:contracts/*.json）");
+        ScanResult scan = ContractLoader.scan();
+        assertTrue(scan.directoryFound(), "classpath 未定位到 contracts 目录（资源未拷贝到 test-classes）");
+        assertFalse(scan.validatedEndpoints().isEmpty(),
+                "未扫描到任何契约文件（已排除 admin.json / observability.json / 点号元数据）");
+
+        // REQ-02 覆盖率自校验：目录文件数 = 已校验 + 显式排除，不等即失败
+        int total = scan.totalJsonFiles();
+        int validated = scan.validatedFileCount();
+        int skipped = scan.skippedFileCount();
+        assertEquals(total, validated + skipped,
+                "契约目录覆盖率自校验失败（REQ-02）：目录 JSON " + total + " 个 != 已校验 " + validated + " + 排除 " + skipped);
+        System.out.println("[ContractConsistency] 覆盖率自校验通过：目录内 JSON " + total
+                + " 个 = 已校验 " + validated + " + 排除 " + skipped + " " + scan.skipReasonCounts());
 
         Set<String> implemented = collectImplementedEndpoints();
         assertTrue(!implemented.isEmpty(), "反射扫描未收集到任何 Controller 端点，请检查扫描包名");
 
-        Set<String> seenKeys = new LinkedHashSet<>();
-        int total = 0;
-        for (JsonNode c : contracts) {
-            JsonNode endpoints = c.get("endpoints");
-            assertTrue(endpoints != null && endpoints.isArray(), "契约缺少 endpoints 数组");
-            for (JsonNode e : endpoints) {
-                total++;
-                String method = str(e, "method", true);
-                String path = str(e, "path", true);
-                assertTrue(ALLOWED_METHODS.contains(method), "非法 method: " + method + " @ " + path);
-                assertTrue(path.startsWith("/"), "path 必须以 / 开头: " + path);
-                if (e.has("auth")) {
-                    assertTrue(ALLOWED_AUTH.contains(str(e, "auth", false)),
-                            "非法 auth: " + str(e, "auth", false) + " @ " + path);
-                }
-                if (e.has("expectStatus")) {
-                    int st = e.get("expectStatus").asInt();
-                    assertTrue(st >= 200 && st < 600, "expectStatus 越界: " + st);
-                }
-                if (e.has("expectFields")) {
-                    assertTrue(e.get("expectFields").isArray(), "expectFields 须为数组");
-                    for (JsonNode f : e.get("expectFields")) {
-                        assertTrue(f.isTextual() && !f.asText().isBlank(), "expectFields 元素须为非空字符串");
-                    }
-                }
-
-                String key = method + " " + path;
-                assertFalse(seenKeys.contains(key), "契约内重复端点: " + key);
-                seenKeys.add(key);
-
-                assertTrue(implemented.contains(key),
-                        "契约端点未在代码中找到实现（漂移）: " + key
-                                + "\n  已实现端点样例: " + sample(implemented, key, 8));
+        int checked = 0;
+        int deprecated = 0;
+        for (EndpointSpec spec : scan.validatedEndpoints()) {
+            if (spec.deprecated()) {
+                deprecated++;
+                System.out.println("  [deprecated] " + spec.key() + " @ " + spec.file() + " 跳过漂移断言");
+                continue;
             }
+            checked++;
+            assertTrue(implemented.contains(spec.key()),
+                    "契约端点未在代码中找到实现（漂移）: " + spec.key() + " @ " + spec.file()
+                            + "\n  已实现端点样例: " + sample(implemented, spec.key(), 8));
         }
-        System.out.println("[ContractConsistency] 校验通过：契约端点 " + total
-                + " 个，代码实现端点 " + implemented.size() + " 个，全部命中。");
-    }
-
-    // ===== 契约加载 =====
-
-    private List<JsonNode> loadContracts() throws Exception {
-        // 目录扫描：自动发现 classpath:contracts/*.json，避免新增契约须手动维护硬编码清单。
-        // 排除 admin.json（敏感审批文件，不纳入契约一致性自动断言）。
-        // 注：契约测试运行于 Maven 展开目录（target/test-classes），以 file 协议定位目录。
-        List<JsonNode> list = new ArrayList<>();
-        ClassLoader cl = getClass().getClassLoader();
-        Enumeration<URL> roots = cl.getResources("contracts");
-        Set<String> loaded = new HashSet<>();
-        boolean scanned = false;
-        while (roots.hasMoreElements()) {
-            URL url = roots.nextElement();
-            if (!"file".equals(url.getProtocol())) {
-                continue; // 仅支持展开目录（Maven 测试态）
-            }
-            scanned = true;
-            Path dir = Paths.get(url.toURI());
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, "*.json")) {
-                for (Path p : stream) {
-                    String name = p.getFileName().toString();
-                    // admin.json：敏感审批文件，不纳入契约一致性自动断言。
-                    // observability.json：零依赖可观测端点(/actuator/health、/actuator/metrics)由
-                    //   @Profile("!micrometer") 的 ObservabilityController 提供，属基础设施探针端点，
-                    //   跨 profile 双实现（micrometer 下由 Spring Boot Actuator 同等暴露），按 admin.json
-                    //   先例排除严格漂移断言，避免 profile 切换产生误报。
-                    if ("admin.json".equals(name) || "observability.json".equals(name) || name.startsWith(".")) {
-                        continue;
-                    }
-                    if (!loaded.add(name)) {
-                        continue;
-                    }
-                    try (InputStream in = Files.newInputStream(p)) {
-                        JsonNode root = MAPPER.readTree(in);
-                        assertTrue(root.has("endpoints") && root.get("endpoints").isArray(),
-                                "契约文件须含 endpoints 数组: " + name);
-                        list.add(root);
-                    }
-                }
-            }
-        }
-        assertTrue(scanned, "classpath 未定位到 contracts 目录（资源未拷贝到 test-classes）");
-        assertFalse(list.isEmpty(), "未扫描到任何契约文件（已排除 admin.json）");
-        return list;
+        System.out.println("[ContractConsistency] 校验通过：契约端点 " + checked
+                + " 个（deprecated " + deprecated + " 个跳过），代码实现端点 " + implemented.size() + " 个，全部命中。");
     }
 
     // ===== 反射扫描代码端点 =====
@@ -160,7 +92,6 @@ class ContractConsistencyTest {
             try {
                 Class<?> cls = Class.forName(bd.getBeanClassName(), false, cl);
                 String base = mappingPath(cls.getAnnotation(RequestMapping.class));
-                RequestMethod[] classMethods = mappingMethods(cls.getAnnotation(RequestMapping.class));
                 for (Method m : cls.getDeclaredMethods()) {
                     for (Annotation a : m.getAnnotations()) {
                         String sub = null;
@@ -180,10 +111,6 @@ class ContractConsistencyTest {
                         }
                     }
                 }
-                // 仅类级映射（无方法级）的情况
-                if (base != null && classMethods != null) {
-                    // 已在方法循环中覆盖；此处仅兜底类级无方法级映射
-                }
             } catch (Throwable t) {
                 System.err.println("跳过无法加载的 Controller: " + bd.getBeanClassName() + " -> " + t);
             }
@@ -196,10 +123,6 @@ class ContractConsistencyTest {
     private String mappingPath(RequestMapping r) {
         if (r == null) return "";
         return first(r.value(), r.path());
-    }
-
-    private RequestMethod[] mappingMethods(RequestMapping r) {
-        return r == null ? null : r.method();
     }
 
     private String first(String[] a, String[] b) {
@@ -219,13 +142,6 @@ class ContractConsistencyTest {
     private String ensureLeadingSlash(String s) {
         if (s == null || s.isEmpty()) return "/";
         return s.startsWith("/") ? s : "/" + s;
-    }
-
-    private String str(JsonNode e, String field, boolean required) {
-        JsonNode n = e.get(field);
-        assertTrue(n != null && n.isTextual() && !n.asText().isBlank(),
-                "契约端点缺少非空字段: " + field);
-        return n.asText();
     }
 
     private String sample(Set<String> set, String key, int n) {

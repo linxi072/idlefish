@@ -1,0 +1,4 @@
+{
+  "exemptions": [],
+  "description": "ITER-T03 契约豁免登记（REQ-10）：临时放行不兼容契约变更。每条必须带 key（METHOD PATH）+ 可选 field + reason + owner + expiresAt（yyyy-MM-dd）；过期即测试失败，报告末尾可见，请定期清理。变更评审通过后应重新生成基线并移除对应豁免。"
+}
