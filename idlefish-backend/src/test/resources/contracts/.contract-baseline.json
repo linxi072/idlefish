@@ -1,7 +1,7 @@
 {
   "version" : 1,
   "generatedAt" : "2026-10-22",
-  "endpointCount" : 149,
+  "endpointCount" : 156,
   "generatedBy" : "ContractBaselineRegenerateTest（ITER-T03）；不兼容变更请走评审后再生，禁止为绕过门禁随意再生",
   "endpoints" : {
     "DELETE /api/address/{id}" : {
@@ -897,6 +897,48 @@
       "expectStatus" : 200,
       "fields" : [ "data" ],
       "file" : "auth-item.json"
+    },
+    "GET /api/admin/data-scope/my-scope" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.scope", "data.orgIds" ],
+      "file" : "data-scope.json"
+    },
+    "GET /api/admin/data-scope/orgs-in-scope" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "data-scope.json"
+    },
+    "POST /api/admin/data-scope/preview" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "data-scope.json"
+    },
+    "POST /api/admin/data-scope/temp-grant" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.grantNo", "data.orgIds", "data.expiredAt" ],
+      "file" : "data-scope.json"
+    },
+    "GET /api/admin/data-scope/temp-grants" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "data-scope.json"
+    },
+    "POST /api/admin/data-scope/revoke" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "data-scope.json"
+    },
+    "POST /api/admin/data-scope/migrate" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "data-scope.json"
     }
   }
 }

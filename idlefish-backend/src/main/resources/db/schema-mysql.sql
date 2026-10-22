@@ -1100,3 +1100,43 @@ SET @order_dt_sql := IF(@has_order_dt = 0,
     'ALTER TABLE t_order ADD COLUMN delivery_type VARCHAR(16) DEFAULT ''EXPRESS'' COMMENT ''EXPRESS/SELF_PICKUP/LOCAL_DELIVERY''',
     'SELECT 1');
 PREPARE stmt FROM @order_dt_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- ===== ITER-T05 多租户/机构数据隔离深化（幂等） =====
+
+-- 临时授权表（REQ-05）：超级管理员向某管理员临时开放额外机构可见范围
+CREATE TABLE IF NOT EXISTS t_data_scope_temp_grant (
+    id           BIGINT       PRIMARY KEY,
+    grant_no     VARCHAR(32)  NOT NULL COMMENT '授权单号（GR 前缀）',
+    admin_id     BIGINT       NOT NULL COMMENT '被授权管理员 ID',
+    org_ids      VARCHAR(512) COMMENT '临时开放可见的机构 ID 集合，逗号分隔',
+    expired_at   DATETIME     COMMENT '有效期截止；超过即失效',
+    status       INT          DEFAULT 1 COMMENT '1 启用 / 0 已撤销',
+    created_at   DATETIME,
+    updated_at   DATETIME,
+    UNIQUE KEY uk_grant_no (grant_no),
+    KEY idx_grant_admin (admin_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 角色数据范围：data_scope（SELF/SELF_AND_CHILD/APPOINT/ALL）+ data_org_ids（APPOINT 指定机构集合）
+SET @has_role_ds := (SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 't_sys_role' AND column_name = 'data_scope');
+SET @role_ds_sql := IF(@has_role_ds = 0,
+    'ALTER TABLE t_sys_role ADD COLUMN data_scope VARCHAR(32) DEFAULT ''SELF'' COMMENT ''SELF/SELF_AND_CHILD/APPOINT/ALL''',
+    'SELECT 1');
+PREPARE stmt FROM @role_ds_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @has_role_doi := (SELECT COUNT(*) FROM information_schema.columns
+                      WHERE table_schema = DATABASE() AND table_name = 't_sys_role' AND column_name = 'data_org_ids');
+SET @role_doi_sql := IF(@has_role_doi = 0,
+    'ALTER TABLE t_sys_role ADD COLUMN data_org_ids VARCHAR(512) COMMENT ''APPOINT 指定机构集合，逗号分隔''',
+    'SELECT 1');
+PREPARE stmt FROM @role_doi_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 商品数据归属机构（REQ-04）：发布时写入所属机构，供数据范围隔离使用
+SET @has_item_org := (SELECT COUNT(*) FROM information_schema.columns
+                      WHERE table_schema = DATABASE() AND table_name = 't_item' AND column_name = 'org_id');
+SET @item_org_sql := IF(@has_item_org = 0,
+    'ALTER TABLE t_item ADD COLUMN org_id BIGINT COMMENT ''数据归属机构（ITER-T05）''',
+    'SELECT 1');
+PREPARE stmt FROM @item_org_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+

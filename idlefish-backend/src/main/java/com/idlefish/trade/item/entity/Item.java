@@ -45,6 +45,12 @@ public class Item extends BaseEntity {
      */
     private String deliveryType;
 
+    /**
+     * 数据归属机构（ITER-T05 / REQ-04）：商品发布时若处于管理员上下文，则写入其所属机构，
+     * 供数据范围统一过滤层按机构隔离（默认不启用对 t_item 的 SQL 过滤，可按需配置 orgIdTables）。
+     */
+    private Long orgId;
+
     /** 验货标识（F-02）：NONE 未验 / INSPECTING 验货中 / PASSED 已验通过 / REJECTED 已验不通过。 */
     private String inspectionStatus;
 

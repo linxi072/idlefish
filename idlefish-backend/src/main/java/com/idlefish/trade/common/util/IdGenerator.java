@@ -60,4 +60,9 @@ public class IdGenerator {
     public static String deliveryNo() {
         return next("LD");
     }
+
+    /** 数据范围临时授权单号（ITER-T05 多租户/机构数据隔离深化）。 */
+    public static String grantNo() {
+        return next("GR");
+    }
 }

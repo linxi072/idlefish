@@ -108,6 +108,11 @@ public class ItemService {
         item.setViewCount(0);
         item.setLikeCount(0);
         item.setFavCount(0);
+        // ITER-T05 / REQ-04：归属写入——若处于管理员上下文，则打上其所属机构，供数据范围隔离使用
+        com.idlefish.trade.datascope.DataScopeContext dsCtx = com.idlefish.trade.datascope.DataScopeContext.get();
+        if (dsCtx != null) {
+            item.setOrgId(dsCtx.getSelfOrgId());
+        }
         itemMapper.insert(item);
         // ITER-F03：异常低价送审标记（REQ-10，best-effort，不阻断发布）
         try {

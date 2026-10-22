@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.idlefish.trade.admin.entity.AdminUser;
 import com.idlefish.trade.admin.mapper.AdminUserMapper;
 import com.idlefish.trade.admin.vo.AdminLoginVO;
+import com.idlefish.trade.system.entity.SysOrganization;
+import com.idlefish.trade.system.mapper.SysOrganizationMapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.IdlefishProperties;
@@ -30,11 +32,14 @@ public class AdminAuthController {
     private final AdminUserMapper adminUserMapper;
     private final JwtUtil jwtUtil;
     private final IdlefishProperties props;
+    private final SysOrganizationMapper sysOrganizationMapper;
 
-    public AdminAuthController(AdminUserMapper adminUserMapper, JwtUtil jwtUtil, IdlefishProperties props) {
+    public AdminAuthController(AdminUserMapper adminUserMapper, JwtUtil jwtUtil, IdlefishProperties props,
+                              SysOrganizationMapper sysOrganizationMapper) {
         this.adminUserMapper = adminUserMapper;
         this.jwtUtil = jwtUtil;
         this.props = props;
+        this.sysOrganizationMapper = sysOrganizationMapper;
     }
 
     /** 后台登录：校验账号密码，签发管理员 JWT（角色由服务端决定），并下发 HttpOnly Cookie（R-23 镜像 F-04）。 */
@@ -48,6 +53,8 @@ public class AdminAuthController {
         if (u.getStatus() != null && u.getStatus() == 0) {
             throw new BizException(Code.FORBIDDEN, "账号已禁用");
         }
+        // ITER-T05 / REQ-06：所属机构停用则禁止登录
+        assertOrgEnabled(u.getOrgId());
         String token = jwtUtil.generateAdmin(u.getId(), u.getRole());
         // R-23 生产化 · 浏览器端下发 HttpOnly + SameSite=Lax Cookie（防 XSS 窃取；与用户侧 F-04 一致）。
         // 响应体仍返回 token 以兼容移动端/脚本类客户端（Bearer 头）。
@@ -75,6 +82,8 @@ public class AdminAuthController {
         if (u == null || (u.getStatus() != null && u.getStatus() == 0)) {
             throw new BizException(Code.FORBIDDEN, "账号已禁用或不存在");
         }
+        // ITER-T05 / REQ-06：所属机构停用则禁止登录
+        assertOrgEnabled(u.getOrgId());
         return Result.ok(new AdminLoginVO(token, role, u.getNickname(), adminId));
     }
 
@@ -105,5 +114,16 @@ public class AdminAuthController {
             sb.append("; Secure");
         }
         response.addHeader("Set-Cookie", sb.toString());
+    }
+
+    /** ITER-T05 / REQ-06：所属机构停用（status=0）则禁止登录。 */
+    private void assertOrgEnabled(Long orgId) {
+        if (orgId == null) {
+            return;
+        }
+        SysOrganization org = sysOrganizationMapper.selectById(orgId);
+        if (org == null || (org.getStatus() != null && org.getStatus() == 0)) {
+            throw new BizException(Code.ORG_DISABLED, "所属机构已停用，禁止登录");
+        }
     }
 }

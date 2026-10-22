@@ -39,6 +39,8 @@ public class IdlefishProperties {
     private Pricing pricing = new Pricing();
     private Local local = new Local();
     private SearchService searchService = new SearchService();
+    /** 数据范围（ITER-T05）：声明带 org_id 列的表，启用 SQL 级机构隔离。 */
+    private DataScope dataScope = new DataScope();
 
     @Data
     public static class Jwt {
@@ -433,5 +435,16 @@ public class IdlefishProperties {
     /** 搜推路由模式（ITER-T04 / REQ-10）。 */
     public enum Mode {
         INLINE, REMOTE
+    }
+
+    /**
+     * 数据范围配置（ITER-T05 / REQ-02/09）。
+     * 仅 {@code orgIdTables} 中列出的物理表会由 {@code DataPermissionInterceptor} 注入
+     * {@code org_id IN (...)}；未配置则统一过滤层不生效（保持既有行为，零回归风险）。
+     * 默认启用 {@code t_admin_user} 的管理员机构隔离；其余表（如 t_item）可按需在配置中追加。
+     */
+    @Data
+    public static class DataScope {
+        private List<String> orgIdTables = new ArrayList<>(List.of("t_admin_user"));
     }
 }

@@ -18,4 +18,9 @@ public class SysRole extends BaseEntity {
     private Integer status;
     private Integer sort;
     private String remark;
+
+    /** 数据范围（ITER-T05 / REQ-02）：SELF / SELF_AND_CHILD / APPOINT / ALL；空值回落 SELF。 */
+    private String dataScope = "SELF";
+    /** 指定机构集合（APPOINT 时使用），逗号分隔的机构 ID。 */
+    private String dataOrgIds;
 }

@@ -1,0 +1,62 @@
+{
+  "domain": "data-scope",
+  "description": "多租户/机构数据隔离深化（ITER-T05）：四大数据范围、统一过滤层、越权审计、机构停用禁登、临时授权与归属迁移",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/admin/data-scope/my-scope",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.scope", "data.orgIds"],
+      "notes": "REQ-02/09 当前管理员可见范围决议（范围 + 机构集合；ALL 时 orgIds=null）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/data-scope/orgs-in-scope",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-02 当前管理员可见机构 ID 集合（ALL 时返回全量机构）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/data-scope/preview",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-03 越权预览：目标机构是否在可见范围内（boolean，不抛异常、不写审计）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/data-scope/temp-grant",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.grantNo", "data.orgIds", "data.expiredAt"],
+      "notes": "REQ-05 创建临时授权，向管理员临时开放额外机构可见范围（限有效期）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/data-scope/temp-grants",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-05 当前管理员生效中的临时授权列表"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/data-scope/revoke",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": [],
+      "notes": "REQ-05 撤销临时授权（幂等：已撤销不影响）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/data-scope/migrate",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-10 数据归属迁移：将源机构数据重指派到目标机构，返回受影响行数"
+    }
+  ]
+}

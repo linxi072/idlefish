@@ -73,6 +73,10 @@ public enum Code {
     LOCAL_DELIVERY_STATE_NOT_ALLOWED(30037, "当前配送单状态不允许该操作"),
     /** 同城履约（ITER-F05 / REQ-09）：城市未开通同城服务（回收或配送）。 */
     LOCAL_REGION_UNSUPPORTED(30038, "所在城市暂未开通同城服务"),
+    /** 数据范围越权（ITER-T05 / REQ-03）：访问超出自身数据范围的机构数据被拒绝。 */
+    DATA_SCOPE_FORBIDDEN(30039, "无数据访问权限（超出数据范围）"),
+    /** 机构停用（ITER-T05 / REQ-06）：所属机构已停用，禁止登录。 */
+    ORG_DISABLED(30040, "所属机构已停用，禁止登录"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),
