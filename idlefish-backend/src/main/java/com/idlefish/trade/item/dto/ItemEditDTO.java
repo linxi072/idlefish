@@ -25,6 +25,9 @@ public class ItemEditDTO {
     private String city;
     private Long freight;
 
+    /** 履约方式（ITER-F05 / REQ-01）：EXPRESS / SELF_PICKUP / LOCAL_DELIVERY；为空表示不修改。 */
+    private String deliveryType;
+
     public Long getItemId() {
         return itemId;
     }
@@ -127,5 +130,13 @@ public class ItemEditDTO {
 
     public void setFreight(Long freight) {
         this.freight = freight;
+    }
+
+    public String getDeliveryType() {
+        return deliveryType;
+    }
+
+    public void setDeliveryType(String deliveryType) {
+        this.deliveryType = deliveryType;
     }
 }

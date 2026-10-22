@@ -36,6 +36,11 @@ public class Order extends BaseEntity {
     private Long usedPoint;         // 下单使用的积分（F-13.1）
     private Long pointDiscount;     // 积分抵扣金额（分，F-13.1）
     private Long activityId;        // 参与的活动 ID（F-13.3 拼团/秒杀）
+    /**
+     * 履约方式（ITER-F05 / REQ-06/10）：EXPRESS 快递 / SELF_PICKUP 同城自提 / LOCAL_DELIVERY 同城配送。
+     * 由商品发布时选择的履约方式带过来；自提单的自动确认收货时效显著缩短（REQ-10）。
+     */
+    private String deliveryType;
 
     @Version
     private Integer version;

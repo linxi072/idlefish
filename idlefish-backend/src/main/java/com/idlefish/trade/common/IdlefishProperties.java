@@ -5,7 +5,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 读取 application.yml 中 idlefish.* 业务配置。
@@ -35,6 +37,7 @@ public class IdlefishProperties {
     private Point point = new Point();
     private Invite invite = new Invite();
     private Pricing pricing = new Pricing();
+    private Local local = new Local();
 
     @Data
     public static class Jwt {
@@ -325,5 +328,64 @@ public class IdlefishProperties {
         /** 偏离判定阈值：低于下限比例（默认 0.5=50%）、高于上限比例（默认 1.0=100%，REQ-09）。 */
         private double lowDeviationRatio = 0.5;
         private double highDeviationRatio = 1.0;
+    }
+
+    /**
+     * 同城回收与本地履约配置（ITER-F05）。
+     * 金额单位一律「分」；第三方服务商为真实 HTTP 调用，配置缺失即判定不可用并明确提示（REQ-09），
+     * 不做静默降级、不使用 Mock 数据冒充成功。
+     */
+    @Data
+    public static class Local {
+        /** 同城履约总开关；关闭后所有同城入口返回明确提示（REQ-09）。 */
+        private boolean enabled = true;
+        /** 开通同城服务的城市清单（REQ-01 / REQ-09）；为空表示不限制，生产建议显式配置。 */
+        private List<String> cities = new ArrayList<>();
+        /** 一键回收白名单类目 ID（REQ-11）；为空表示不限制。 */
+        private List<Long> recycleCategories = new ArrayList<>();
+        /**
+         * 回收估价：成色档位 → 基准价折扣系数（0~1）。键为 conditionLevel
+         * （1 全新 / 2 95新 / 3 9成新 / 4 8成新 / 5 功能完好）；回收价低于二手成交价故整体折让。
+         * 注意：YAML 只覆盖出现的键，未配置档位沿用此处默认值。
+         */
+        private Map<Integer, Double> conditionRatio = new HashMap<>(Map.of(
+                1, 0.85, 2, 0.75, 3, 0.62, 4, 0.48, 5, 0.35));
+        /** 回收估价兜底比例（相对 ITER-F03 参考价）；无成色命中时使用，默认 0.6。 */
+        private double defaultEstimateRatio = 0.6;
+        /** 回收估价下限（分）：低于该值不生成回收单，避免无意义上门（默认 100 分 = 1 元）。 */
+        private long minEstimateFen = 100L;
+        /** 质检调价最大跌幅比例（0~1）：超过该跌幅视为异常，需人工复核（REQ-04）。默认 0.5。 */
+        private double maxQuoteDropRatio = 0.5;
+        /** 自提订单自动确认收货天数（REQ-10）；快递单仍按既有 10 天。默认 3 天。 */
+        private int selfPickupConfirmDays = 3;
+        /** 同城配送计费：起步价（分）。 */
+        private long deliveryBaseFeeFen = 600L;
+        /** 同城配送计费：起步里程（公里）。 */
+        private double deliveryBaseKm = 3.0;
+        /** 同城配送计费：超出起步里程后每公里费用（分）。 */
+        private long deliveryPerKmFen = 200L;
+        /** 同城配送：最大承接距离（公里），超出直接判定不可用（REQ-09）。 */
+        private double deliveryMaxKm = 30.0;
+        /** 回收 / 同城履约告警接收者（管理员 userId）；为空回退到 notify.alertAdminUserId。 */
+        private Long alertAdminUserId;
+        /** 第三方同城服务商（真实 HTTP）。 */
+        private Provider provider = new Provider();
+
+        @Data
+        public static class Provider {
+            /**
+             * 是否启用真实第三方调度。false 或未配置凭据时创建配送统一返回「服务暂不可用」
+             * 并抛出 LOCAL_DELIVERY_UNAVAILABLE（REQ-09 禁止静默失败）。
+             */
+            private boolean enabled = false;
+            /** 服务商名称（日志与轨迹归因）。 */
+            private String name = "local-provider";
+            /** 服务商接口基址，例如 https://open.example.com/local */
+            private String baseUrl = "";
+            private String appKey = "";
+            private String appSecret = "";
+            /** HTTP 超时（毫秒）。 */
+            private long timeoutMs = 3000L;
+        }
     }
 }

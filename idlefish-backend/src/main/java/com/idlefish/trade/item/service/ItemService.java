@@ -103,6 +103,7 @@ public class ItemService {
         item.setProvince(dto.getProvince());
         item.setCity(dto.getCity());
         item.setFreight(dto.getFreight());
+        item.setDeliveryType(normalizeDeliveryType(dto.getDeliveryType()));
         item.setStatus(ItemStatus.DRAFT.getCode());
         item.setAuditStatus("pending");
         item.setViewCount(0);
@@ -180,6 +181,9 @@ public class ItemService {
         if (dto.getProvince() != null) upd.setProvince(dto.getProvince());
         if (dto.getCity() != null) upd.setCity(dto.getCity());
         if (dto.getFreight() != null) upd.setFreight(dto.getFreight());
+        if (dto.getDeliveryType() != null) {
+            upd.setDeliveryType(normalizeDeliveryType(dto.getDeliveryType()));
+        }
         itemMapper.updateById(upd);
     }
 
@@ -205,6 +209,12 @@ public class ItemService {
         if (q.getConditionLevel() != null) w.eq(Item::getConditionLevel, q.getConditionLevel());
         if (q.getMinPrice() != null) w.ge(Item::getPrice, q.getMinPrice());
         if (q.getMaxPrice() != null) w.le(Item::getPrice, q.getMaxPrice());
+        // REQ-01 仅看同城：只保留同城自提 / 同城配送商品
+        if (Boolean.TRUE.equals(q.getLocalOnly())) {
+            w.in(Item::getDeliveryType,
+                    com.idlefish.trade.local.LocalFulfillmentRules.DELIVERY_SELF_PICKUP,
+                    com.idlefish.trade.local.LocalFulfillmentRules.DELIVERY_LOCAL);
+        }
         switch (q.getSort() == null ? "" : q.getSort()) {
             case "price_asc": w.orderByAsc(Item::getPrice); break;
             case "price_desc": w.orderByDesc(Item::getPrice); break;
@@ -223,6 +233,17 @@ public class ItemService {
         w.orderByDesc(Item::getCreatedAt);
         Page<Item> page = new Page<>(Math.max(q.getPage(), 1), Math.max(q.getSize(), 1));
         return toVOPage(itemMapper.selectPage(page, w));
+    }
+
+    /**
+     * 履约方式规范化（ITER-F05 / REQ-01）：非法或缺省一律回落为 EXPRESS 快递，
+     * 避免把「同城自提」误判成快递导致确认收货时效错配（REQ-10）。
+     */
+    private static String normalizeDeliveryType(String type) {
+        if (com.idlefish.trade.local.LocalFulfillmentRules.validDeliveryType(type)) {
+            return type;
+        }
+        return com.idlefish.trade.local.LocalFulfillmentRules.DELIVERY_EXPRESS;
     }
 
     /** 列表分页转 VO：一次性批量加载卖家，避免逐条 getById 的 N+1。 */
@@ -430,6 +451,7 @@ public class ItemService {
         vo.setStatus(item.getStatus());
         vo.setAuditStatus(item.getAuditStatus());
         vo.setCity(item.getCity());
+        vo.setDeliveryType(item.getDeliveryType());
         vo.setFreight(item.getFreight());
         vo.setViewCount(item.getViewCount());
         vo.setLikeCount(item.getLikeCount());

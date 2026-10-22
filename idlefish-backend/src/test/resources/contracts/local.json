@@ -1,0 +1,110 @@
+{
+  "domain": "local",
+  "description": "同城回收与本地履约（ITER-F05 / REQ-01~REQ-11）：回收预估/申请/取消/报价确认、同城配送可用性预检/下单/轨迹。用户端 /api/local/** 需登录；运营后台 /api/admin/local/** 走管理员鉴权（admin.json 单列，不参与本契约扫描）。",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/local/recycle/estimate",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-02 预估回收价：参考价(入参>ITER-F03 引擎)×成色系数，受上下限保护；城市未开通/品类不白名单返回 hasData=false 且带原因(REQ-09/11)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/local/recycle/apply",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-02/REQ-11 提交回收申请：类目白名单 + 城市可用性校验；地址/电话脱敏后落库(PRD §九)；进入待上门取件"
+    },
+    {
+      "method": "POST",
+      "path": "/api/local/recycle/cancel",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-03 待上门阶段无费用取消；已揽收则拒绝并提示可拒绝报价"
+    },
+    {
+      "method": "POST",
+      "path": "/api/local/recycle/respond",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-04/REQ-05 接受或拒绝质检报价：拒绝即取消退回，系统不强制成交、不扣费"
+    },
+    {
+      "method": "GET",
+      "path": "/api/local/recycle/my",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "我的回收单分页"
+    },
+    {
+      "method": "GET",
+      "path": "/api/local/recycle/detail",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "回收单详情（仅本人；越权返回 FORBIDDEN）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/local/delivery/check",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-09 四层可用性预检：总开关/城市白名单/距离上限/服务商凭据；不可用时 available=false + 明确原因，不静默"
+    },
+    {
+      "method": "POST",
+      "path": "/api/local/delivery/freight",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-07 运费预估（分）：起步价含起步里程，超出部分按每公里向上取整累加"
+    },
+    {
+      "method": "POST",
+      "path": "/api/local/delivery/apply",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-06 创建同城配送单并调度第三方骑手；调度失败置 FAILED 并抛 LOCAL_DELIVERY_UNAVAILABLE(REQ-09 不伪造成功)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/local/delivery/cancel",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "取消配送单（未送达前）；同步取消第三方运单(best-effort)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/local/delivery/track",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "REQ-06 轨迹回传：第三方节点归一化写入 t_logistics 并返回结构化时间轴；服务商不可用/无运单号时明确抛不可用(REQ-09)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/local/delivery/detail",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "配送单详情（含已回传本地轨迹）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/local/delivery/my",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "我的配送单分页"
+    }
+  ]
+}

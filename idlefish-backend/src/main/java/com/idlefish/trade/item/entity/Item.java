@@ -39,6 +39,12 @@ public class Item extends BaseEntity {
     private Integer likeCount;
     private Integer favCount;
 
+    /**
+     * 履约方式（ITER-F05 / REQ-01）：EXPRESS 快递 / SELF_PICKUP 同城自提 / LOCAL_DELIVERY 同城配送。
+     * 同城商品（SELF_PICKUP / LOCAL_DELIVERY）可被「仅看同城」筛出，且走缩短的确认收货时效（REQ-10）。
+     */
+    private String deliveryType;
+
     /** 验货标识（F-02）：NONE 未验 / INSPECTING 验货中 / PASSED 已验通过 / REJECTED 已验不通过。 */
     private String inspectionStatus;
 

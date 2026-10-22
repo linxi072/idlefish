@@ -63,12 +63,13 @@ class OrderServiceConfirmReceiveTest {
     @Mock private IdempotentService idempotentService;
     @Mock private DistributedLock distributedLock;
     @Mock private PlatformTransactionManager txManager;
+    @Mock private com.idlefish.trade.common.IdlefishProperties props;
 
     private OrderService service() {
         return new OrderService(orderMapper, payOrderMapper, logisticsMapper, itemService, itemMapper,
                 addressService, logisticService, settlementService, trackService, new ObjectMapper(),
                 delayQueueService, notificationService, creditService, couponService, pointService,
-                activityService, idempotentService, distributedLock, inspectionService, txManager);
+                activityService, idempotentService, distributedLock, inspectionService, txManager, props);
     }
 
     private Order shippingOrder() {

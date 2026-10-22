@@ -50,4 +50,14 @@ public class IdGenerator {
     public static String reportNo() {
         return next("RP");
     }
+
+    /** 回收单号（ITER-F05 同城回收）。 */
+    public static String recycleNo() {
+        return next("RC");
+    }
+
+    /** 同城配送单号（ITER-F05 本地履约）。 */
+    public static String deliveryNo() {
+        return next("LD");
+    }
 }

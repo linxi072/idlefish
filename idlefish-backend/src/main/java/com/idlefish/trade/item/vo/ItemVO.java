@@ -23,6 +23,8 @@ public class ItemVO {
     private String status;           // ItemStatus.code
     private String auditStatus;      // pending / pass / reject
     private String city;
+    /** 履约方式（ITER-F05 / REQ-01）：EXPRESS / SELF_PICKUP / LOCAL_DELIVERY。 */
+    private String deliveryType;
     private Long freight;            // 0 包邮
     private Double priceYuan;        // 展示用：price/100，单位元（金额单位契约）
     private Double originalPriceYuan;

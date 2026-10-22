@@ -153,3 +153,33 @@ idlefish:
     ban-penalty: 30        # 封禁扣分
     risk-per-event: 5      # 单条高风险事件扣分
     risk-cap: 30           # 风控扣分封顶
+  local:
+    # 同城回收与本地履约（ITER-F05）。金额单位一律「分」。
+    # 总开关：关闭后所有同城/回收入口明确提示未开通，不做静默降级（REQ-09）
+    enabled: ${IDLEFISH_LOCAL_ENABLED:true}
+    # 开通同城服务的城市清单（REQ-01/REQ-09）；留空表示不限制，生产建议显式列举以便边界明确
+    cities: []
+    # 一键回收白名单类目 ID（REQ-11）；留空表示不限制
+    recycle-categories: []
+    condition-ratio:                  # 成色档位 → 回收价折扣系数（1 全新 ~ 5 功能完好）
+      1: 0.85
+      2: 0.75
+      3: 0.62
+      4: 0.48
+      5: 0.35
+    default-estimate-ratio: ${IDLEFISH_LOCAL_DEFAULT_RATIO:0.6}      # 无成色命中时兜底比例
+    min-estimate-fen: ${IDLEFISH_LOCAL_MIN_FEN:100}                  # 回收估价下限（分），防 0 元单
+    max-quote-drop-ratio: ${IDLEFISH_LOCAL_MAX_DROP:0.5}             # 质检跌价超该比例需人工复核（REQ-04）
+    self-pickup-confirm-days: ${IDLEFISH_LOCAL_SELF_PICKUP_DAYS:3}   # 自提订单自动确认收货天数（REQ-10）
+    delivery-base-fee-fen: ${IDLEFISH_LOCAL_BASE_FEE:600}            # 同城配送起步价（分）
+    delivery-base-km: ${IDLEFISH_LOCAL_BASE_KM:3.0}                  # 起步里程（公里）
+    delivery-per-km-fen: ${IDLEFISH_LOCAL_PER_KM:200}                # 超里程每公里费用（分）
+    delivery-max-km: ${IDLEFISH_LOCAL_MAX_KM:30.0}                   # 最大承接距离，超出判定不可用（REQ-09）
+    provider:
+      # 第三方同城配送服务商（真实 HTTP）。未启用或凭据缺失时创建配送返回「服务暂不可用」（REQ-09）
+      enabled: ${IDLEFISH_LOCAL_PROVIDER_ENABLED:false}
+      name: "${IDLEFISH_LOCAL_PROVIDER_NAME:local-provider}"
+      base-url: "${IDLEFISH_LOCAL_PROVIDER_BASE_URL:}"
+      app-key: "${IDLEFISH_LOCAL_PROVIDER_APP_KEY:}"
+      app-secret: "${IDLEFISH_LOCAL_PROVIDER_APP_SECRET:}"
+      timeout-ms: ${IDLEFISH_LOCAL_PROVIDER_TIMEOUT:3000}

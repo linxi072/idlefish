@@ -15,6 +15,11 @@ public class ItemQueryDTO {
     private String city;
     /** 省份筛选（F-14.1）。 */
     private String province;
+    /**
+     * 仅看同城（ITER-F05 / REQ-01）：true 时只返回同城履约商品
+     * （SELF_PICKUP 同城自提 / LOCAL_DELIVERY 同城配送），过滤掉普通快递商品。
+     */
+    private Boolean localOnly;
     private String sort = "new";    // new / price_asc / price_desc / hot
     private Integer page = 1;
     private Integer size = 20;
@@ -81,6 +86,14 @@ public class ItemQueryDTO {
 
     public void setProvince(String province) {
         this.province = province;
+    }
+
+    public Boolean getLocalOnly() {
+        return localOnly;
+    }
+
+    public void setLocalOnly(Boolean localOnly) {
+        this.localOnly = localOnly;
     }
 
     public String getSort() {

@@ -4,7 +4,7 @@
 |---|---|
 | 编号 | ITER-F05 |
 | 维度 / 优先级 | 功能完善 / **P1** |
-| 状态 | 待评审 |
+| 状态 | **部分实现（沙箱可运行子集，2026-10-22）** |
 | 建议负责 | 产品负责人（业务规则）+ 后端负责人（履约/机构） |
 | 关联模块 | `Organization` 机构管理（已扁平为表格）、RBAC 角色管理、`logisticsTrack` 物流轨迹、F-14.2 推荐（同城因子）、F-17 售后工单 |
 | 被依赖 | ITER-T05（多租户隔离）需要在本项落地区域机构模型 |
@@ -141,16 +141,74 @@
 
 ## 十、验收标准（可勾选）
 
-- [ ] 同城自提商品有标识且支持「仅看同城」筛选（REQ-01）。
-- [ ] 上门回收可提交并给出预估价（REQ-02）。
-- [ ] 「待上门」状态可无费用取消（REQ-03）。
-- [ ] 质检后调价需用户确认，拒绝则取消退回且无费用（REQ-04/05）。
-- [ ] 同城配送轨迹回传至 `logisticsTrack`（REQ-06）。
-- [ ] 回收款与配送费以「分」入账并进入对账（REQ-07）。
-- [ ] 区域机构仅可见本区域数据（REQ-08）。
-- [ ] 服务商不可用时明确提示而非静默失败（REQ-09）。
-- [ ] 自提单引导当面验货（REQ-10）。
-- [ ] 白名单品类发布页展示「一键回收」（REQ-11）。
+- [x] 同城自提商品有标识且支持「仅看同城」筛选（REQ-01）——**后端已实现**：`Item.deliveryType` + `ItemVO.deliveryType` + `ItemQueryDTO.localOnly` + `ItemService.buyerList` 同城过滤；小程序/PC 前端标识 UI 待接入。
+- [x] 上门回收可提交并给出预估价（REQ-02）——**后端已实现**：`RecycleService.estimate/apply`，参考价「显式入参 > ITER-F03 估价引擎」两路，均无则明确拒绝（不编造价格）。
+- [x] 「待上门」状态可无费用取消（REQ-03）——**后端已实现**：仅 `PENDING_PICKUP` 可取消，全程不写资金流水。
+- [x] 质检后调价需用户确认，拒绝则取消退回且无费用（REQ-04/05）——**后端已实现**：服务端二次封顶 + 异常跌幅告警；接受→`CONFIRMED`，拒绝→`REJECTED` 且零资金操作。
+- [x] 同城配送轨迹回传至 `logisticsTrack`（REQ-06）——**后端已实现**：复用既有 `t_logistics` + `LogisticsTimelineBuilder`，不新建轨迹表。
+- [x] 回收款与配送费以「分」入账并进入对账（REQ-07）——**后端已实现**：`FundFlow` type = `RECYCLE` / `DELIVERY_FEE`，按 `bizNo` 可被 ITER-T02 追平（对账维度扩展留作 T02 增量）。
+- [x] 区域机构仅可见本区域数据（REQ-08）——**最小 Prior 已实现**：`RecycleOrder.orgId` + 后台列表按管理员机构收敛（非 `SUPER` 强制收敛到 `admin.orgId`）；完整的组织-账号绑定与越权测试由 **ITER-T05** 承接。
+- [x] 服务商不可用时明确提示而非静默失败（REQ-09）——**后端已实现**：`/api/local/delivery/check` 四层预检（开关/城市/距离/服务商凭据）+ 下单与轨迹失败均抛 `LOCAL_DELIVERY_UNAVAILABLE` 并携带明确原因，**无 Mock、无本地假运单**。
+- [~] 自提单引导当面验货（REQ-10）——**后端已实现**：`OrderService.autoConfirmReceive` 按 `deliveryType` 分支（自提默认 3 天，快递维持 10 天）；当面验货的前端引导文案待小程序/PC 接入。
+- [~] 白名单品类发布页展示「一键回收」（REQ-11）——**后端已实现**：`idlefish.local.recycle-categories` 白名单 + `estimate`/`apply` 双层校验 + 一键回收以商品补齐类目/成色/标题；发布页入口 UI 待小程序接入。
+
+---
+
+## 十二、实现说明（2026-10-22，后端沙箱可运行子集）
+
+### 12.1 新增领域包 `com.idlefish.trade.local`
+
+| 层 | 文件 | 职责 |
+|---|---|---|
+| 实体 | `entity/RecycleOrder` | 回收单（`t_recycle_order`），金额恒「分」，含 `orgId`（REQ-08）与脱敏字段 |
+| 实体 | `entity/LocalDelivery` | 同城配送单（`t_local_delivery`），`bizType=ORDER/RECYCLE` 统一挂载两类业务 |
+| Mapper | `mapper/RecycleOrderMapper`、`mapper/LocalDeliveryMapper` | 已显式加入 `TradeApplication.@MapperScan`（F-02 漏包前车之鉴） |
+| 纯函数 | `RecycleStateMachine` | 回收状态机；`QUOTED` 后仅「接受→放款」或「拒绝→退回」，**无自动成交路径** |
+| 纯函数 | `LocalDeliveryStateMachine` | 配送状态机；送达后只可签收，失败仅存在于送达前 |
+| 纯函数 | `RecycleQuoteCalculator` | 估价 = 参考价 × 成色系数；`capFinalAmount` 服务端封顶（≤ 预估价 ×1.2）；跌幅判定 |
+| 纯函数 | `LocalFulfillmentRules` | 履约方式常量、城市/品类白名单、距离上限、运费计费（公里向上取整）、自提确认天数、**手机号/地址脱敏** |
+| 适配层 | `provider/LocalFulfillmentProvider` + `HttpLocalFulfillmentProvider` | 唯一实现为**真实 HTTP**（RestTemplate + 表单签名）；无凭据/异常/无运单号一律返回明确失败（REQ-09），**无 Mock 实现** |
+| 服务 | `service/RecycleService` | 预估/申请/取消/揽收/质检/表态/放款/不可用，含放款幂等与 `RECYCLE` 资金流水 |
+| 服务 | `service/LocalDeliveryService` | 可用性预检/运费/下单/状态推进/取消/轨迹回传 |
+| 控制器 | `controller/LocalRecycleController`（`/api/local/recycle/**`）、`controller/LocalDeliveryController`（`/api/local/delivery/**`）、`controller/AdminLocalController`（`/api/admin/local/**`） | 用户端需登录（`/api/local/**` 未在 WebConfig 白名单，遵循现状不改动受保护文件）；后台走 `AdminAuthInterceptor` |
+
+### 12.2 跨模块最小接线
+
+- `Item` / `ItemVO` / `ItemPublishDTO` / `ItemEditDTO` / `ItemQueryDTO` 增 `deliveryType` / `localOnly`；`ItemService.publish/edit/buyerList/toVO` 打通（非法或缺省回落 `EXPRESS`，避免把同城误判成快递导致 REQ-10 时效错配）。
+- `Order` 增 `deliveryType`（随商品带过来）；`OrderService.autoConfirmReceive` 由「统一 10 天」改为按履约方式分支取阈值。
+- `Code` 新增 `30031~30038`（`RECYCLE_*` / `LOCAL_*`）；`IdGenerator` 增 `recycleNo()`（RC）/`deliveryNo()`（LD）；`NotificationType` 增 7 枚回收/配送触达枚举。
+- `IdlefishProperties.Local` + `application.yml` 的 `idlefish.local.*`（凭据经 `IDLEFISH_LOCAL_*` 环境变量注入）。
+
+### 12.3 数据库
+
+`db/schema-mysql.sql` 追加 `t_recycle_order` / `t_local_delivery`（`CREATE TABLE IF NOT EXISTS`），并为 `t_item` / `t_order` 增 `delivery_type`。
+因 MySQL 不支持 `ADD COLUMN IF NOT EXISTS`，末尾附**幂等增量迁移**（`information_schema` 守卫 + `PREPARE` 动态 SQL），已在真实 MySQL 8.1 实证生效（存量 `t_item` 自动补齐 `delivery_type`，未破坏既有列）。
+
+### 12.4 降级与安全边界（REQ-09 / PRD §九）
+
+1. **零静默失败**：第三方不可用 → 预检 `available=false` + 原因；下单失败 → 落 `FAILED` 并抛 `LOCAL_DELIVERY_UNAVAILABLE`；轨迹不可用 → 抛错而非返回空数组。
+2. **零 Mock 冒充**：不存在「本地假运单/假轨迹」实现；服务商未配置时直接拒绝下单。
+3. **资金纪律**：回收款/配送费恒「分」，放款前校验「用户已确认报价」，并凭 `bizNo + type=RECYCLE` 幂等去重；质检报价必须服务端二次封顶。
+4. **PII 脱敏**：`maskPhone`（前 3 后 4）、`maskAddress`（剥离房间号与门牌号，保留楼宇粒度）在落库前执行。
+5. **数据隔离**：`orgId` + 后台机构收敛为最小 Prior；多租户完整模型与越权测试归 **ITER-T05**。
+
+### 12.5 测试与验证
+
+- 新增 6 个测试类共 **82 例**（`RecycleStateMachineTest` 7 / `LocalDeliveryStateMachineTest` 5 / `RecycleQuoteCalculatorTest` 13 / `LocalFulfillmentRulesTest` 12 / `RecycleServiceTest` 27 / `LocalDeliveryServiceTest` 18），离线全绿。
+- `ContractConsistencyTest` 通过，新增 `contracts/local.json` 13 端点（非 admin 契约总数 130 → **143**）。
+- 全量离线 `mvn -o test`：**513 例，8 失败 + 14 错误**，失败集合与干净 HEAD 基线完全一致（登录 NPE / RSA 私钥 / 种子用户无 openid / DuplicateKey / 提现 Mockito 断言），均属既有环境性问题，与本次改动无关。
+- 真机/商户号侧验收（第三方服务商凭据、真实调度、当面验货 UI）仍待用户本机执行，沙箱不伪造。
+
+### 12.6 遗留事项（移交后续迭代）
+
+| 事项 | 承接方 |
+|---|---|
+| 第三方同城配送/回收服务商凭据接入与真实调度联调 | 用户本机 / 运维 |
+| 小程序发布页「履约方式」与「一键回收」入口、回收页、订单详情自提提示 | 前端（小程序） |
+| PC 后台回收管理视图（列表/质检/放款/区域隔离） | 前端（pc-admin） |
+| 回收款 `RECYCLE` 维度纳入 ITER-T02 对账口径 | ITER-T02 增量 |
+| 区域机构完整数据权限模型与越权测试 | ITER-T05 |
+| 爽约规则/黑名单、赃物风险核验、大件保价赔付 | 后续迭代 |
 
 ---
 

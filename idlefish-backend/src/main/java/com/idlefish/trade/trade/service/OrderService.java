@@ -74,6 +74,9 @@ public class OrderService {
     private final PointService pointService;
     private final ActivityService activityService;
 
+    /** 业务配置（ITER-F05：同城自提自动确认收货天数等）。 */
+    private final com.idlefish.trade.common.IdlefishProperties props;
+
     /** 幂等（F-18）：拦截重复提交，重复请求回放首次结果。 */
     private final IdempotentService idempotentService;
 
@@ -108,7 +111,8 @@ public class OrderService {
                         CreditService creditService, com.idlefish.trade.marketing.service.CouponService couponService,
                         PointService pointService, ActivityService activityService,
                         IdempotentService idempotentService, DistributedLock distributedLock,
-                        InspectionService inspectionService, PlatformTransactionManager txManager) {
+                        InspectionService inspectionService, PlatformTransactionManager txManager,
+                        com.idlefish.trade.common.IdlefishProperties props) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.logisticsMapper = logisticsMapper;
@@ -129,6 +133,7 @@ public class OrderService {
         this.distributedLock = distributedLock;
         this.inspectionService = inspectionService;
         this.txTemplate = new TransactionTemplate(txManager);
+        this.props = props;
     }
 
     /**
@@ -218,6 +223,9 @@ public class OrderService {
         o.setRemark(dto.getRemark());
         o.setPayNo(payNo);
         o.setActivityId(dto.getActivityId());
+        // ITER-F05 / REQ-06/10：履约方式随商品带过来，决定配送链路与自动确认收货时效
+        o.setDeliveryType(item.getDeliveryType() == null
+                ? com.idlefish.trade.local.LocalFulfillmentRules.DELIVERY_EXPRESS : item.getDeliveryType());
         return o;
     }
 
@@ -483,16 +491,29 @@ public class OrderService {
                 "订单 " + orderNo + " 超时未支付，已自动关闭");
     }
 
-    /** 定时：运输中订单超过 10 天未确认收货，自动确认并完成结算。 */
+    /**
+     * 定时：已发货订单超期未确认收货，自动确认并完成结算。
+     * <p>ITER-F05 / REQ-10：自提当面验货，确认时效显著短于快递
+     * （默认 {@code idlefish.local.self-pickup-confirm-days=3}，快递仍为 10 天），
+     * 因此这里按订单的 {@code deliveryType} 分支取阈值，避免用统一的 10 天一刀切。
+     */
     public void autoConfirmReceive() {
-        LocalDateTime threshold = LocalDateTime.now().minusDays(10);
+        LocalDateTime now = LocalDateTime.now();
         List<Order> list = orderMapper.selectList(new LambdaQueryWrapper<Order>()
-                .eq(Order::getStatus, OrderStatus.SHIPPING.getCode())
-                .lt(Order::getCreatedAt, threshold));
+                .eq(Order::getStatus, OrderStatus.SHIPPING.getCode()));
         for (Order o : list) {
-            confirmReceiveSingle(o.getOrderNo());
+            int days = com.idlefish.trade.local.LocalFulfillmentRules.confirmDays(o.getDeliveryType(),
+                    props.getLocal().getSelfPickupConfirmDays(), EXPRESS_CONFIRM_DAYS);
+            LocalDateTime threshold = now.minusDays(days);
+            LocalDateTime shippedAt = o.getUpdatedAt() == null ? o.getCreatedAt() : o.getUpdatedAt();
+            if (shippedAt != null && shippedAt.isBefore(threshold)) {
+                confirmReceiveSingle(o.getOrderNo());
+            }
         }
     }
+
+    /** 快递订单自动确认收货天数（沿用历史值，REQ-10 只缩短同城自提）。 */
+    public static final int EXPRESS_CONFIRM_DAYS = 10;
 
     /** 单笔自动确认收货（供延时队列处理器调用，幂等）。 */
     public void confirmReceiveSingle(String orderNo) {

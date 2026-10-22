@@ -57,6 +57,22 @@ public enum Code {
     AB_EXPERIMENT_NOT_FOUND(30029, "实验不存在"),
     /** AB 实验配置冲突：名称重复或时间窗重叠（ITER-F04 / REQ-06）。 */
     AB_EXPERIMENT_CONFLICT(30030, "实验配置冲突（名称或时间窗重叠）"),
+    /** 同城回收（ITER-F05 / REQ-02）：回收单不存在。 */
+    RECYCLE_NOT_FOUND(30031, "回收单不存在"),
+    /** 同城回收（ITER-F05）：当前回收单状态不允许该操作（如已放款不可取消）。 */
+    RECYCLE_STATE_NOT_ALLOWED(30032, "当前回收单状态不允许该操作"),
+    /** 同城回收（ITER-F05 / REQ-05）：用户已拒绝质检报价，不得强制成交或扣费。 */
+    RECYCLE_QUOTE_REJECTED(30033, "用户拒绝质检报价，回收单已取消并退回"),
+    /** 同城回收（ITER-F05 / REQ-11）：品类不在回收白名单，不支持一键回收。 */
+    RECYCLE_CATEGORY_NOT_ALLOWED(30034, "该品类暂不支持回收"),
+    /** 同城配送（ITER-F05 / REQ-06）：配送单不存在。 */
+    LOCAL_DELIVERY_NOT_FOUND(30035, "同城配送单不存在"),
+    /** 同城配送（ITER-F05 / REQ-09）：第三方服务商不可用，须明确提示而非静默失败。 */
+    LOCAL_DELIVERY_UNAVAILABLE(30036, "同城配送服务暂不可用，请稍后重试或改用快递"),
+    /** 同城配送（ITER-F05）：当前配送单状态不允许该操作。 */
+    LOCAL_DELIVERY_STATE_NOT_ALLOWED(30037, "当前配送单状态不允许该操作"),
+    /** 同城履约（ITER-F05 / REQ-09）：城市未开通同城服务（回收或配送）。 */
+    LOCAL_REGION_UNSUPPORTED(30038, "所在城市暂未开通同城服务"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

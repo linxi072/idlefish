@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS t_item (
     like_count       INT          DEFAULT 0,
     fav_count        INT          DEFAULT 0,
     inspection_status VARCHAR(16)  DEFAULT 'NONE' COMMENT '验货标识：NONE/INSPECTING/PASSED/REJECTED',
+    delivery_type    VARCHAR(16)  DEFAULT 'EXPRESS' COMMENT '履约方式（ITER-F05/REQ-01）：EXPRESS/SELF_PICKUP/LOCAL_DELIVERY',
     version          INT          DEFAULT 0,
     deleted          INT          DEFAULT 0,
     created_at       DATETIME,
@@ -99,6 +100,7 @@ CREATE TABLE IF NOT EXISTS t_order (
     used_point       BIGINT       DEFAULT 0,   -- F-13.1：下单使用的积分
     point_discount   BIGINT       DEFAULT 0,   -- F-13.1：积分抵扣金额（分）
     activity_id      BIGINT,                  -- F-13.3：参与活动 ID（拼团/秒杀）
+    delivery_type    VARCHAR(16)  DEFAULT 'EXPRESS' COMMENT '履约方式（ITER-F05/REQ-06/10）：EXPRESS/SELF_PICKUP/LOCAL_DELIVERY',
     created_at       DATETIME,
     updated_at       DATETIME,
     UNIQUE KEY uk_order_no (order_no),
@@ -1005,3 +1007,96 @@ CREATE TABLE IF NOT EXISTS t_ab_experiment (
     UNIQUE KEY uk_ab_name (name),
     KEY idx_ab_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 上门回收单（ITER-F05 同城回收与本地履约）：上门回收预估 / 申请 / 取消 / 质检调价 / 确认放款。
+-- 金额单位：分。状态：PENDING_PICKUP / PICKED_UP / INSPECTING / QUOTED / CONFIRMED / PAID /
+--           CANCELED / REJECTED / UNAVAILABLE（见 RecycleStateMachine）。
+-- org_id 支撑区域机构数据隔离（REQ-08）；address / contact_phone 落库前脱敏（PRD §九）。
+CREATE TABLE IF NOT EXISTS t_recycle_order (
+    id               BIGINT       PRIMARY KEY,
+    recycle_no       VARCHAR(32)  NOT NULL COMMENT '回收单号（RC 前缀，唯一）',
+    user_id          BIGINT       NOT NULL COMMENT '申请人 userId',
+    org_id           BIGINT       DEFAULT NULL COMMENT '区域机构 ID（REQ-08 数据隔离；空=未归属）',
+    item_id          BIGINT       DEFAULT NULL COMMENT '关联商品 ID（一键回收 REQ-11）',
+    category_id      BIGINT       NOT NULL COMMENT '类目 ID（白名单校验 + 估价维度）',
+    title            VARCHAR(128) DEFAULT NULL COMMENT '回收品标题快照',
+    condition_level  INT          NOT NULL DEFAULT 3 COMMENT '成色档位 1 全新 ~ 5 功能完好',
+    pickup_type      VARCHAR(16)  NOT NULL DEFAULT 'HOME' COMMENT '取件方式 HOME 上门 / SELF 自送',
+    estimate_amount  BIGINT       NOT NULL DEFAULT 0 COMMENT '预估回收价（分，REQ-02）',
+    final_amount     BIGINT       NOT NULL DEFAULT 0 COMMENT '质检后最终价（分，REQ-04）',
+    status           VARCHAR(24)  NOT NULL DEFAULT 'PENDING_PICKUP' COMMENT '状态机见 RecycleStateMachine',
+    province         VARCHAR(64)  DEFAULT NULL COMMENT '省',
+    city             VARCHAR(64)  DEFAULT NULL COMMENT '市（同城可用性判定 REQ-01/09）',
+    district         VARCHAR(64)  DEFAULT NULL COMMENT '区',
+    address          VARCHAR(255) DEFAULT NULL COMMENT '脱敏后的取件地址（隐去门牌号）',
+    contact_name     VARCHAR(32)  DEFAULT NULL COMMENT '联系人姓名',
+    contact_phone    VARCHAR(32)  DEFAULT NULL COMMENT '脱敏后的联系电话（138****1234）',
+    appointment_at   DATETIME     DEFAULT NULL COMMENT '预约上门时间',
+    quote_remark     VARCHAR(512) DEFAULT NULL COMMENT '质检调价说明（对用户明示 REQ-04）',
+    serial_no        VARCHAR(64)  DEFAULT NULL COMMENT '第三方回收商外部单号',
+    cancel_reason    VARCHAR(512) DEFAULT NULL COMMENT '取消/退回原因',
+    operator         VARCHAR(64)  DEFAULT NULL COMMENT '运营处理人',
+    paid_at          DATETIME     DEFAULT NULL COMMENT '放款时间（REQ-07）',
+    picked_up_at     DATETIME     DEFAULT NULL COMMENT '揽收时间',
+    quoted_at        DATETIME     DEFAULT NULL COMMENT '质检完成时间',
+    finished_at      DATETIME     DEFAULT NULL COMMENT '终态时间',
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_recycle_no (recycle_no),
+    KEY idx_recycle_user (user_id),
+    KEY idx_recycle_status (status),
+    KEY idx_recycle_org (org_id),
+    KEY idx_recycle_item (item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 同城配送单（ITER-F05 本地履约 / REQ-06、REQ-07）：第三方调度骑手，轨迹回传 t_logistics。
+-- 金额单位：分。状态：CREATED / ACCEPTED / DELIVERING / ARRIVED / SIGNED / CANCELED / FAILED
+--           （见 LocalDeliveryStateMachine）。
+CREATE TABLE IF NOT EXISTS t_local_delivery (
+    id             BIGINT       PRIMARY KEY,
+    delivery_no    VARCHAR(32)  NOT NULL COMMENT '配送单号（LD 前缀，唯一）',
+    biz_type       VARCHAR(16)  NOT NULL DEFAULT 'ORDER' COMMENT '业务类型 ORDER 订单 / RECYCLE 回收',
+    biz_no         VARCHAR(32)  NOT NULL COMMENT '业务单号（订单号 / 回收单号）',
+    user_id        BIGINT       NOT NULL COMMENT '发起方 userId',
+    city           VARCHAR(64)  DEFAULT NULL COMMENT '配送城市（同城可用性判定）',
+    from_address   VARCHAR(255) DEFAULT NULL COMMENT '起点（脱敏）地址',
+    to_address     VARCHAR(255) DEFAULT NULL COMMENT '终点（脱敏）地址',
+    distance_km    DECIMAL(10,2) DEFAULT NULL COMMENT '配送距离（公里）',
+    freight        BIGINT       NOT NULL DEFAULT 0 COMMENT '配送费（分，REQ-07）',
+    paid           INT          NOT NULL DEFAULT 0 COMMENT '配送费是否已入账（0 否 / 1 是）',
+    status         VARCHAR(24)  NOT NULL DEFAULT 'CREATED' COMMENT '状态机见 LocalDeliveryStateMachine',
+    provider_name  VARCHAR(64)  DEFAULT NULL COMMENT '第三方服务商名称',
+    provider_no    VARCHAR(64)  DEFAULT NULL COMMENT '第三方运单号',
+    courier_name   VARCHAR(64)  DEFAULT NULL COMMENT '骑手姓名',
+    courier_phone  VARCHAR(32)  DEFAULT NULL COMMENT '脱敏后的骑手电话',
+    fail_reason    VARCHAR(512) DEFAULT NULL COMMENT '失败/不可用原因（REQ-09 明确提示）',
+    accepted_at    DATETIME     DEFAULT NULL COMMENT '骑手接单时间',
+    delivered_at   DATETIME     DEFAULT NULL COMMENT '送达时间',
+    finished_at    DATETIME     DEFAULT NULL COMMENT '终态时间（签收/取消/失败）',
+    created_at     DATETIME,
+    updated_at     DATETIME,
+    UNIQUE KEY uk_delivery_no (delivery_no),
+    KEY idx_delivery_biz (biz_type, biz_no),
+    KEY idx_delivery_user (user_id),
+    KEY idx_delivery_status (status),
+    KEY idx_delivery_provider (provider_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===== ITER-F05 增量迁移（幂等） =====
+-- 对既已初始化的存量库补 t_item.delivery_type / t_order.delivery_type 两列；
+-- 新库在上方 CREATE TABLE IF NOT EXISTS 中已包含，此处判定为已存在则跳过。
+-- 采用 information_schema 守卫 + PREPARE 动态 SQL（MySQL 不支持 ADD COLUMN IF NOT EXISTS）。
+-- 注意：串内单引号按 SQL 规范用两个单引号转义，避免依赖 ANSI_QUOTES 之外的引号行为差异。
+SET @has_item_dt := (SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 't_item' AND column_name = 'delivery_type');
+SET @item_dt_sql := IF(@has_item_dt = 0,
+    'ALTER TABLE t_item ADD COLUMN delivery_type VARCHAR(16) DEFAULT ''EXPRESS'' COMMENT ''EXPRESS/SELF_PICKUP/LOCAL_DELIVERY''',
+    'SELECT 1');
+PREPARE stmt FROM @item_dt_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @has_order_dt := (SELECT COUNT(*) FROM information_schema.columns
+                      WHERE table_schema = DATABASE() AND table_name = 't_order' AND column_name = 'delivery_type');
+SET @order_dt_sql := IF(@has_order_dt = 0,
+    'ALTER TABLE t_order ADD COLUMN delivery_type VARCHAR(16) DEFAULT ''EXPRESS'' COMMENT ''EXPRESS/SELF_PICKUP/LOCAL_DELIVERY''',
+    'SELECT 1');
+PREPARE stmt FROM @order_dt_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;

@@ -33,6 +33,13 @@ public enum NotificationType {
     INSPECTION_RECEIVED("inspection_received", "机构收件"),
     INSPECTION_RESULT("inspection_result", "验货结果"),
     INSPECTION_EXCEPTION("inspection_exception", "验货异常"),
+    RECYCLE_APPLIED("recycle_applied", "回收申请受理"),
+    RECYCLE_QUOTED("recycle_quoted", "回收质检完成"),
+    RECYCLE_PAID("recycle_paid", "回收款到账"),
+    RECYCLE_REJECTED("recycle_rejected", "回收拒绝退回"),
+    LOCAL_DELIVERY_CREATED("local_delivery_created", "同城配送下单"),
+    LOCAL_DELIVERY_ACCEPTED("local_delivery_accepted", "骑手接单"),
+    LOCAL_DELIVERY_ARRIVED("local_delivery_arrived", "同城配送送达"),
     SYSTEM_ALERT("system_alert", "系统告警");
 
     private final String code;

@@ -46,6 +46,12 @@ public class ItemPublishDTO {
     @Min(0)
     private Long freight = 0L;
 
+    /**
+     * 履约方式（ITER-F05 / REQ-01）：EXPRESS 快递 / SELF_PICKUP 同城自提 / LOCAL_DELIVERY 同城配送。
+     * 为空按 EXPRESS 处理；同城履约需与商品所在城市一致方可生效。
+     */
+    private String deliveryType;
+
     public Long getCategoryId() {
         return categoryId;
     }
@@ -140,5 +146,13 @@ public class ItemPublishDTO {
 
     public void setFreight(Long freight) {
         this.freight = freight;
+    }
+
+    public String getDeliveryType() {
+        return deliveryType;
+    }
+
+    public void setDeliveryType(String deliveryType) {
+        this.deliveryType = deliveryType;
     }
 }
