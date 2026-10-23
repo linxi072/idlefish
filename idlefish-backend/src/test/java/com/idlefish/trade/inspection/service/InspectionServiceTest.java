@@ -55,6 +55,7 @@ class InspectionServiceTest {
     @Mock private FundFlowMapper fundFlowMapper;
     @Mock private NotificationService notificationService;
     @Mock private MetricsRegistry metrics;
+    @Mock private com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
     @InjectMocks
     private InspectionService service;
@@ -132,6 +133,8 @@ class InspectionServiceTest {
         verify(inspectionReportMapper, times(1)).insert((InspectionReport) any());
         verify(itemService, times(1)).markInspected(ITEM); // REQ-07 打「已验」标识
         verify(metrics, times(1)).increment("inspection.passed");
+        // 验货终态统一广播 INSPECTION_COMPLETED（不论通过与否）
+        verify(eventPublisher, times(1)).publish(eq(com.idlefish.trade.event.EventType.INSPECTION_COMPLETED), any(), any());
     }
 
     @Test
@@ -151,6 +154,8 @@ class InspectionServiceTest {
         verify(refundService, times(1)).apply(eq(BUYER), any(RefundApplyDTO.class));
         verify(refundService, times(1)).adminAgree(ORDER_NO);
         verify(metrics, times(1)).increment("inspection.rejected");
+        // 验货终态统一广播 INSPECTION_COMPLETED（不论通过与否）
+        verify(eventPublisher, times(1)).publish(eq(com.idlefish.trade.event.EventType.INSPECTION_COMPLETED), any(), any());
     }
 
     @Test
