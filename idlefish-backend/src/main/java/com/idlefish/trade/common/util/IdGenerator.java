@@ -65,4 +65,9 @@ public class IdGenerator {
     public static String grantNo() {
         return next("GR");
     }
+
+    /** 导出任务单号（ITER-T06 运营数据导出中心）。 */
+    public static String exportNo() {
+        return next("EXP");
+    }
 }

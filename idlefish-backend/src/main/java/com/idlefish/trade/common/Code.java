@@ -77,6 +77,16 @@ public enum Code {
     DATA_SCOPE_FORBIDDEN(30039, "无数据访问权限（超出数据范围）"),
     /** 机构停用（ITER-T05 / REQ-06）：所属机构已停用，禁止登录。 */
     ORG_DISABLED(30040, "所属机构已停用，禁止登录"),
+    /** 导出类型或格式不支持（ITER-T06 运营数据导出中心 / REQ-07）。 */
+    EXPORT_TYPE_UNSUPPORTED(30041, "不支持的导出类型或格式"),
+    /** 单次导出行数 / 文件体积超过上限（ITER-T06）。 */
+    EXPORT_LIMIT_EXCEEDED(30042, "单次导出超过上限"),
+    /** 导出数据范围越权（ITER-T06 / REQ-07）：无 orgId 实体仅 ALL 可导出 / 跨机构越权请求。 */
+    EXPORT_DATA_SCOPE_FORBIDDEN(30043, "无数据权限的导出请求（超出可见范围或无 orgId 实体仅限超管导出）"),
+    /** 导出任务不存在（ITER-T06）。 */
+    EXPORT_TASK_NOT_FOUND(30044, "导出任务不存在"),
+    /** 导出文件不存在或已清理（ITER-T06）。 */
+    EXPORT_FILE_NOT_FOUND(30045, "导出文件不存在或已清理"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

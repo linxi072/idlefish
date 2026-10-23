@@ -1,7 +1,7 @@
 {
   "version" : 1,
-  "generatedAt" : "2026-10-22",
-  "endpointCount" : 156,
+  "generatedAt" : "2026-10-23",
+  "endpointCount" : 160,
   "generatedBy" : "ContractBaselineRegenerateTest（ITER-T03）；不兼容变更请走评审后再生，禁止为绕过门禁随意再生",
   "endpoints" : {
     "DELETE /api/address/{id}" : {
@@ -70,6 +70,24 @@
       "fields" : [ "data.status", "data.title" ],
       "file" : "acceptance.json"
     },
+    "GET /api/admin/data-scope/my-scope" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.orgIds", "data.scope" ],
+      "file" : "data-scope.json"
+    },
+    "GET /api/admin/data-scope/orgs-in-scope" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "data-scope.json"
+    },
+    "GET /api/admin/data-scope/temp-grants" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "data-scope.json"
+    },
     "GET /api/admin/dispute/detail" : {
       "auth" : "admin",
       "expectStatus" : 200,
@@ -81,6 +99,18 @@
       "expectStatus" : 200,
       "fields" : [ "data.records", "data.total" ],
       "file" : "dispute.json"
+    },
+    "GET /api/admin/export/download" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "export.json"
+    },
+    "GET /api/admin/export/types" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "export.json"
     },
     "GET /api/admin/price/abnormal" : {
       "auth" : "admin",
@@ -538,6 +568,30 @@
       "fields" : [ "data" ],
       "file" : "acceptance.json"
     },
+    "POST /api/admin/data-scope/migrate" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "data-scope.json"
+    },
+    "POST /api/admin/data-scope/preview" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "data-scope.json"
+    },
+    "POST /api/admin/data-scope/revoke" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ ],
+      "file" : "data-scope.json"
+    },
+    "POST /api/admin/data-scope/temp-grant" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.expiredAt", "data.grantNo", "data.orgIds" ],
+      "file" : "data-scope.json"
+    },
     "POST /api/admin/dispute/close" : {
       "auth" : "admin",
       "expectStatus" : 200,
@@ -549,6 +603,18 @@
       "expectStatus" : 200,
       "fields" : [ ],
       "file" : "dispute.json"
+    },
+    "POST /api/admin/export/export" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.exportNo", "data.fileName", "data.rowCount", "data.status", "data.type" ],
+      "file" : "export.json"
+    },
+    "POST /api/admin/export/preview" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.headers", "data.orgIds", "data.rowCount" ],
+      "file" : "export.json"
     },
     "POST /api/admin/price/config" : {
       "auth" : "admin",
@@ -897,48 +963,6 @@
       "expectStatus" : 200,
       "fields" : [ "data" ],
       "file" : "auth-item.json"
-    },
-    "GET /api/admin/data-scope/my-scope" : {
-      "auth" : "admin",
-      "expectStatus" : 200,
-      "fields" : [ "data.scope", "data.orgIds" ],
-      "file" : "data-scope.json"
-    },
-    "GET /api/admin/data-scope/orgs-in-scope" : {
-      "auth" : "admin",
-      "expectStatus" : 200,
-      "fields" : [ "data" ],
-      "file" : "data-scope.json"
-    },
-    "POST /api/admin/data-scope/preview" : {
-      "auth" : "admin",
-      "expectStatus" : 200,
-      "fields" : [ "data" ],
-      "file" : "data-scope.json"
-    },
-    "POST /api/admin/data-scope/temp-grant" : {
-      "auth" : "admin",
-      "expectStatus" : 200,
-      "fields" : [ "data.grantNo", "data.orgIds", "data.expiredAt" ],
-      "file" : "data-scope.json"
-    },
-    "GET /api/admin/data-scope/temp-grants" : {
-      "auth" : "admin",
-      "expectStatus" : 200,
-      "fields" : [ "data" ],
-      "file" : "data-scope.json"
-    },
-    "POST /api/admin/data-scope/revoke" : {
-      "auth" : "admin",
-      "expectStatus" : 200,
-      "fields" : [ ],
-      "file" : "data-scope.json"
-    },
-    "POST /api/admin/data-scope/migrate" : {
-      "auth" : "admin",
-      "expectStatus" : 200,
-      "fields" : [ "data" ],
-      "file" : "data-scope.json"
     }
   }
 }

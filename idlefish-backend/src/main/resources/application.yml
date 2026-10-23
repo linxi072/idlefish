@@ -202,3 +202,10 @@ idlefish:
     sync-enabled: ${IDLEFISH_SEARCH_SERVICE_SYNC:true}         # 商品变更经 RocketMQ 异步同步（REQ-02）
     lag-alert-seconds: ${IDLEFISH_SEARCH_SERVICE_LAG_ALERT:60} # 索引滞后告警阈值（秒，REQ-07）
     alert-admin-user-id: ${IDLEFISH_SEARCH_SERVICE_ALERT_ADMIN:}  # 滞后告警接收者；空则回退 notify.alert-admin-user-id
+
+  export:
+    # 运营数据导出中心（ITER-T06 / REQ-07）：范围受限导出的安全边界与落盘配置。
+    # 带 org_id 实体仅导出可见机构；无 org_id 实体（用户/订单）仅 ALL 管理员可导出，防跨机构泄露。
+    max-rows-per-export: ${IDLEFISH_EXPORT_MAX_ROWS:50000}    # 单次导出行数上限
+    max-file-mb: ${IDLEFISH_EXPORT_MAX_FILE_MB:50}            # 导出文件体积上限（MB）
+    storage-dir: "${IDLEFISH_EXPORT_DIR:export-files}"        # 本地落盘目录（生产可切换 OSS 实现）

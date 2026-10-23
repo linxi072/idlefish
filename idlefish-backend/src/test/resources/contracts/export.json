@@ -1,0 +1,38 @@
+{
+  "domain": "export",
+  "description": "运营数据导出中心（ITER-T06 / REQ-07）：枚举可导出类型、导出预览、执行导出与下载；导出范围复用 ITER-T05 数据权限裁决，防跨机构数据泄露",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/admin/export/types",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "枚举当前可导出类型（code / label / hasOrgScope 范围约束提示）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/export/preview",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.headers", "data.rowCount", "data.orgIds"],
+      "notes": "导出预览：校验范围并取数，返回表头、预计行数与生效机构集合（null 表示不受限全量），不落盘"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/export/export",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.exportNo", "data.type", "data.rowCount", "data.fileName", "data.status"],
+      "notes": "执行导出：范围校验 → 取数 → 构造 CSV → 落盘 → 记 t_export_task 审计任务"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/export/download",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": [],
+      "notes": "下载导出文件（text/csv 附件）；二次范围鉴权，越权下载被拒绝并记审计"
+    }
+  ]
+}

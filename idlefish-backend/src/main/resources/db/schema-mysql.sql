@@ -1140,3 +1140,23 @@ SET @item_org_sql := IF(@has_item_org = 0,
     'SELECT 1');
 PREPARE stmt FROM @item_org_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+
+-- ===== ITER-T06 运营数据导出中心（幂等） =====
+
+-- 导出任务表（REQ-07）：每次导出落一条记录，便于审计追溯与后续下载
+CREATE TABLE IF NOT EXISTS t_export_task (
+    id              BIGINT       PRIMARY KEY,
+    export_no       VARCHAR(32)  NOT NULL COMMENT '导出单号（EXP 前缀）',
+    type            VARCHAR(32)  NOT NULL COMMENT '导出类型 code（admin_user/item/user/order）',
+    admin_id        BIGINT       NOT NULL COMMENT '发起导出的管理员 ID',
+    org_ids_snapshot VARCHAR(512) COMMENT '生效机构集合快照（JSON 数组）；空表示不受限全量',
+    row_count       INT          COMMENT '实际导出行数',
+    format          VARCHAR(16)  DEFAULT 'CSV' COMMENT '导出格式',
+    file_key        VARCHAR(256) COMMENT '存储键（文件名）',
+    file_name       VARCHAR(256) COMMENT '下载文件名',
+    status          VARCHAR(16)  DEFAULT 'DONE' COMMENT 'DONE 已完成 / FAILED 失败',
+    created_at      DATETIME,
+    updated_at      DATETIME,
+    UNIQUE KEY uk_export_no (export_no),
+    KEY idx_export_admin (admin_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

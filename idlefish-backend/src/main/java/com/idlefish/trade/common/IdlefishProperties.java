@@ -41,6 +41,8 @@ public class IdlefishProperties {
     private SearchService searchService = new SearchService();
     /** 数据范围（ITER-T05）：声明带 org_id 列的表，启用 SQL 级机构隔离。 */
     private DataScope dataScope = new DataScope();
+    /** 运营数据导出中心（ITER-T06 / REQ-07）：范围受限导出的安全边界与落盘配置。 */
+    private Export export = new Export();
 
     @Data
     public static class Jwt {
@@ -446,5 +448,20 @@ public class IdlefishProperties {
     @Data
     public static class DataScope {
         private List<String> orgIdTables = new ArrayList<>(List.of("t_admin_user"));
+    }
+
+    /**
+     * 运营数据导出中心配置（ITER-T06 / REQ-07）。
+     * 安全边界：带 org_id 的实体仅导出可见机构数据；无 org_id 实体（用户/订单）仅 ALL 管理员可导出。
+     * 落盘：本地磁盘默认（生产可切换 OSS 实现）。
+     */
+    @Data
+    public static class Export {
+        /** 单次导出行数上限（默认 5 万行，防大查询拖垮主库）。 */
+        private int maxRowsPerExport = 50000;
+        /** 导出文件体积上限（MB，默认 50MB）。 */
+        private long maxFileMb = 50L;
+        /** 本地落盘目录（默认应用工作目录下 export-files/）。 */
+        private String storageDir = "export-files";
     }
 }
