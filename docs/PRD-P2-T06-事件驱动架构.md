@@ -210,10 +210,12 @@ RocketMQ 已**真实接入**（项目原则：外部组件一律真实实现，�
 | 治理 | `AdminEventController` | 6 端点 auth=admin：types / outbox/stats / list / replay / replay/list / dead-letter/redrive（REQ-08 重投），操作写 `t_audit_log` |
 | MQ 桥接 | `EventMqTransport` | 可选（默认关），本地消费成功后镜像事件信封至 RocketMQ HTTP 接入点，为服务化拆分预留 |
 
-**业务接线**（全部 try/catch best-effort，`publish()` 内部吞异常 + `event.publish.failure` 打点）：OrderService（ORDER_CREATED/CANCELLED/SHIPPED/COMPLETED）、PayService（PAYMENT_SUCCEEDED/ORDER_PAID/REFUND_EXECUTED）、SettlementService（PROFIT_SHARE_EXECUTED）、WithdrawalService（WITHDRAWAL_COMPLETED）、RefundService（ORDER_REFUNDED）、ItemService（ITEM_PUBLISHED/ITEM_SOLD_OUT）。
+**业务接线**（全部 try/catch best-effort，`publish()` 内部吞异常 + `event.publish.failure` 打点）：OrderService（ORDER_CREATED/CANCELLED/SHIPPED/COMPLETED）、PayService（PAYMENT_SUCCEEDED/ORDER_PAID/REFUND_EXECUTED）、SettlementService（PROFIT_SHARE_EXECUTED）、WithdrawalService（WITHDRAWAL_COMPLETED）、RefundService（ORDER_REFUNDED）、ItemService（ITEM_PUBLISHED/ITEM_SOLD_OUT）、UserService（USER_REGISTERED）、CreditService（CREDIT_SCORE_CHANGED）、InspectionService（INSPECTION_COMPLETED）、DisputeService（DISPUTE_OPENED/DISPUTE_RESOLVED）。
 
 **配置**：`idlefish.event.*`（总开关 / mq-enabled / max-retry=8 / 退避 10s~1h / scan-batch=200 / retention-days=92 / 回放限流参数）；错误码 30046~30050；`IdGenerator.replayNo()`（EVR 前缀）；schema-mysql.sql 三表幂等迁移。
 
 **门禁验证**：事件模块 32 例单测离线全绿；契约 `event.json` 6 端点（基线 160→166）一致性 + 兼容性双绿；全量回归 671 例 8F+14E+1skip 与既有环境性基线逐类一致（零新增回归）。回归中额外发现并修复 **T06 导出中心遗留装配缺陷**（`ExportTaskMapper` 位于包根未被 `@MapperScan` 扫描，Spring 上下文整体起不来——已迁入 `export.mapper` 子包）。
 
-**遗留项**：G2（同步调用占比下降 60%）需配合 ITER-F06/F07 消费者接入逐步度量；`IdlefishProperties.Event.mqEnabled` 对应的 MQ 消费端属服务化阶段（ITER-T04 后续）；DISPUTE_*/INSPECTION_COMPLETED/USER_REGISTERED/CREDIT_SCORE_CHANGED 已注册未接线（消费者接入时按需 publish）。
+**遗留项**：G2（同步调用占比下降 60%）需配合 ITER-F06/F07 消费者接入逐步度量；`IdlefishProperties.Event.mqEnabled` 对应的 MQ 消费端属服务化阶段（ITER-T04 后续）。
+
+**事件接线补齐（2026-10-23）**：原「已注册未接线」的 5 类事件已闭环——USER_REGISTERED 接线至 `UserService.loadOrCreateByOpenid`（首登即发）、CREDIT_SCORE_CHANGED 接线至 `CreditService.recompute`（仅 oldScore≠newScore 时发，幂等重算未变化则不发，避免噪声）、INSPECTION_COMPLETED 接线至 `InspectionService.receiveResult`（不论通过与否统一广播验货终态）、DISPUTE_OPENED/DISPUTE_RESOLVED 接线至 `DisputeService.create`/`resolve`。均复用 `DomainEventPublisher` 构造器注入 + FQN 写法，`publish()` 内部兜底不阻断主流程；新增 `UserServiceTest`/`CreditServiceTest`/`DisputeServiceTest` 三个 Mockito 单测类（并补 `InspectionServiceTest` 事件断言），离线 16 例全绿。
