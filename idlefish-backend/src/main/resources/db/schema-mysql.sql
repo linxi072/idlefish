@@ -1220,3 +1220,17 @@ CREATE TABLE IF NOT EXISTS t_event_replay (
     UNIQUE KEY uk_replay_no (replay_no),
     KEY idx_replay_admin (operator_admin_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===== 幂等列迁移（存量库升级：仅当列缺失时补齐；新库由上方 CREATE TABLE 直接建齐） =====
+-- 说明：CREATE TABLE IF NOT EXISTS 不会为已存在的表追加新列，历史库需在此处做幂等 ADD COLUMN。
+-- 采用 information_schema 探测 + PREPARE 动态执行（兼容 spring.sql.init 的分号切分，无需 DELIMITER）。
+
+-- F-02 鉴定验货：t_item.inspection_status
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_item' AND column_name = 'inspection_status');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_item ADD COLUMN inspection_status VARCHAR(16) DEFAULT ''NONE'' COMMENT ''验货标识：NONE/INSPECTING/PASSED/REJECTED''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
