@@ -45,6 +45,9 @@ public class WithdrawalService {
     /** 幂等（F-18）：防连点/网络重试导致重复冻结与重复出款。 */
     private final IdempotentService idempotentService;
 
+    /** 领域事件发布（ITER-T06）：提现完成事件 best-effort 发布，Outbox 同事务保证不丢。 */
+    private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
+
     /** 事务模板：显式事务边界（原 @Transactional 在拆分后内层方法上会因自调用失效）。 */
     private final TransactionTemplate txTemplate;
 
@@ -63,7 +66,8 @@ public class WithdrawalService {
     public WithdrawalService(WithdrawalMapper withdrawalMapper, FundFlowMapper fundFlowMapper,
                              UserMapper userMapper, NotificationService notificationService,
                              MetricsRegistry metrics, FundEscrowService fundEscrowService,
-                             IdempotentService idempotentService, PlatformTransactionManager txManager) {
+                             IdempotentService idempotentService, PlatformTransactionManager txManager,
+                             com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.withdrawalMapper = withdrawalMapper;
         this.fundFlowMapper = fundFlowMapper;
         this.userMapper = userMapper;
@@ -72,6 +76,7 @@ public class WithdrawalService {
         this.fundEscrowService = fundEscrowService;
         this.idempotentService = idempotentService;
         this.txTemplate = new TransactionTemplate(txManager);
+        this.eventPublisher = eventPublisher;
     }
 
     /** 累计结算入账（SETTLE IN 流水）。 */
@@ -222,6 +227,11 @@ public class WithdrawalService {
         notificationService.notify(w.getUserId(), NotificationType.WITHDRAW_APPROVE, "WD" + w.getId(), "提现已通过",
                 "您的提现 " + (w.getAmount() / 100.0) + " 元已出账至微信零钱");
         metrics.increment("withdraw.approve");
+
+        // ITER-T06：WITHDRAWAL_COMPLETED 事件（资金域，REQ-04）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.WITHDRAWAL_COMPLETED, "WD" + w.getId(),
+                com.idlefish.trade.event.DomainEventPublisher.payload("userId", w.getUserId(), "amountFen", w.getAmount(),
+                        "transferNo", transferNo == null ? "" : transferNo));
         return withdrawalMapper.selectById(id);
     }
 

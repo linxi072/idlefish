@@ -44,6 +44,9 @@ public class RefundService {
     /** 幂等（F-18）：拦截重复退款申请，重复请求回放首次退款单号。 */
     private final IdempotentService idempotentService;
 
+    /** 领域事件发布（ITER-T06）：退款完成事件 best-effort 发布，Outbox 同事务保证不丢。 */
+    private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
+
     /** 退款申请幂等业务类型。 */
     private static final String BIZ_REFUND_APPLY = "refund.apply";
 
@@ -56,7 +59,8 @@ public class RefundService {
                          PayOrderMapper payOrderMapper, PayService payService,
                          ItemService itemService, FundFlowMapper fundFlowMapper,
                          NotificationService notificationService, MetricsRegistry metrics,
-                         IdempotentService idempotentService) {
+                         IdempotentService idempotentService,
+                         com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.refundMapper = refundMapper;
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
@@ -66,6 +70,7 @@ public class RefundService {
         this.notificationService = notificationService;
         this.metrics = metrics;
         this.idempotentService = idempotentService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -325,6 +330,14 @@ public class RefundService {
                 .eq(Refund::getId, r.getId())
                 .eq(Refund::getStatus, RefundStatus.REFUNDING.getCode()));
         metrics.increment("refund.success");
+
+        // ITER-T06：REFUND_EXECUTED + ORDER_REFUNDED 事件（退款闭环，REQ-04）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.REFUND_EXECUTED, r.getRefundNo(),
+                com.idlefish.trade.event.DomainEventPublisher.payload("orderNo", r.getOrderNo(), "buyerId", r.getBuyerId(),
+                        "amountFen", r.getAmount()));
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ORDER_REFUNDED, r.getOrderNo(),
+                com.idlefish.trade.event.DomainEventPublisher.payload("refundNo", r.getRefundNo(), "buyerId", r.getBuyerId(),
+                        "amountFen", r.getAmount()));
 
         // 退款为原路退回，不计入钱包余额口径
         recordRefundFlow(r);

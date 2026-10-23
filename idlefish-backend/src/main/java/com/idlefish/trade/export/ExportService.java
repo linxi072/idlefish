@@ -7,6 +7,7 @@ import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.datascope.DataScopeDecision;
 import com.idlefish.trade.datascope.service.DataScopeService;
+import com.idlefish.trade.export.mapper.ExportTaskMapper;
 import com.idlefish.trade.risk.entity.AuditLog;
 import com.idlefish.trade.risk.mapper.AuditLogMapper;
 import org.springframework.stereotype.Service;

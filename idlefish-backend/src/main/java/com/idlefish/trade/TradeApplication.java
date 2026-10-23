@@ -33,7 +33,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.idlefish.trade.search.enhance.mapper",
         "com.idlefish.trade.local.mapper",
         "com.idlefish.trade.datascope.mapper",
-        "com.idlefish.trade.export.mapper"
+        "com.idlefish.trade.export.mapper",
+        "com.idlefish.trade.event.mapper"
 })
 @EnableScheduling
 public class TradeApplication {

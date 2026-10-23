@@ -209,3 +209,17 @@ idlefish:
     max-rows-per-export: ${IDLEFISH_EXPORT_MAX_ROWS:50000}    # 单次导出行数上限
     max-file-mb: ${IDLEFISH_EXPORT_MAX_FILE_MB:50}            # 导出文件体积上限（MB）
     storage-dir: "${IDLEFISH_EXPORT_DIR:export-files}"        # 本地落盘目录（生产可切换 OSS 实现）
+
+  event:
+    # 事件驱动架构（ITER-T06 / PRD-P2-T06）：Outbox 同事务落库 + afterCommit 分发 + 定时补偿 + 死信重投 + 限流回放。
+    # Outbox 与业务同库同事务写入（REQ-05 不丢事件）；分发失败指数退避重试，耗尽转死信（REQ-08）。
+    enabled: ${IDLEFISH_EVENT_ENABLED:true}                   # 总开关；关闭后仅记日志不落库
+    mq-enabled: ${IDLEFISH_EVENT_MQ_ENABLED:false}            # 可选 MQ 镜像（凭据复用 idlefish.mq.*，默认关闭）
+    max-retry: ${IDLEFISH_EVENT_MAX_RETRY:8}                  # 分发失败最大重试次数（耗尽转死信）
+    base-backoff-seconds: ${IDLEFISH_EVENT_BACKOFF_BASE:10}   # 重试基础退避（秒），指数翻倍
+    max-backoff-seconds: ${IDLEFISH_EVENT_BACKOFF_MAX:3600}   # 单次重试最大退避（秒）
+    scan-batch-size: ${IDLEFISH_EVENT_SCAN_BATCH:200}         # 单轮补偿扫描最大事件数
+    retention-days: ${IDLEFISH_EVENT_RETENTION_DAYS:92}       # 事件存储保留天数（REQ-09 ≥90）
+    replay-batch-size: ${IDLEFISH_EVENT_REPLAY_BATCH:100}     # 回放节流批次（REQ-13）
+    replay-interval-ms: ${IDLEFISH_EVENT_REPLAY_INTERVAL:200} # 回放批次间隔毫秒（限流）
+    replay-max-events: ${IDLEFISH_EVENT_REPLAY_MAX:10000}     # 单回放任务最大事件数（防误操作）

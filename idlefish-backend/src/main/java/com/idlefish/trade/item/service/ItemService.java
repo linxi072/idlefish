@@ -65,13 +65,17 @@ public class ItemService {
 
     private final PricingService pricingService;
 
+    /** 领域事件发布（ITER-T06）：商品上架事件 best-effort 发布，Outbox 同事务保证不丢。 */
+    private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
+
     private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
     public ItemService(ItemMapper itemMapper, CategoryService categoryService,
                        UserService userService, ItemStateMachine stateMachine, ObjectMapper objectMapper,
                        ItemStatusLogMapper itemStatusLogMapper, ContentAuditService contentAuditService,
                        NotificationService notificationService, SearchSyncService searchSyncService,
-                       DistributedLock distributedLock, PricingService pricingService) {
+                       DistributedLock distributedLock, PricingService pricingService,
+                       com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.itemMapper = itemMapper;
         this.categoryService = categoryService;
         this.userService = userService;
@@ -83,6 +87,7 @@ public class ItemService {
         this.notificationService = notificationService;
         this.distributedLock = distributedLock;
         this.pricingService = pricingService;
+        this.eventPublisher = eventPublisher;
     }
 
     /** 发布商品：初始为 DRAFT 草稿。 */
@@ -141,6 +146,9 @@ public class ItemService {
         if (pass) {
             // ITER-T04：提交审核通过 → 搜推索引同步（best-effort）
             searchSyncService.onItemChanged(itemId, SearchSyncService.EVENT_UPSERT);
+            // ITER-T06：ITEM_PUBLISHED 事件（上架成功，REQ-01）
+            eventPublisher.publish(com.idlefish.trade.event.EventType.ITEM_PUBLISHED, String.valueOf(itemId),
+                    com.idlefish.trade.event.DomainEventPublisher.payload("sellerId", item.getSellerId(), "title", item.getTitle()));
         }
     }
 
@@ -170,6 +178,9 @@ public class ItemService {
         if (pass) {
             // ITER-T04：审核通过 → 搜推索引同步（消息异步 + 本地双写，best-effort 不阻断审核）
             searchSyncService.onItemChanged(itemId, SearchSyncService.EVENT_UPSERT);
+            // ITER-T06：ITEM_PUBLISHED 事件（后台审核上架）
+            eventPublisher.publish(com.idlefish.trade.event.EventType.ITEM_PUBLISHED, String.valueOf(itemId),
+                    com.idlefish.trade.event.DomainEventPublisher.payload("sellerId", item.getSellerId(), "title", item.getTitle()));
         }
     }
 

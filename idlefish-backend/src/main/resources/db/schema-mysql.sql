@@ -1160,3 +1160,63 @@ CREATE TABLE IF NOT EXISTS t_export_task (
     UNIQUE KEY uk_export_no (export_no),
     KEY idx_export_admin (admin_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+-- ===== ITER-T06 事件驱动架构（幂等，PRD-P2-T06） =====
+
+-- 事件发件箱（REQ-05 不丢事件）：与业务同事务写入，提交后本地分发 + 定时补偿（REQ-06）+ 死信重投（REQ-08）
+CREATE TABLE IF NOT EXISTS t_event_outbox (
+    id            BIGINT       PRIMARY KEY,
+    event_id      VARCHAR(64)  NOT NULL COMMENT '全局唯一事件 ID（32 位 UUID hex）',
+    event_type    VARCHAR(64)  NOT NULL COMMENT '事件类型 code（见 EventType，如 ORDER_PAID）',
+    version       INT          DEFAULT 1 COMMENT 'schema 版本号（REQ-02 版本化）',
+    aggregate_id  VARCHAR(64)  COMMENT '聚合根标识（订单号/支付单号/商品 ID 等）',
+    trace_id      VARCHAR(64)  COMMENT '发布链路 traceId（REQ-10 跨异步透传）',
+    payload       TEXT         COMMENT '业务负载 JSON（金额字段单位「分」）',
+    status        VARCHAR(16)  DEFAULT 'PENDING' COMMENT 'PENDING/SENT/FAILED/DEAD',
+    retry_count   INT          DEFAULT 0 COMMENT '失败重试次数（耗尽转 DEAD）',
+    next_retry_at DATETIME     COMMENT '下次重试时间（指数退避）',
+    last_error    VARCHAR(500) COMMENT '最近一次分发失败原因',
+    created_at    DATETIME,
+    updated_at    DATETIME,
+    UNIQUE KEY uk_event_id (event_id),
+    KEY idx_outbox_scan (status, next_retry_at),
+    KEY idx_outbox_type (event_type, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 领域事件存储（REQ-09：持久化 ≥90 天可回放；治理端点查询与回放的数据源）
+CREATE TABLE IF NOT EXISTS t_domain_event (
+    id           BIGINT       PRIMARY KEY,
+    event_id     VARCHAR(64)  NOT NULL COMMENT '全局唯一事件 ID',
+    event_type   VARCHAR(64)  NOT NULL COMMENT '事件类型 code',
+    version      INT          DEFAULT 1 COMMENT 'schema 版本号',
+    aggregate_id VARCHAR(64)  COMMENT '聚合根标识',
+    trace_id     VARCHAR(64)  COMMENT '发布链路 traceId',
+    payload      TEXT         COMMENT '业务负载 JSON',
+    occurred_at  DATETIME     COMMENT '业务发生时间',
+    created_at   DATETIME,
+    updated_at   DATETIME,
+    UNIQUE KEY uk_record_event_id (event_id),
+    KEY idx_record_type_time (event_type, occurred_at),
+    KEY idx_record_aggregate (aggregate_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 事件回放任务（REQ-13：治理端点发起的限流回放；副作用监听器跳过）
+CREATE TABLE IF NOT EXISTS t_event_replay (
+    id               BIGINT       PRIMARY KEY,
+    replay_no        VARCHAR(32)  NOT NULL COMMENT '回放单号（EVR 前缀）',
+    event_type       VARCHAR(64)  NOT NULL COMMENT '回放的事件类型 code',
+    from_time        DATETIME     COMMENT '回放时间窗起（含）',
+    to_time          DATETIME     COMMENT '回放时间窗止（含）',
+    operator_admin_id BIGINT      NOT NULL COMMENT '发起回放的管理员 ID',
+    status           VARCHAR(16)  DEFAULT 'PENDING' COMMENT 'PENDING/RUNNING/DONE/FAILED',
+    replayed_count   INT          DEFAULT 0 COMMENT '已重放事件数',
+    skipped_count    INT          DEFAULT 0 COMMENT '因副作用跳过的事件数（REQ-13）',
+    failed_count     INT          DEFAULT 0 COMMENT '失败事件数（单条失败不阻断任务）',
+    cursor_id        BIGINT       DEFAULT 0 COMMENT '回放游标（最后已处理的事件存储主键，增量拉取）',
+    note             VARCHAR(500) COMMENT '备注（失败原因/人工说明）',
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_replay_no (replay_no),
+    KEY idx_replay_admin (operator_admin_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

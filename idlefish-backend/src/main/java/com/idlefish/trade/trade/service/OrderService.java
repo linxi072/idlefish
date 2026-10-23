@@ -86,6 +86,9 @@ public class OrderService {
     /** 鉴定验货服务（F-02）：发货冻结窗口校验。 */
     private final InspectionService inspectionService;
 
+    /** 领域事件发布（ITER-T06）：订单状态变更 best-effort 发布，Outbox 同事务保证不丢。 */
+    private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
+
     /** 事务模板：显式事务边界，保证"锁包住事务"。 */
     private final TransactionTemplate txTemplate;
 
@@ -112,7 +115,8 @@ public class OrderService {
                         PointService pointService, ActivityService activityService,
                         IdempotentService idempotentService, DistributedLock distributedLock,
                         InspectionService inspectionService, PlatformTransactionManager txManager,
-                        com.idlefish.trade.common.IdlefishProperties props) {
+                        com.idlefish.trade.common.IdlefishProperties props,
+                        com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.logisticsMapper = logisticsMapper;
@@ -134,6 +138,7 @@ public class OrderService {
         this.inspectionService = inspectionService;
         this.txTemplate = new TransactionTemplate(txManager);
         this.props = props;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -194,6 +199,14 @@ public class OrderService {
 
         redeemCouponIfPresent(buyerId, dto, o, po);
         redeemPointIfPresent(buyerId, dto, o, po);
+
+        // ITER-T06：ORDER_CREATED 事件（同事务 Outbox 落库，提交后分发；REQ-03）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ORDER_CREATED, o.getOrderNo(), com.idlefish.trade.event.DomainEventPublisher.payload(
+                "buyerId", buyerId,
+                "sellerId", o.getSellerId(),
+                "itemId", o.getItemId(),
+                "quantity", o.getQuantity(),
+                "payAmountFen", o.getPayAmount()));
 
         scheduleCloseTask(o.getOrderNo());
         trackOrderCreate(buyerId, o.getOrderNo(), o.getPayAmount());
@@ -319,6 +332,10 @@ public class OrderService {
         couponService.releaseByOrder(orderNo);   // F-10：取消释放已核销优惠券
         pointService.releaseByOrder(orderNo);    // F-13.1：取消释放已抵扣积分
         activityService.releaseOnClose(o.getActivityId(), orderNo); // F-13.3：取消释放活动库存
+
+        // ITER-T06：ORDER_CANCELLED 事件（买家主动取消）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ORDER_CANCELLED, orderNo,
+                com.idlefish.trade.event.DomainEventPublisher.payload("buyerId", o.getBuyerId(), "sellerId", o.getSellerId(), "reason", "cancel"));
     }
 
     /** 卖家发货。 */
@@ -347,6 +364,10 @@ public class OrderService {
         notificationService.notify(o.getBuyerId(), NotificationType.ORDER_SHIPPED, orderNo, "卖家已发货",
                 "订单 " + orderNo + " 已发货，物流单号 " + no);
 
+        // ITER-T06：ORDER_SHIPPED 事件
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ORDER_SHIPPED, orderNo, com.idlefish.trade.event.DomainEventPublisher.payload(
+                "buyerId", o.getBuyerId(), "sellerId", o.getSellerId(), "logisticsNo", no));
+
         // D6 延时队列：发货后提交 10 天自动确认收货延时任务（精准到点触发；本地/RocketMQ 均走此路径）
         try {
             delayQueueService.submit("ORDER_CONFIRM", orderNo, "", 10 * 24 * 60 * 60);
@@ -370,6 +391,12 @@ public class OrderService {
         }
         itemService.markSold(o.getItemId());
         settlementService.onTradeSuccess(orderNo);
+
+        // ITER-T06：ORDER_COMPLETED + ITEM_SOLD_OUT 事件
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ORDER_COMPLETED, orderNo, com.idlefish.trade.event.DomainEventPublisher.payload(
+                "buyerId", o.getBuyerId(), "sellerId", o.getSellerId(), "payAmountFen", o.getPayAmount()));
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ITEM_SOLD_OUT, String.valueOf(o.getItemId()),
+                com.idlefish.trade.event.DomainEventPublisher.payload("orderNo", orderNo, "sellerId", o.getSellerId()));
 
         // F-02 通知中心：确认收货触达卖家（best-effort）
         notificationService.notify(o.getSellerId(), NotificationType.ORDER_CONFIRMED, orderNo, "买家已确认收货",
@@ -397,6 +424,10 @@ public class OrderService {
             throw new BizException(Code.STATE_NOT_ALLOWED, "订单状态已变更，请刷新后重试");
         }
         logisticService.persistShip(orderNo, no, "SF");
+
+        // ITER-T06：ORDER_SHIPPED 事件（后台代发货）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ORDER_SHIPPED, orderNo, com.idlefish.trade.event.DomainEventPublisher.payload(
+                "buyerId", o.getBuyerId(), "sellerId", o.getSellerId(), "logisticsNo", no, "byAdmin", true));
     }
 
     /** 物流轨迹查询（买家/卖家/后台均可，按订单号取物流单号，组装结构化时间轴）。 */
@@ -489,6 +520,10 @@ public class OrderService {
         // F-02 通知中心：超时关单触达买家（best-effort）
         notificationService.notify(o.getBuyerId(), NotificationType.ORDER_CLOSED, orderNo, "订单已关闭",
                 "订单 " + orderNo + " 超时未支付，已自动关闭");
+
+        // ITER-T06：ORDER_CANCELLED 事件（超时关单）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ORDER_CANCELLED, orderNo, com.idlefish.trade.event.DomainEventPublisher.payload(
+                "buyerId", o.getBuyerId(), "sellerId", o.getSellerId(), "reason", "timeout"));
     }
 
     /**
@@ -532,6 +567,12 @@ public class OrderService {
         }
         itemService.markSold(o.getItemId());
         settlementService.onTradeSuccess(o.getOrderNo());
+
+        // ITER-T06：ORDER_COMPLETED + ITEM_SOLD_OUT 事件（自动确认收货）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ORDER_COMPLETED, o.getOrderNo(), com.idlefish.trade.event.DomainEventPublisher.payload(
+                "buyerId", o.getBuyerId(), "sellerId", o.getSellerId(), "payAmountFen", o.getPayAmount()));
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ITEM_SOLD_OUT, String.valueOf(o.getItemId()),
+                com.idlefish.trade.event.DomainEventPublisher.payload("orderNo", o.getOrderNo(), "sellerId", o.getSellerId()));
 
         // F-02 通知中心：自动确认收货触达卖家（best-effort）
         notificationService.notify(o.getSellerId(), NotificationType.ORDER_CONFIRMED, o.getOrderNo(), "买家已确认收货",

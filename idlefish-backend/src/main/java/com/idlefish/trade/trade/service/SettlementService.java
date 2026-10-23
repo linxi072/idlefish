@@ -47,6 +47,8 @@ public class SettlementService {
     private final IdlefishProperties props;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
+    /** 领域事件发布（ITER-T06）：分账事件 best-effort 发布，Outbox 同事务保证不丢。 */
+    private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
     /** 平台佣金比例（PRD §4.3）。 */
     private static final double PLATFORM_RATE = 0.05;
@@ -54,7 +56,8 @@ public class SettlementService {
     public SettlementService(SettlementMapper settlementMapper, OrderMapper orderMapper,
                              FundFlowMapper fundFlowMapper, RiskEventMapper riskEventMapper,
                              FundEscrowService escrow, IdlefishProperties props,
-                             NotificationService notificationService, MetricsRegistry metrics) {
+                             NotificationService notificationService, MetricsRegistry metrics,
+                             com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.settlementMapper = settlementMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
@@ -63,6 +66,7 @@ public class SettlementService {
         this.props = props;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.eventPublisher = eventPublisher;
     }
 
     /** 交易成功：生成待结算单（T+1）。幂等：同一订单仅生成一次，防并发双重结算资损。 */
@@ -96,14 +100,23 @@ public class SettlementService {
         // 异常不阻断结算单生成（结算仍按 T+1 放款兜底）。
         // 注入 orderId 到 MDC，使分账 span/日志可按单检索（REQ-02）。
         TraceContext.putOrderId(orderNo);
+        boolean shared = false;
         try {
             metrics.timed("settle.profitshare", () -> escrow.profitShare(o.getPayNo(), o.getPayAmount(),
                     props.getPay().getMchid(), sellerAmount));
+            shared = true;
         } catch (Exception e) {
             metrics.increment("settle.profitshare.failure");
             log.warn("微信分账发起失败（不影响结算单）orderNo={}: {}", orderNo, e.getMessage());
         } finally {
             TraceContext.clearOrderId();
+        }
+
+        // ITER-T06：PROFIT_SHARE_EXECUTED 事件（资金域，仅分账真实发起成功时发布，REQ-04）
+        if (shared) {
+            eventPublisher.publish(com.idlefish.trade.event.EventType.PROFIT_SHARE_EXECUTED, orderNo,
+                    com.idlefish.trade.event.DomainEventPublisher.payload("sellerId", o.getSellerId(),
+                            "sellerAmountFen", sellerAmount, "platformFeeFen", fee));
         }
     }
 

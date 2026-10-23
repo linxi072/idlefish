@@ -45,13 +45,16 @@ public class PayService {
     private final InviteService inviteService;
     private final MemberLevelService memberLevelService;
     private final PricingService pricingService;
+    /** 领域事件发布（ITER-T06）：支付/退款事件 best-effort 发布，Outbox 同事务保证不丢。 */
+    private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
     public PayService(PayOrderMapper payOrderMapper, OrderMapper orderMapper,
                       FundFlowMapper fundFlowMapper, FundEscrowService escrow,
                       ObjectMapper objectMapper,
                       @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
                       MetricsRegistry metrics, PointService pointService, InviteService inviteService,
-                      MemberLevelService memberLevelService, PricingService pricingService) {
+                      MemberLevelService memberLevelService, PricingService pricingService,
+                      com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.payOrderMapper = payOrderMapper;
         this.orderMapper = orderMapper;
         this.fundFlowMapper = fundFlowMapper;
@@ -64,6 +67,7 @@ public class PayService {
         this.inviteService = inviteService;
         this.memberLevelService = memberLevelService;
         this.pricingService = pricingService;
+        this.eventPublisher = eventPublisher;
     }
 
     /** 预下单：返回渠道支付参数。注入 orderId 到 MDC，使 span 与日志可按单检索（REQ-02）。 */
@@ -204,6 +208,16 @@ public class PayService {
         ou.setStatus(OrderStatus.PAID.getCode());
         orderMapper.updateById(ou);
 
+        // ITER-T06：PAYMENT_SUCCEEDED（资金域，金额单位「分」，REQ-04）+ ORDER_PAID（订单域，REQ-03）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.PAYMENT_SUCCEEDED, po.getPayNo(), com.idlefish.trade.event.DomainEventPublisher.payload(
+                "orderNo", po.getOrderNo(),
+                "buyerId", po.getBuyerId(),
+                "amountFen", po.getAmount(),
+                "transactionId", po.getTransactionId() == null ? "" : po.getTransactionId()));
+        eventPublisher.publish(com.idlefish.trade.event.EventType.ORDER_PAID, po.getOrderNo(), com.idlefish.trade.event.DomainEventPublisher.payload(
+                "buyerId", order.getBuyerId(), "sellerId", order.getSellerId(),
+                "amountFen", po.getAmount()));
+
         // D6 延时队列：支付成功后提交 72h 未发货提醒延时任务（精准到点触发；本地/RocketMQ 均走此路径）
         try {
             delayQueueService.submit("REMIND_SHIP", order.getOrderNo(), "", 72 * 60 * 60);
@@ -277,6 +291,10 @@ public class PayService {
             upd.setId(po.getId());
             upd.setStatus(PayStatus.REFUNDED.getCode());
             payOrderMapper.updateById(upd);
+
+            // ITER-T06：REFUND_EXECUTED 事件（资金域，REQ-04）
+            eventPublisher.publish(com.idlefish.trade.event.EventType.REFUND_EXECUTED, payNo, com.idlefish.trade.event.DomainEventPublisher.payload(
+                    "orderNo", po.getOrderNo(), "buyerId", po.getBuyerId(), "amountFen", amount));
         } finally {
             TraceContext.clearOrderId();
         }

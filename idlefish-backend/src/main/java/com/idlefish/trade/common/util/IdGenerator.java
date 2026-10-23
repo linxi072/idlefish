@@ -70,4 +70,9 @@ public class IdGenerator {
     public static String exportNo() {
         return next("EXP");
     }
+
+    /** 事件回放任务单号（ITER-T06 事件驱动架构；EVR 前缀避免与鉴定报告 RP 混淆）。 */
+    public static String replayNo() {
+        return next("EVR");
+    }
 }

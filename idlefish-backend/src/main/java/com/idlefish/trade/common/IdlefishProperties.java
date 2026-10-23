@@ -43,6 +43,8 @@ public class IdlefishProperties {
     private DataScope dataScope = new DataScope();
     /** 运营数据导出中心（ITER-T06 / REQ-07）：范围受限导出的安全边界与落盘配置。 */
     private Export export = new Export();
+    /** 事件驱动架构（ITER-T06 / PRD-P2-T06）：Outbox 分发重试、死信、回放限流与持久化保留期。 */
+    private Event event = new Event();
 
     @Data
     public static class Jwt {
@@ -463,5 +465,34 @@ public class IdlefishProperties {
         private long maxFileMb = 50L;
         /** 本地落盘目录（默认应用工作目录下 export-files/）。 */
         private String storageDir = "export-files";
+    }
+
+    /**
+     * 事件驱动架构配置（ITER-T06 / PRD-P2-T06）。
+     * Outbox 同事务落库（REQ-05）+ afterCommit 本地分发 + 定时补偿重试（REQ-06）
+     * + 死信重投（REQ-08）+ 限流回放（REQ-13）。
+     */
+    @Data
+    public static class Event {
+        /** 事件驱动总开关；关闭后 publish 仅记录日志不落库（测试/降级场景）。 */
+        private boolean enabled = true;
+        /** 是否将本地消费成功的事件镜像至 RocketMQ（可选链路，默认关闭；凭据复用 idlefish.mq.*）。 */
+        private boolean mqEnabled = false;
+        /** 分发失败最大重试次数（达到即转死信 DEAD，REQ-08）。默认 8 次（累计约数小时覆盖）。 */
+        private int maxRetry = 8;
+        /** 重试基础退避（秒）：第 n 次重试延迟 = base * 2^n，封顶 maxBackoffSeconds。默认 10s。 */
+        private long baseBackoffSeconds = 10L;
+        /** 单次重试最大退避（秒）。默认 3600s（1 小时）。 */
+        private long maxBackoffSeconds = 3600L;
+        /** 单次扫描分发的最大事件数（防大积压时拖垮进程）。默认 200。 */
+        private int scanBatchSize = 200;
+        /** 事件存储保留天数（REQ-09 ≥90 天可回放）。默认 92 天（留 2 天余量）。 */
+        private int retentionDays = 92;
+        /** 回放限流（REQ-13）：单回放任务每次拉取事件数（节流批次）。默认 100。 */
+        private int replayBatchSize = 100;
+        /** 回放限流（REQ-13）：两批次之间的间隔毫秒。默认 200ms（≈500 事件/秒上限）。 */
+        private long replayIntervalMs = 200L;
+        /** 单个回放任务最大事件数（防误操作全量回放）。默认 10000。 */
+        private int replayMaxEvents = 10000;
     }
 }

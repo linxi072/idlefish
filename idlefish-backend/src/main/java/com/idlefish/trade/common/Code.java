@@ -87,6 +87,16 @@ public enum Code {
     EXPORT_TASK_NOT_FOUND(30044, "导出任务不存在"),
     /** 导出文件不存在或已清理（ITER-T06）。 */
     EXPORT_FILE_NOT_FOUND(30045, "导出文件不存在或已清理"),
+    /** 事件类型不支持 / 未注册（ITER-T06 事件驱动架构 / REQ-02 schema 版本化）。 */
+    EVENT_TYPE_UNSUPPORTED(30046, "不支持的事件类型"),
+    /** 事件不存在（按事件 ID / 回放单号查询未命中，ITER-T06）。 */
+    EVENT_NOT_FOUND(30047, "事件不存在"),
+    /** 事件回放任务不存在（ITER-T06 / REQ-13）。 */
+    EVENT_REPLAY_NOT_FOUND(30048, "回放任务不存在"),
+    /** 回放任务创建超限（时间窗 / 事件量超过上限，ITER-T06 / REQ-13）。 */
+    EVENT_REPLAY_LIMIT(30049, "回放任务超过上限（时间窗过大或事件量超限）"),
+    /** 无可重投死信（ITER-T06 / REQ-08）。 */
+    EVENT_DEAD_LETTER_EMPTY(30050, "无可重投的死信事件"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),
