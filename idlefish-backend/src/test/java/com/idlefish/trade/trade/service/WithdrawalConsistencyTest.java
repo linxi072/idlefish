@@ -5,6 +5,7 @@ import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.trade.entity.FundFlow;
 import com.idlefish.trade.trade.entity.Withdrawal;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
+import com.idlefish.trade.trade.service.FundEscrowService;
 import com.idlefish.trade.user.entity.User;
 import com.idlefish.trade.user.mapper.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,9 +13,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 /**
  * 提现/钱包一致性单测（F-07/F-08）：冻结扣减、驳回解冻恢复、通过永久扣减、退款不污染钱包、余额不足拦截。
@@ -22,6 +27,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 @SpringBootTest
 class WithdrawalConsistencyTest {
+
+    // 测试替身：出款走真实微信「商家转账」需商户凭证（硬网关），本测试关注钱包一致性而非网关
+    @MockBean
+    private FundEscrowService fundEscrowService;
 
     @Autowired
     private WithdrawalService withdrawalService;
@@ -34,10 +43,16 @@ class WithdrawalConsistencyTest {
 
     @BeforeEach
     void setup() {
+        // 出款桩：以业务单号映射渠道转账单号（真实网关在 WithdrawalServiceTest 中覆盖）
+        when(fundEscrowService.transfer(anyString(), anyLong(), anyString()))
+                .thenAnswer(inv -> "BILL" + inv.getArgument(0, String.class));
+
         uid = System.nanoTime();
         User u = new User();
         u.setId(uid);
         u.setNickname("wd-tester");
+        // 出款硬网关要求用户绑定 openid（REQ：未绑定拒绝出款），测试用户必须补齐
+        u.setWxOpenid("wd-o-" + uid);
         u.setStatus(0);
         u.setRealNameVerified(0);
         u.setCreditScore(0);

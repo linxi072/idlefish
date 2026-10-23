@@ -25,7 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -72,6 +74,10 @@ class RefundServiceTest {
     /** 装配模拟 DB：selectOne 始终返回 WAIT_SELLER（建模并发竞态「两线程写入前均读到待处理态」的 TOCTOU 前置）；
      *  update 按 CAS 语义推进状态，仅当当前态匹配期望才返回 affected=1。 */
     private void wireMockDb() {
+        // metrics 桩直通：timedRun 必须真实执行被包裹逻辑，否则出款流程（doRefundInner）被 mock 吞掉
+        doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })
+                .when(metrics).timedRun(anyString(), any(Runnable.class));
+
         when(refundMapper.selectOne(ArgumentMatchers.<LambdaQueryWrapper<Refund>>any())).thenAnswer(inv -> {
             Refund r = new Refund();
             r.setId(REFUND_ID);

@@ -2,7 +2,11 @@ package com.idlefish.trade.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.idlefish.trade.common.util.SensitiveWords;
 import com.idlefish.trade.common.web.DeviceContext;
+import com.idlefish.trade.item.dto.AuditResult;
+import com.idlefish.trade.item.service.ContentAuditService;
+import com.idlefish.trade.file.service.StorageService;
 import com.idlefish.trade.risk.entity.DeviceFingerprint;
 import com.idlefish.trade.risk.mapper.DeviceFingerprintMapper;
 import com.idlefish.trade.trade.entity.DelayTask;
@@ -10,6 +14,9 @@ import com.idlefish.trade.trade.entity.PayOrder;
 import com.idlefish.trade.trade.mapper.DelayTaskMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.service.FundEscrowService;
+import com.idlefish.trade.user.dto.WxSession;
+import com.idlefish.trade.user.service.WechatLoginService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -67,6 +75,51 @@ class SubsystemSmokeTest {
     /** 测试侧桩：生产已移除 Mock 托管实现，集成测试用桩放行验签以驱动支付完成闭环。 */
     @MockBean
     private FundEscrowService escrow;
+
+    // 测试替身：沙箱无微信凭证，登录桩以「code 即 openid」（避免真实 jscode2session 依赖线上 AppID/Secret）
+    @MockBean
+    private WechatLoginService wechatLoginService;
+
+    // 测试替身：机审走真实阿里云内容安全需 AK/SK + 外网；以本地敏感词桩复现「命中驳回/正常通过」语义
+    @MockBean
+    private ContentAuditService contentAuditService;
+
+    // 测试替身：对象存储走真实阿里云 OSS 需凭证；以本地 uploads/ 落盘桩复现存储语义
+    @MockBean
+    private StorageService storageService;
+
+    @BeforeEach
+    void stubWechatLogin() {
+        when(wechatLoginService.code2Session(anyString())).thenAnswer(inv -> {
+            WxSession s = new WxSession();
+            s.setOpenid(inv.getArgument(0, String.class));
+            return s;
+        });
+    }
+
+    @BeforeEach
+    void stubAuditAndStorage() {
+        when(contentAuditService.audit(any(), any(), any())).thenAnswer(inv -> {
+            String title = inv.getArgument(0, String.class);
+            String desc = inv.getArgument(1, String.class);
+            if (SensitiveWords.hit(title) || SensitiveWords.hit(desc)) {
+                return AuditResult.reject("命中敏感词");
+            }
+            return AuditResult.pass();
+        });
+        when(contentAuditService.auditText(anyString())).thenAnswer(inv ->
+                SensitiveWords.hit((String) inv.getArgument(0)) ? AuditResult.reject("命中敏感词") : AuditResult.pass());
+        when(storageService.store(anyString(), any(), any())).thenAnswer(inv -> {
+            String key = inv.getArgument(0, String.class);
+            java.io.InputStream in = inv.getArgument(1);
+            java.nio.file.Path dir = java.nio.file.Paths.get(System.getProperty("user.dir"), "uploads");
+            java.nio.file.Files.createDirectories(dir);
+            java.nio.file.Files.copy(in, dir.resolve(key), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            return "/uploads/" + key;
+        });
+        when(storageService.getAccessUrl(anyString())).thenAnswer(inv -> "/uploads/" + inv.getArgument(0, String.class));
+        when(storageService.delete(anyString())).thenReturn(true);
+    }
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -152,8 +205,9 @@ class SubsystemSmokeTest {
         return mapper.readTree(body).get("data").get("orderNo").asText();
     }
 
-    private String orderStatus(String orderNo) throws Exception {
-        String body = mvc.perform(get("/api/orders/" + orderNo))
+    private String orderStatus(String token, String orderNo) throws Exception {
+        String body = mvc.perform(get("/api/orders/" + orderNo)
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return mapper.readTree(body).get("data").get("status").asText();
@@ -230,7 +284,7 @@ class SubsystemSmokeTest {
         when(escrow.verifyNotify(any())).thenReturn(true);
         mvc.perform(post("/api/pay/notify").param("payNo", po.getPayNo()))
                 .andExpect(status().isOk());
-        assertEquals("paid", orderStatus(orderNo), "支付后订单应为 paid");
+        assertEquals("paid", orderStatus(token, orderNo), "支付后订单应为 paid");
         assertDelayTask("REMIND_SHIP", orderNo);
 
         // 发货：D6 提交 ORDER_CONFIRM；D5 落物流
@@ -238,21 +292,22 @@ class SubsystemSmokeTest {
                         .header("Authorization", "Bearer " + token)
                         .param("logisticsNo", "SF1234567890")))
                 .andExpect(status().isOk());
-        assertEquals("shipping", orderStatus(orderNo), "发货后订单应为 shipping");
+        assertEquals("shipping", orderStatus(token, orderNo), "发货后订单应为 shipping");
         assertDelayTask("ORDER_CONFIRM", orderNo);
 
         // D5：物流轨迹查询返回非空
-        String trackBody = mvc.perform(get("/api/orders/" + orderNo + "/logistics"))
+        String trackBody = mvc.perform(get("/api/orders/" + orderNo + "/logistics")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        JsonNode track = mapper.readTree(trackBody).get("data");
-        assertTrue(track.isArray() && track.size() >= 1, "物流轨迹应非空");
+        JsonNode track = mapper.readTree(trackBody).get("data").get("tracks");
+        assertTrue(track != null && track.isArray() && track.size() >= 1, "物流轨迹应非空");
 
         // 确认收货：D2 结算（mock 跳过真实分账）→ completed
         mvc.perform(withDevice(post("/api/orders/" + orderNo + "/confirm")
                         .header("Authorization", "Bearer " + token)))
                 .andExpect(status().isOk());
-        assertEquals("completed", orderStatus(orderNo), "确认收货后订单应为 completed");
+        assertEquals("completed", orderStatus(token, orderNo), "确认收货后订单应为 completed");
     }
 
     // ===== OSS 对象存储（真实 OSS） =====

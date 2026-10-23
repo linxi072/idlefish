@@ -3,6 +3,8 @@ package com.idlefish.trade.trade.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.enums.ReviewRole;
+import com.idlefish.trade.item.dto.AuditResult;
+import com.idlefish.trade.item.service.ContentAuditService;
 import com.idlefish.trade.trade.dto.ReviewSubmitDTO;
 import com.idlefish.trade.trade.entity.Order;
 import com.idlefish.trade.trade.entity.Review;
@@ -15,6 +17,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -26,6 +32,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 @SpringBootTest
 class ReviewServiceTest {
+
+    // 测试替身：机审走真实阿里云内容安全需 AK/SK + 外网，沙箱以「恒通过」桩替代（拦截路径由单测覆盖）
+    @MockBean
+    private ContentAuditService contentAuditService;
+
+    @BeforeEach
+    void stubAudit() {
+        when(contentAuditService.auditText(anyString())).thenReturn(AuditResult.pass());
+    }
 
     @Autowired
     private ReviewService reviewService;
@@ -101,6 +116,8 @@ class ReviewServiceTest {
     @DisplayName("非交易方提交评价被拒（STATE_NOT_ALLOWED）")
     void nonPartyRejected() {
         long stranger = 999999L;
+        // 该类非事务回滚：先清理历史残留行，防固定主键重复插入冲突
+        userMapper.deleteById(stranger);
         insertUser(stranger);
         ReviewSubmitDTO dto = new ReviewSubmitDTO();
         dto.setOrderNo(orderNo);

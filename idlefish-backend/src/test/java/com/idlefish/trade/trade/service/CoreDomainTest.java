@@ -17,10 +17,12 @@ import com.idlefish.trade.trade.mapper.OrderMapper;
 import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.mapper.RefundMapper;
 import com.idlefish.trade.trade.mapper.SettlementMapper;
+import com.idlefish.trade.trade.service.FundEscrowService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,6 +44,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 @SpringBootTest
 class CoreDomainTest {
+
+    // 测试替身：退款出款走真实微信 v3 需商户 RSA 私钥，沙箱以桩替代（避免依赖线上凭证）
+    @MockBean
+    private FundEscrowService fundEscrowService;
 
     @Autowired
     private SettlementService settlementService;

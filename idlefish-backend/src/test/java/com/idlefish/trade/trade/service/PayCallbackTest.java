@@ -36,6 +36,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -75,6 +77,10 @@ class PayCallbackTest {
 
     @BeforeEach
     void setUp() {
+        // metrics 桩直通：timedRun 必须真实执行被包裹逻辑，否则回调主流程被 mock 吞掉（状态停在 wait）
+        doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })
+                .when(metrics).timedRun(anyString(), any(Runnable.class));
+
         payStatus.set(PayStatus.WAIT.getCode());
         orderStatus.set(OrderStatus.PENDING_PAY.getCode());
         flowInserts.set(0);

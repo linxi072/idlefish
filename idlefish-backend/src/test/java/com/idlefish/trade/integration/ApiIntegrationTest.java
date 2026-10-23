@@ -2,17 +2,27 @@ package com.idlefish.trade.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.idlefish.trade.item.dto.AuditResult;
+import com.idlefish.trade.item.service.ContentAuditService;
+import com.idlefish.trade.user.dto.WxSession;
+import com.idlefish.trade.user.service.WechatLoginService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -27,8 +37,44 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class ApiIntegrationTest {
 
+    // 测试替身：沙箱无微信凭证，登录桩以「code 即 openid」（与既有 @MockBean 托管桩范式一致）
+    @MockBean
+    private WechatLoginService wechatLoginService;
+
+    // 测试替身：机审走真实阿里云内容安全需 AK/SK + 外网，沙箱以「恒通过」桩替代
+    @MockBean
+    private ContentAuditService contentAuditService;
+
+    /** 局部覆盖：机审「转人工复核」语义——商品发布后停留 pending_review，供后台审核流程用例使用。 */
+    private void stubAuditManualReview() {
+        when(contentAuditService.audit(any(), any(), any())).thenAnswer(inv -> {
+            AuditResult r = new AuditResult();
+            r.setPass(false);
+            r.setSuggestion("review");
+            r.setReason("转人工复核");
+            return r;
+        });
+    }
+
+    /** U01 状态机下 submitReview 直达终态（onsale/rejected），后台审核的 pending_review 入口以 SQL 直置。 */
+    private void forcePendingReview(Long itemId) {
+        jdbcTemplate.update("UPDATE t_item SET status = 'pending_review' WHERE id = ?", itemId);
+    }
+
+    @BeforeEach
+    void stubWechatLogin() {
+        when(wechatLoginService.code2Session(anyString())).thenAnswer(inv -> {
+            WxSession s = new WxSession();
+            s.setOpenid(inv.getArgument(0, String.class));
+            return s;
+        });
+        when(contentAuditService.audit(any(), any(), any())).thenReturn(AuditResult.pass());
+    }
+
     @Autowired
     private MockMvc mvc;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
     private final ObjectMapper mapper = new ObjectMapper();
 
     private JsonNode toJson(String body) throws Exception {
@@ -186,8 +232,10 @@ class ApiIntegrationTest {
 
     @Test
     void adminItemSearchByKeywordAndStatus() throws Exception {
+        stubAuditManualReview(); // 本用例需要 pending_review 状态商品
         String token = userToken();
-        publishItem(token); // 标题含「测试二手手机」，状态 pending_review
+        Long itemId = publishItem(token); // 标题含「测试二手手机」
+        forcePendingReview(itemId);
         String admin = adminToken();
 
         // 关键字命中
@@ -210,8 +258,10 @@ class ApiIntegrationTest {
 
     @Test
     void adminAuditLogListAfterApprove() throws Exception {
+        stubAuditManualReview(); // 本用例需要 pending_review 状态商品供后台审核
         String token = userToken();
         Long itemId = publishItem(token);
+        forcePendingReview(itemId);
         String admin = adminToken();
         // 审核通过 -> 写审计日志
         mvc.perform(post("/api/admin/items/" + itemId + "/approve")

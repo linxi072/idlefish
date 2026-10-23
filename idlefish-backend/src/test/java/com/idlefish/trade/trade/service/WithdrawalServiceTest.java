@@ -33,6 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class WithdrawalServiceTest {
 
     @Mock
@@ -46,9 +47,20 @@ class WithdrawalServiceTest {
     @Mock
     private MetricsRegistry metrics;
     @Mock
+    private com.idlefish.trade.event.DomainEventPublisher eventPublisher;
+    @Mock
     private FundEscrowService fundEscrowService;
     @InjectMocks
     private WithdrawalService service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void passThroughMetrics() {
+        // metrics 桩直通：timed 必须真实执行被包裹逻辑，否则审批出款流程被 mock 吞掉
+        when(metrics.timed(anyString(), any())).thenAnswer(inv ->
+                ((java.util.function.Supplier<?>) inv.getArgument(1)).get());
+        org.mockito.Mockito.doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })
+                .when(metrics).timedRun(anyString(), any(Runnable.class));
+    }
 
     private User userWithOpenid() {
         User u = new User();
