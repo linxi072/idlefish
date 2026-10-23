@@ -4,7 +4,7 @@
 |---|---|
 | 编号 | ITER-T06 |
 | 维度 / 优先级 | 技术架构 / **P2** |
-| 状态 | 待评审 |
+| 状态 | 部分实现（后端核心闭环已交付，见 §十二 实现说明） |
 | 建议负责 | 后端架构负责人（领域建模 + MQ 治理）+ 后端负责人（各域改造） |
 | 关联模块 | RocketMQ（已真实接入，非 mock）、订单/库存/资金域、F-15.x 风控与限流、F-14.5 BI、F-12.6 可观测性（Micrometer + MDC traceId）、F-17 工单状态机、物流轨迹 |
 | 被依赖 | ITER-F04（搜推实时特征）、ITER-F06（IM 纠纷预判）、ITER-F07（成长值事件驱动）、ITER-U06（经营看板实时化） |
@@ -187,3 +187,33 @@ RocketMQ 已**真实接入**（项目原则：外部组件一律真实实现，�
 | 风险 | 事件风暴与级联难以预估 | 控制事件粒度，建立事件清单评审机制 |
 | 风险 | 回放引发用户侧副作用 | `replay=true` 标记 + 副作用消费者跳过 |
 | 风险 | 离线沙箱无 MQ 实例 | 事件组装与幂等判定抽为纯函数，Mockito 离线单测覆盖 |
+
+---
+
+## 十二、实现说明（2026-10-23 交付）
+
+**交付范围**：单体事件驱动核心闭环（`com.idlefish.trade.event` 包，22 个主代码文件 + 5 个测试类 32 例离线全绿 + 契约门禁 166 端点双绿）。
+
+**架构落点**
+
+| 层 | 组件 | 说明 |
+|---|---|---|
+| 信封 | `DomainEvent` | 七要素（eventId/eventType/version/occurredAt/aggregateId/traceId/payload）+ `replay` 标志（REQ-01/13） |
+| 注册表 | `EventType` | 17 类事件枚举（满足 G1 ≥15），code/version/persisted 三属性 + `fromCode`（REQ-01/02） |
+| 事实源 | `EventOutbox` + `t_event_outbox` | 与业务**同库同事务**写入，业务提交则事件必然存在（REQ-05 不丢） |
+| 事件存储 | `EventRecord` + `t_domain_event` | persisted 事件同步落库，保留 92 天（REQ-09 ≥90） |
+| 发布 | `DomainEventPublisher` | `TransactionSynchronizationManager` 判定：有事务 → 同事务落库 + afterCommit 分发；无事务 → 直接落库同步分发；发布/负载构建全程 best-effort，`payload()` 空值安全构建器保证 NPE 不外泄（REQ-03/04） |
+| 分发 | `EventDispatcher` | 发布 afterCommit / 定时补偿 / 回放三链路共用；首败即停整体重放（消费幂等兜底）；指数退避（base×2^n 封顶 1h）；重试耗尽转死信（REQ-06/08） |
+| 补偿 | `EventOutboxDispatcher` | 30s fixedDelay 扫描 PENDING/FAILED 到期批，CAS 抢占防重复，死信存量打点告警 |
+| 消费 | `DomainEventListener` + `EventConsumeTemplate` | 监听器声明 `interests()` + `hasSideEffect()`；模板以 `eventId+监听器类名` 为幂等键复用 `IdempotentService`（REQ-07 100% 覆盖），消费线程注入事件 traceId 到 MDC（REQ-10 贯通） |
+| 回放 | `EventReplayService` + `t_event_replay` | 时间窗 + 类型回放，命中量预检防误操作（上限 1 万）；节拍调度协作式限流（100/批、游标增量拉取）；`replay=true` 分发时副作用监听器自动跳过（REQ-13） |
+| 治理 | `AdminEventController` | 6 端点 auth=admin：types / outbox/stats / list / replay / replay/list / dead-letter/redrive（REQ-08 重投），操作写 `t_audit_log` |
+| MQ 桥接 | `EventMqTransport` | 可选（默认关），本地消费成功后镜像事件信封至 RocketMQ HTTP 接入点，为服务化拆分预留 |
+
+**业务接线**（全部 try/catch best-effort，`publish()` 内部吞异常 + `event.publish.failure` 打点）：OrderService（ORDER_CREATED/CANCELLED/SHIPPED/COMPLETED）、PayService（PAYMENT_SUCCEEDED/ORDER_PAID/REFUND_EXECUTED）、SettlementService（PROFIT_SHARE_EXECUTED）、WithdrawalService（WITHDRAWAL_COMPLETED）、RefundService（ORDER_REFUNDED）、ItemService（ITEM_PUBLISHED/ITEM_SOLD_OUT）。
+
+**配置**：`idlefish.event.*`（总开关 / mq-enabled / max-retry=8 / 退避 10s~1h / scan-batch=200 / retention-days=92 / 回放限流参数）；错误码 30046~30050；`IdGenerator.replayNo()`（EVR 前缀）；schema-mysql.sql 三表幂等迁移。
+
+**门禁验证**：事件模块 32 例单测离线全绿；契约 `event.json` 6 端点（基线 160→166）一致性 + 兼容性双绿；全量回归 671 例 8F+14E+1skip 与既有环境性基线逐类一致（零新增回归）。回归中额外发现并修复 **T06 导出中心遗留装配缺陷**（`ExportTaskMapper` 位于包根未被 `@MapperScan` 扫描，Spring 上下文整体起不来——已迁入 `export.mapper` 子包）。
+
+**遗留项**：G2（同步调用占比下降 60%）需配合 ITER-F06/F07 消费者接入逐步度量；`IdlefishProperties.Event.mqEnabled` 对应的 MQ 消费端属服务化阶段（ITER-T04 后续）；DISPUTE_*/INSPECTION_COMPLETED/USER_REGISTERED/CREDIT_SCORE_CHANGED 已注册未接线（消费者接入时按需 publish）。
