@@ -55,13 +55,16 @@ public class DisputeService {
     private final OrderMapper orderMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
+    private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
     public DisputeService(DisputeMapper disputeMapper, OrderMapper orderMapper,
-                          NotificationService notificationService, MetricsRegistry metrics) {
+                          NotificationService notificationService, MetricsRegistry metrics,
+                          com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.disputeMapper = disputeMapper;
         this.orderMapper = orderMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -110,6 +113,16 @@ public class DisputeService {
         d.setRefundAmount(0L);
         disputeMapper.insert(d);
         metrics.increment("dispute.created");
+        // 发布 DISPUTE_OPENED 领域事件（工单创建即可见，供风控/信用/通知下游消费）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.DISPUTE_OPENED,
+                d.getDisputeNo(),
+                com.idlefish.trade.event.DomainEventPublisher.payload(
+                        "disputeId", d.getId(),
+                        "disputeNo", d.getDisputeNo(),
+                        "orderNo", orderNo,
+                        "buyerId", userId,
+                        "sellerId", o.getSellerId(),
+                        "type", type));
 
         // 通知卖家（best-effort，不影响工单创建）
         try {
@@ -211,6 +224,17 @@ public class DisputeService {
         upd.setHandledAt(LocalDateTime.now());
         disputeMapper.updateById(upd);
         metrics.increment("dispute.resolved");
+        // 发布 DISPUTE_RESOLVED 领域事件（裁决终态，供退款链路/信用/通知下游消费）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.DISPUTE_RESOLVED,
+                d.getDisputeNo(),
+                com.idlefish.trade.event.DomainEventPublisher.payload(
+                        "disputeId", d.getId(),
+                        "disputeNo", d.getDisputeNo(),
+                        "orderNo", d.getOrderNo(),
+                        "buyerId", d.getBuyerId(),
+                        "sellerId", d.getSellerId(),
+                        "result", result,
+                        "refundAmount", refund));
         try {
             String text = "工单 " + d.getDisputeNo() + " 裁决结果：" + result
                     + (refund > 0 ? "，退款 " + refund / 100.0 + " 元" : "");

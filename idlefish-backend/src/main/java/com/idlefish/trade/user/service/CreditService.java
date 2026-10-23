@@ -29,15 +29,18 @@ public class CreditService {
     private final RiskEventMapper riskEventMapper;
     private final CreditLogMapper creditLogMapper;
     private final CreditCalculator calculator;
+    private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
     public CreditService(UserMapper userMapper, OrderMapper orderMapper, ReviewMapper reviewMapper,
                          RiskEventMapper riskEventMapper, CreditLogMapper creditLogMapper,
-                         IdlefishProperties props) {
+                         IdlefishProperties props,
+                         com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.userMapper = userMapper;
         this.orderMapper = orderMapper;
         this.reviewMapper = reviewMapper;
         this.riskEventMapper = riskEventMapper;
         this.creditLogMapper = creditLogMapper;
+        this.eventPublisher = eventPublisher;
         IdlefishProperties.Credit c = props.getCredit();
         this.calculator = new CreditCalculator(new CreditCalculator.CreditWeights(
                 c.getRealName(), c.getAgePer30d(), c.getAgeCap(), c.getFulfillment(),
@@ -65,6 +68,17 @@ public class CreditService {
         log.setReason("recompute");
         log.setSnapshot(newScore);
         creditLogMapper.insert(log);
+        // 信用分实际发生变化时发布 CREDIT_SCORE_CHANGED（幂等重算未变化则不发，避免噪声）
+        if (oldScore != newScore) {
+            eventPublisher.publish(com.idlefish.trade.event.EventType.CREDIT_SCORE_CHANGED,
+                    String.valueOf(userId),
+                    com.idlefish.trade.event.DomainEventPublisher.payload(
+                            "userId", userId,
+                            "oldScore", oldScore,
+                            "newScore", newScore,
+                            "delta", newScore - oldScore,
+                            "reason", "recompute"));
+        }
         return newScore;
     }
 

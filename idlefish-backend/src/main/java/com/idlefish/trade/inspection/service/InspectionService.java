@@ -59,6 +59,7 @@ public class InspectionService {
     private final FundFlowMapper fundFlowMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
+    private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
     public InspectionService(InspectionOrderMapper inspectionOrderMapper,
                              InspectionReportMapper inspectionReportMapper,
@@ -67,7 +68,8 @@ public class InspectionService {
                              RefundService refundService,
                              FundFlowMapper fundFlowMapper,
                              NotificationService notificationService,
-                             MetricsRegistry metrics) {
+                             MetricsRegistry metrics,
+                             com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.inspectionOrderMapper = inspectionOrderMapper;
         this.inspectionReportMapper = inspectionReportMapper;
         this.orderMapper = orderMapper;
@@ -76,6 +78,7 @@ public class InspectionService {
         this.fundFlowMapper = fundFlowMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -199,6 +202,17 @@ public class InspectionService {
         upd.setFinishedAt(LocalDateTime.now());
         inspectionOrderMapper.updateById(upd);
         metrics.increment(pass ? "inspection.passed" : "inspection.rejected");
+        // 发布 INSPECTION_COMPLETED 领域事件（无论通过/不通过，验货终态统一广播，供下游（已验标识/退款/信用）消费）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.INSPECTION_COMPLETED,
+                io.getInspectionNo(),
+                com.idlefish.trade.event.DomainEventPublisher.payload(
+                        "inspectionId", io.getId(),
+                        "inspectionNo", io.getInspectionNo(),
+                        "orderNo", io.getOrderNo(),
+                        "itemId", io.getItemId(),
+                        "pass", pass,
+                        "grade", dto.getGrade(),
+                        "agencyId", io.getAgencyId()));
 
         if (pass) {
             // REQ-07 通过打「已验」标识

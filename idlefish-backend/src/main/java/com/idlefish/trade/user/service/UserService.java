@@ -30,16 +30,19 @@ public class UserService implements UserOpenidResolver {
     private final CryptoUtil cryptoUtil;
     private final JwtUtil jwtUtil;
     private final WechatLoginService wechatLoginService;
+    private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
     /** 手机号绑定限频（单体单实例内存实现，生产用 Redis）：userId -> 上次绑定时间 */
     private final Map<Long, Long> bindLimit = new ConcurrentHashMap<>();
 
     public UserService(UserMapper userMapper, CryptoUtil cryptoUtil, JwtUtil jwtUtil,
-                       WechatLoginService wechatLoginService) {
+                       WechatLoginService wechatLoginService,
+                       com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.userMapper = userMapper;
         this.cryptoUtil = cryptoUtil;
         this.jwtUtil = jwtUtil;
         this.wechatLoginService = wechatLoginService;
+        this.eventPublisher = eventPublisher;
     }
 
     /** 微信登录：通过 WechatLoginService（Mock/真实可切换）将 js_code 换成 openid 并签发双令牌。 */
@@ -75,6 +78,13 @@ public class UserService implements UserOpenidResolver {
         user.setCreditScore(100);
         user.setStatus(0);
         userMapper.insert(user);
+        // 首次注册：发布 USER_REGISTERED 领域事件（Outbox 同事务落库，publish 内部兜底不阻断主流程）
+        eventPublisher.publish(com.idlefish.trade.event.EventType.USER_REGISTERED,
+                String.valueOf(user.getId()),
+                com.idlefish.trade.event.DomainEventPublisher.payload(
+                        "openid", openid,
+                        "nickname", user.getNickname(),
+                        "creditScore", user.getCreditScore()));
         return user;
     }
 
