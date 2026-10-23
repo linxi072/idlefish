@@ -14,6 +14,10 @@ import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.trade.service.DelayQueueService;
 import com.idlefish.trade.trade.service.FundEscrowService;
+import com.idlefish.trade.marketing.service.PointService;
+import com.idlefish.trade.marketing.invite.service.InviteService;
+import com.idlefish.trade.member.service.MemberLevelService;
+import com.idlefish.trade.pricing.service.PricingService;
 import com.idlefish.trade.notify.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -55,6 +60,13 @@ class PayCallbackTest {
     @Mock private DelayQueueService delayQueueService;
     @Mock private NotificationService notificationService;
     @Mock private MetricsRegistry metrics;
+    @Mock private PointService pointService;
+    @Mock private InviteService inviteService;
+    @Mock private MemberLevelService memberLevelService;
+    @Mock private PricingService pricingService;
+    @Mock private com.idlefish.trade.event.DomainEventPublisher eventPublisher;
+    /** 真实 ObjectMapper：JSON 解析行为需为真（mock 会导致回调解析 NPE）。 */
+    @Spy private com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
     @InjectMocks private PayService payService;
 
     private final AtomicReference<String> payStatus = new AtomicReference<>(PayStatus.WAIT.getCode());

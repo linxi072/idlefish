@@ -50,6 +50,7 @@ class RefundServiceTest {
     @Mock private NotificationService notificationService;
     @Mock private MetricsRegistry metrics;
     @Mock private IdempotentService idempotentService;
+    @Mock private com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
     /** 模拟数据库：refundId -> 当前状态。 */
     private final Map<Long, String> db = new ConcurrentHashMap<>();
@@ -64,7 +65,8 @@ class RefundServiceTest {
 
     private RefundService service() {
         return new RefundService(refundMapper, orderMapper, payOrderMapper, payService,
-                itemService, fundFlowMapper, notificationService, metrics, idempotentService);
+                itemService, fundFlowMapper, notificationService, metrics, idempotentService,
+                eventPublisher);
     }
 
     /** 装配模拟 DB：selectOne 始终返回 WAIT_SELLER（建模并发竞态「两线程写入前均读到待处理态」的 TOCTOU 前置）；

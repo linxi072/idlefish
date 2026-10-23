@@ -1,7 +1,7 @@
 {
   "version" : 1,
   "generatedAt" : "2026-10-23",
-  "endpointCount" : 160,
+  "endpointCount" : 166,
   "generatedBy" : "ContractBaselineRegenerateTest（ITER-T03）；不兼容变更请走评审后再生，禁止为绕过门禁随意再生",
   "endpoints" : {
     "DELETE /api/address/{id}" : {
@@ -99,6 +99,30 @@
       "expectStatus" : 200,
       "fields" : [ "data.records", "data.total" ],
       "file" : "dispute.json"
+    },
+    "GET /api/admin/event/list" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "event.json"
+    },
+    "GET /api/admin/event/outbox/stats" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.byStatus", "data.dead" ],
+      "file" : "event.json"
+    },
+    "GET /api/admin/event/replay/list" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "event.json"
+    },
+    "GET /api/admin/event/types" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "event.json"
     },
     "GET /api/admin/export/download" : {
       "auth" : "admin",
@@ -603,6 +627,18 @@
       "expectStatus" : 200,
       "fields" : [ ],
       "file" : "dispute.json"
+    },
+    "POST /api/admin/event/dead-letter/redrive" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.redriven" ],
+      "file" : "event.json"
+    },
+    "POST /api/admin/event/replay" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.eventType", "data.replayNo", "data.status" ],
+      "file" : "event.json"
     },
     "POST /api/admin/export/export" : {
       "auth" : "admin",

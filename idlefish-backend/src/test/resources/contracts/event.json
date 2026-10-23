@@ -1,0 +1,54 @@
+{
+  "domain": "event",
+  "description": "领域事件治理后台（ITER-T06 / PRD-P2-T06）：事件类型注册表、Outbox 概览、事件存储检索、限流回放（副作用监听器跳过）与死信重投",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/admin/event/types",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "事件类型注册表：code / 说明 / schema 版本 / 是否持久化（REQ-01/02）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/event/outbox/stats",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.byStatus", "data.dead"],
+      "notes": "Outbox 概览：各分发状态计数 + 死信存量（REQ-06/08）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/event/list",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "事件存储分页检索：按类型 / 聚合根 / 时间窗过滤（REQ-09 ≥90 天可回放）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/event/replay",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.replayNo", "data.eventType", "data.status"],
+      "notes": "创建限流回放任务：命中事件量超上限被拒（EVENT_REPLAY_LIMIT）；副作用监听器自动跳过（REQ-13）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/event/replay/list",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "回放任务列表（最新在前，前端轮询进度）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/event/dead-letter/redrive",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.redriven"],
+      "notes": "死信重投：eventId 为空则全量重投；无可重投死信返回 EVENT_DEAD_LETTER_EMPTY（REQ-08）"
+    }
+  ]
+}

@@ -9,7 +9,7 @@ import com.idlefish.trade.risk.entity.AuditLog;
 import com.idlefish.trade.risk.mapper.AuditLogMapper;
 import com.idlefish.trade.datascope.service.DataScopeService;
 import com.idlefish.trade.export.ExportProvider;
-import com.idlefish.trade.export.ExportTaskMapper;
+import com.idlefish.trade.export.mapper.ExportTaskMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
