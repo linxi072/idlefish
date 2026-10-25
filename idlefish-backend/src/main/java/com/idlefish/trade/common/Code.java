@@ -97,6 +97,26 @@ public enum Code {
     EVENT_REPLAY_LIMIT(30049, "回放任务超过上限（时间窗过大或事件量超限）"),
     /** 无可重投死信（ITER-T06 / REQ-08）。 */
     EVENT_DEAD_LETTER_EMPTY(30050, "无可重投的死信事件"),
+    /** 成长值发放通道已冻结（ITER-F07 / REQ-03）：命中刷分或被封禁，暂无法获得成长值。 */
+    GROWTH_FROZEN(30051, "成长值发放通道已冻结，暂无法获得成长值"),
+    /** 疑似刷分（ITER-F07 / REQ-03）：关联账户 / 频次 / 金额门槛命中，本次不予发放并冻结通道。 */
+    GROWTH_ANTIFRAUD_BLOCKED(30052, "疑似刷分行为，本次不予发放成长值"),
+    /** 权益不存在（ITER-F07 / REQ-07）。 */
+    BENEFIT_NOT_FOUND(30053, "权益不存在"),
+    /** 权益已下架（ITER-F07 / REQ-12）。 */
+    BENEFIT_OFF_SHELF(30054, "权益已下架"),
+    /** 权益已过期（ITER-F07 / REQ-12）：上架时间窗结束，兑换入口关闭。 */
+    BENEFIT_EXPIRED(30055, "权益已过期"),
+    /** 权益库存不足（ITER-F07 / REQ-08）。 */
+    BENEFIT_STOCK_NOT_ENOUGH(30056, "权益库存不足"),
+    /** 超过权益每日兑换上限（ITER-F07 / REQ-08）。 */
+    BENEFIT_EXCHANGE_LIMIT(30057, "已达该权益每日兑换上限"),
+    /** 会员等级不足（ITER-F07 / REQ-07）：权益设有最低等级门槛。 */
+    BENEFIT_LEVEL_NOT_ENOUGH(30058, "会员等级不足，无法兑换该权益"),
+    /** 成长值不足（ITER-F07 / REQ-07）：权益兑换需消耗指定成长值。 */
+    GROWTH_NOT_ENOUGH(30059, "成长值不足"),
+    /** 兑换记录不存在（ITER-F07 / REQ-09）。 */
+    BENEFIT_EXCHANGE_NOT_FOUND(30060, "兑换记录不存在"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

@@ -8,6 +8,7 @@ import com.idlefish.trade.common.enums.RefundStatus;
 import com.idlefish.trade.common.idempotent.IdempotentService;
 import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.item.service.ItemService;
+import com.idlefish.trade.member.service.GrowthValueService;
 import com.idlefish.trade.trade.dto.RefundApplyDTO;
 import com.idlefish.trade.trade.entity.FundFlowBuilder;
 import com.idlefish.trade.trade.entity.Order;
@@ -40,6 +41,8 @@ public class RefundService {
     private final FundFlowMapper fundFlowMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
+    /** ITER-F07：退款冲正成长值（交易成长值随退款扣回，负向流水，幂等）。 */
+    private final GrowthValueService growthValueService;
 
     /** 幂等（F-18）：拦截重复退款申请，重复请求回放首次退款单号。 */
     private final IdempotentService idempotentService;
@@ -59,6 +62,7 @@ public class RefundService {
                          PayOrderMapper payOrderMapper, PayService payService,
                          ItemService itemService, FundFlowMapper fundFlowMapper,
                          NotificationService notificationService, MetricsRegistry metrics,
+                         GrowthValueService growthValueService,
                          IdempotentService idempotentService,
                          com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.refundMapper = refundMapper;
@@ -69,6 +73,7 @@ public class RefundService {
         this.fundFlowMapper = fundFlowMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.growthValueService = growthValueService;
         this.idempotentService = idempotentService;
         this.eventPublisher = eventPublisher;
     }
@@ -344,6 +349,12 @@ public class RefundService {
 
         // F-02 通知中心：退款成功触达买家（best-effort）
         notifyRefundSuccess(r);
+
+        // ITER-F07：退款冲正成长值（按订单号幂等扣回交易成长值，负向流水；best-effort 不阻断退款）
+        try {
+            growthValueService.reverseByOrder(r.getOrderNo());
+        } catch (Exception ignore) {
+        }
 
         closeOrderIfPresent(r.getOrderNo());
         if ("return_refund".equals(r.getType())) {

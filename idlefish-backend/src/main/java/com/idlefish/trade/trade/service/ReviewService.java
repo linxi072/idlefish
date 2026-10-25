@@ -13,6 +13,7 @@ import com.idlefish.trade.trade.mapper.ReviewMapper;
 import com.idlefish.trade.trade.vo.ReviewVO;
 import com.idlefish.trade.user.service.CreditService;
 import com.idlefish.trade.marketing.service.PointService;
+import com.idlefish.trade.member.service.GrowthValueService;
 import com.idlefish.trade.member.service.MemberLevelService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,16 +32,20 @@ public class ReviewService {
     private final CreditService creditService;
     private final PointService pointService;
     private final MemberLevelService memberLevelService;
+    /** ITER-F07：评价通过得成长值（多维累计 + 防刷 + 流水，best-effort）。 */
+    private final GrowthValueService growthValueService;
 
     public ReviewService(ReviewMapper reviewMapper, OrderMapper orderMapper,
                          ContentAuditService contentAuditService, CreditService creditService,
-                         PointService pointService, MemberLevelService memberLevelService) {
+                         PointService pointService, MemberLevelService memberLevelService,
+                         GrowthValueService growthValueService) {
         this.reviewMapper = reviewMapper;
         this.orderMapper = orderMapper;
         this.contentAuditService = contentAuditService;
         this.creditService = creditService;
         this.pointService = pointService;
         this.memberLevelService = memberLevelService;
+        this.growthValueService = growthValueService;
     }
 
     /** 提交评价：校验订单已完成、评价人是交易一方、同端同单幂等、内容机审。返回评价 ID。 */
@@ -94,6 +99,10 @@ public class ReviewService {
                         com.idlefish.trade.member.MemberLevelCalculator.growthFromReview());
             } catch (Exception ignore) {
             }
+            try {                                               // ITER-F07：评价通过得成长值（多维累计）
+                growthValueService.earnReview(reviewerId, r.getId());
+            } catch (Exception ignore) {
+            }
         }
         return r.getId();
     }
@@ -145,6 +154,10 @@ public class ReviewService {
         try {                                                     // F-13.2：审核通过得成长值
             memberLevelService.addGrowth(r.getReviewerId(),
                     com.idlefish.trade.member.MemberLevelCalculator.growthFromReview());
+        } catch (Exception ignore) {
+        }
+        try {                                                     // ITER-F07：审核通过得成长值（多维累计）
+            growthValueService.earnReview(r.getReviewerId(), r.getId());
         } catch (Exception ignore) {
         }
     }

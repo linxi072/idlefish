@@ -75,4 +75,9 @@ public class IdGenerator {
     public static String replayNo() {
         return next("EVR");
     }
+
+    /** 权益兑换单号（ITER-F07 会员积分成长深化；BX 前缀避免与回收 RC 混淆）。 */
+    public static String benefitExchangeNo() {
+        return next("BX");
+    }
 }

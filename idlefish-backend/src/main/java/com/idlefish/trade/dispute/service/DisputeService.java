@@ -10,6 +10,7 @@ import com.idlefish.trade.common.util.IdGenerator;
 import com.idlefish.trade.dispute.DisputeStateMachine;
 import com.idlefish.trade.dispute.entity.Dispute;
 import com.idlefish.trade.dispute.mapper.DisputeMapper;
+import com.idlefish.trade.member.service.GrowthValueService;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.trade.entity.Order;
@@ -55,15 +56,19 @@ public class DisputeService {
     private final OrderMapper orderMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
+    /** ITER-F07：判责扣减 / 纠纷和解得成长值（REQ-10 / REQ-02，best-effort 不阻断维权流程）。 */
+    private final GrowthValueService growthValueService;
     private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
     public DisputeService(DisputeMapper disputeMapper, OrderMapper orderMapper,
                           NotificationService notificationService, MetricsRegistry metrics,
+                          GrowthValueService growthValueService,
                           com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.disputeMapper = disputeMapper;
         this.orderMapper = orderMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.growthValueService = growthValueService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -193,6 +198,12 @@ public class DisputeService {
         upd.setStatus(DisputeStateMachine.CANCELED);
         disputeMapper.updateById(upd);
         metrics.increment("dispute.canceled");
+        // ITER-F07 REQ-02：买家撤销工单视为「纠纷和解」（双方自行达成一致，未占用平台裁决资源），
+        // 撤销方（买家）获得和解成长值；best-effort 不阻断撤销流程。
+        try {
+            growthValueService.earnReconcile(d.getBuyerId(), d.getDisputeNo());
+        } catch (Exception ignored) {
+        }
     }
 
     /**
@@ -242,6 +253,20 @@ public class DisputeService {
                     "维权已裁决", text);
             notificationService.notify(d.getSellerId(), NotificationType.DISPUTE_RESOLVED, d.getDisputeNo(),
                     "维权已裁决", text);
+        } catch (Exception ignored) {
+        }
+        // ITER-F07 REQ-10：判责扣减成长值（责任方扣减，单次封顶 growth.disputePenaltyCap）。
+        // 口径：BUYER_WIN=卖家全责；PARTIAL=双方部分责任（各扣一次）；SELLER_WIN=买家诉求不成立，
+        // 未认定买家责任（避免误伤正当维权），不扣减。申诉成功回补由 restoreByDispute 承担（待申诉流接线）。
+        try {
+            if (RESULT_BUYER_WIN.equals(result) || RESULT_PARTIAL.equals(result)) {
+                growthValueService.deductByDispute(d.getSellerId(), d.getDisputeNo(),
+                        "维权判责：卖家责任（" + result + "）");
+            }
+            if (RESULT_PARTIAL.equals(result)) {
+                growthValueService.deductByDispute(d.getBuyerId(), d.getDisputeNo(),
+                        "维权判责：买家部分责任（" + result + "）");
+            }
         } catch (Exception ignored) {
         }
     }

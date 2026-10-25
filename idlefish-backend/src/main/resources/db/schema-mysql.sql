@@ -1221,6 +1221,75 @@ CREATE TABLE IF NOT EXISTS t_event_replay (
     KEY idx_replay_admin (operator_admin_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- ===== ITER-F07 会员积分成长深化（幂等） =====
+
+-- 成长值流水（REQ-09 全量留痕可对账）：来源、规则版本快照（REQ-14 不追溯）、变更前/后值、关联单号。
+-- (user_id, biz_type, biz_id) 唯一索引承担发放幂等兜底，杜绝同一订单 / 评价重复计成长值。
+CREATE TABLE IF NOT EXISTS t_growth_value_log (
+    id            BIGINT       PRIMARY KEY,
+    user_id       BIGINT       NOT NULL COMMENT '用户 ID',
+    biz_type      VARCHAR(32)  NOT NULL COMMENT '来源 code（EARN_TRADE/DEDUCT_DISPUTE/DECAY/RESTORE_DISPUTE 等）',
+    biz_id        VARCHAR(64)  COMMENT '关联单号（订单号/商品ID/评价ID/工单号/衰减日期）',
+    delta         INT          NOT NULL DEFAULT 0 COMMENT '成长值增量（正=获得，负=扣减；0=拦截留痕）',
+    before_value  INT          NOT NULL DEFAULT 0 COMMENT '变更前成长值',
+    after_value   INT          NOT NULL DEFAULT 0 COMMENT '变更后成长值',
+    level_code    VARCHAR(20)  COMMENT '变更后等级编码',
+    rule_version  VARCHAR(32)  COMMENT '生效规则版本快照（REQ-14 规则变更不追溯重算）',
+    frozen        TINYINT      NOT NULL DEFAULT 0 COMMENT '变更后发放通道冻结状态 0/1',
+    remark        VARCHAR(500) COMMENT '说明（命中规则 / 判责原因 / 拦截原因）',
+    created_at    DATETIME,
+    updated_at    DATETIME,
+    UNIQUE KEY uk_gvlog_user_biz (user_id, biz_type, biz_id),
+    KEY idx_gvlog_user (user_id, created_at),
+    KEY idx_gvlog_biz (biz_type, biz_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 权益目录（REQ-07/12/13）：兑换消耗积分（可消耗），成长值只作等级门槛（REQ-01）。
+-- 库存原子扣减 + 条件更新双保险防超发（REQ-08）；金额类权益面额一律「分」。
+CREATE TABLE IF NOT EXISTS t_benefit (
+    id                 BIGINT       PRIMARY KEY,
+    benefit_code       VARCHAR(32)  NOT NULL COMMENT '权益编码（唯一）',
+    benefit_name       VARCHAR(64)  NOT NULL COMMENT '权益名称',
+    benefit_type       VARCHAR(32)  NOT NULL COMMENT 'COUPON/VOUCHER/POINT_PACKAGE/SERVICE',
+    description        VARCHAR(500) COMMENT '权益说明（使用条件/有效期，合规明示）',
+    cost_points        BIGINT       NOT NULL DEFAULT 0 COMMENT '所需积分（可消耗）',
+    min_level_code     VARCHAR(20)  COMMENT '最低等级门槛（成长值决定，REQ-01/07）',
+    coupon_id          BIGINT       COMMENT '券模板 ID（COUPON 类型必填）',
+    voucher_amount_fen BIGINT       COMMENT '金额类权益面额（分，REQ-13）',
+    stock              INT          NOT NULL DEFAULT 0 COMMENT '剩余库存',
+    total_stock        INT          NOT NULL DEFAULT 0 COMMENT '总库存',
+    daily_limit        INT          NOT NULL DEFAULT 0 COMMENT '每用户每日兑换上限，0=不限',
+    status             VARCHAR(16)  NOT NULL DEFAULT 'ON_SHELF' COMMENT 'ON_SHELF/OFF_SHELF',
+    online_at          DATETIME     COMMENT '上架时间（空=不限制）',
+    offline_at         DATETIME     COMMENT '下架时间（空=不限制，到期自动回收 REQ-12）',
+    sort_order         INT          NOT NULL DEFAULT 0 COMMENT '展示排序',
+    created_at         DATETIME,
+    updated_at         DATETIME,
+    UNIQUE KEY uk_benefit_code (benefit_code),
+    KEY idx_benefit_status (status, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 权益兑换记录（REQ-07/09）：exchange_no 同时作为积分流水 bizId，实现三方对账。
+CREATE TABLE IF NOT EXISTS t_benefit_exchange (
+    id            BIGINT       PRIMARY KEY,
+    exchange_no   VARCHAR(32)  NOT NULL COMMENT '兑换单号（BX 前缀）',
+    benefit_id    BIGINT       NOT NULL COMMENT '权益 ID',
+    benefit_code  VARCHAR(32)  NOT NULL COMMENT '权益编码快照',
+    user_id       BIGINT       NOT NULL COMMENT '兑换用户',
+    cost_points   BIGINT       NOT NULL DEFAULT 0 COMMENT '实际扣除积分',
+    benefit_type  VARCHAR(32)  NOT NULL COMMENT '权益类型快照',
+    coupon_id     BIGINT       COMMENT '券模板 ID 快照（COUPON 类型）',
+    status        VARCHAR(16)  NOT NULL DEFAULT 'SUCCESS' COMMENT 'SUCCESS/FAILED',
+    remark        VARCHAR(500) COMMENT '说明',
+    created_at    DATETIME,
+    updated_at    DATETIME,
+    UNIQUE KEY uk_exchange_no (exchange_no),
+    KEY idx_exchange_user (user_id, created_at),
+    KEY idx_exchange_benefit (benefit_id, created_at),
+    KEY idx_exchange_user_benefit (user_id, benefit_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
 -- ===== 幂等列迁移（存量库升级：仅当列缺失时补齐；新库由上方 CREATE TABLE 直接建齐） =====
 -- 说明：CREATE TABLE IF NOT EXISTS 不会为已存在的表追加新列，历史库需在此处做幂等 ADD COLUMN。
 -- 采用 information_schema 探测 + PREPARE 动态执行（兼容 spring.sql.init 的分号切分，无需 DELIMITER）。
@@ -1230,6 +1299,52 @@ SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE table_schema = DATABASE() AND table_name = 't_item' AND column_name = 'inspection_status');
 SET @ddl := IF(@col_exists = 0,
     'ALTER TABLE t_item ADD COLUMN inspection_status VARCHAR(16) DEFAULT ''NONE'' COMMENT ''验货标识：NONE/INSPECTING/PASSED/REJECTED''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+-- ITER-F07：t_user_growth 追加冻结 / 活跃 / 等级生效时间 / 通知时间 / 累计获得五列
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_user_growth' AND column_name = 'growth_frozen');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_user_growth ADD COLUMN growth_frozen TINYINT NOT NULL DEFAULT 0 COMMENT ''0/1 发放通道冻结（REQ-03 刷分/封禁）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_user_growth' AND column_name = 'last_active_at');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_user_growth ADD COLUMN last_active_at DATETIME COMMENT ''最后活跃时间（REQ-05 衰减基准）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_user_growth' AND column_name = 'level_effective_at');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_user_growth ADD COLUMN level_effective_at DATETIME COMMENT ''当前等级生效时间（REQ-04 跨阈值即时升级）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_user_growth' AND column_name = 'decay_notified_at');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_user_growth ADD COLUMN decay_notified_at DATETIME COMMENT ''最近一次衰减提前通知时间（REQ-05 提前7日）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_user_growth' AND column_name = 'total_earned');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_user_growth ADD COLUMN total_earned INT NOT NULL DEFAULT 0 COMMENT ''累计获得成长值（对账口径，REQ-09）''',
     'SELECT 1');
 PREPARE mig_stmt FROM @ddl;
 EXECUTE mig_stmt;

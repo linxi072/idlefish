@@ -27,6 +27,7 @@ import com.idlefish.trade.pricing.service.PricingService;
 import com.idlefish.trade.item.vo.SellerVO;
 import com.idlefish.trade.item.dto.AuditResult;
 import com.idlefish.trade.item.service.ContentAuditService;
+import com.idlefish.trade.member.service.GrowthValueService;
 import com.idlefish.trade.search.serving.SearchSyncService;
 import com.idlefish.trade.user.entity.User;
 import com.idlefish.trade.user.service.UserService;
@@ -65,6 +66,9 @@ public class ItemService {
 
     private final PricingService pricingService;
 
+    /** ITER-F07：发布商品得成长值（多维累计，best-effort，不阻断发布）。 */
+    private final GrowthValueService growthValueService;
+
     /** 领域事件发布（ITER-T06）：商品上架事件 best-effort 发布，Outbox 同事务保证不丢。 */
     private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
@@ -75,6 +79,7 @@ public class ItemService {
                        ItemStatusLogMapper itemStatusLogMapper, ContentAuditService contentAuditService,
                        NotificationService notificationService, SearchSyncService searchSyncService,
                        DistributedLock distributedLock, PricingService pricingService,
+                       GrowthValueService growthValueService,
                        com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.itemMapper = itemMapper;
         this.categoryService = categoryService;
@@ -87,6 +92,7 @@ public class ItemService {
         this.notificationService = notificationService;
         this.distributedLock = distributedLock;
         this.pricingService = pricingService;
+        this.growthValueService = growthValueService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -122,6 +128,11 @@ public class ItemService {
         // ITER-F03：异常低价送审标记（REQ-10，best-effort，不阻断发布）
         try {
             pricingService.evaluateListing(item);
+        } catch (Exception ignore) {
+        }
+        // ITER-F07：发布商品得成长值（多维累计 + 防刷 + 流水，best-effort，不阻断发布）
+        try {
+            growthValueService.earnPublish(sellerId, item.getId());
         } catch (Exception ignore) {
         }
         return item.getId();

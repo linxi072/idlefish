@@ -16,6 +16,7 @@ import com.idlefish.trade.inspection.entity.InspectionReport;
 import com.idlefish.trade.inspection.mapper.InspectionOrderMapper;
 import com.idlefish.trade.inspection.mapper.InspectionReportMapper;
 import com.idlefish.trade.item.service.ItemService;
+import com.idlefish.trade.member.service.GrowthValueService;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.trade.dto.RefundApplyDTO;
@@ -59,6 +60,8 @@ public class InspectionService {
     private final FundFlowMapper fundFlowMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
+    /** ITER-F07：验货通过买家得成长值（验货配合，best-effort，不阻断验货流程）。 */
+    private final GrowthValueService growthValueService;
     private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
     public InspectionService(InspectionOrderMapper inspectionOrderMapper,
@@ -69,6 +72,7 @@ public class InspectionService {
                              FundFlowMapper fundFlowMapper,
                              NotificationService notificationService,
                              MetricsRegistry metrics,
+                             GrowthValueService growthValueService,
                              com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.inspectionOrderMapper = inspectionOrderMapper;
         this.inspectionReportMapper = inspectionReportMapper;
@@ -78,6 +82,7 @@ public class InspectionService {
         this.fundFlowMapper = fundFlowMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.growthValueService = growthValueService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -218,6 +223,11 @@ public class InspectionService {
             // REQ-07 通过打「已验」标识
             try {
                 itemService.markInspected(io.getItemId());
+            } catch (Exception ignored) {
+            }
+            // ITER-F07：验货配合（通过）买家得成长值（best-effort，不阻断验货流程）
+            try {
+                growthValueService.earnInspection(io.getBuyerId(), io.getInspectionNo());
             } catch (Exception ignored) {
             }
             notifySafely(io.getBuyerId(), NotificationType.INSPECTION_RESULT, io.getInspectionNo(), "验货通过",

@@ -36,6 +36,8 @@ public class PointService {
     public static final String BIZ_REVIEW = "EARN_REVIEW";
     public static final String BIZ_REDEEM = "REDEEM";
     public static final String BIZ_REDEEM_RELEASED = "REDEEM_RELEASED";
+    /** 权益兑换扣除积分（ITER-F07 / REQ-07）：与订单抵扣区分，便于对账。 */
+    public static final String BIZ_BENEFIT_EXCHANGE = "BENEFIT_EXCHANGE";
 
     private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
@@ -201,8 +203,50 @@ public class PointService {
         return r.discountFen;
     }
 
-    /** 关单/取消：释放已抵扣积分（REDEEM 回滚为 REDEEM_RELEASED 加回余额）。 */
+    /**
+     * 权益兑换扣除积分（ITER-F07 / REQ-07）：原子扣减并写 BENEFIT_EXCHANGE 流水。
+     * <p>与订单抵扣（{@link #redeem}）区分来源，便于对账；余额不足（含并发竞争）抛
+     * {@link Code#POINT_NOT_ENOUGH}，由兑换事务整体回滚，杜绝「扣了积分没发券」。</p>
+     *
+     * @param exchangeNo   兑换单号（BX 前缀），作为流水 bizId
+     * @param benefitName  权益名称（流水备注）
+     * @return 实际扣除积分数
+     */
     @Transactional
+    public long consumeForBenefit(Long userId, long points, String exchangeNo, String benefitName) {
+        if (!point.isEnabled()) {
+            throw new BizException(Code.BIZ_ERROR, "积分功能未开启，无法兑换权益");
+        }
+        if (points <= 0) {
+            throw new BizException(Code.BIZ_ERROR, "权益所需积分配置异常");
+        }
+        Point p = getOrCreate(userId);
+        long available = p.getBalance() == null ? 0 : p.getBalance();
+        if (available < points) {
+            throw new BizException(Code.POINT_NOT_ENOUGH, "积分不足");
+        }
+        // 原子扣减，余额不足（并发竞争）直接报错，杜绝超兑资损
+        int rows = pointMapper.update(null, new LambdaUpdateWrapper<Point>()
+                .eq(Point::getUserId, userId)
+                .ge(Point::getBalance, points)
+                .setSql("balance = balance - " + points));
+        if (rows == 0) {
+            throw new BizException(Code.POINT_NOT_ENOUGH, "积分不足");
+        }
+        Point fresh = pointMapper.selectOne(new LambdaQueryWrapper<Point>().eq(Point::getUserId, userId));
+        PointLog log = new PointLog();
+        log.setUserId(userId);
+        log.setBizType(BIZ_BENEFIT_EXCHANGE);
+        log.setBizId(exchangeNo);
+        log.setDelta(-points);
+        log.setBalanceAfter(fresh.getBalance());
+        log.setRemark("权益兑换扣除积分：" + (benefitName == null ? "" : benefitName));
+        pointLogMapper.insert(log);
+        metrics.increment("point.consume.benefit");
+        return points;
+    }
+
+    /** 关单/取消：释放已抵扣积分（REDEEM 回滚为 REDEEM_RELEASED 加回余额）。 */    @Transactional
     public void releaseByOrder(String orderNo) {
         if (orderNo == null || orderNo.isBlank()) {
             return;

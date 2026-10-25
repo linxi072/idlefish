@@ -18,6 +18,7 @@ import com.idlefish.trade.trade.mapper.PayOrderMapper;
 import com.idlefish.trade.trade.service.DelayQueueService;
 import com.idlefish.trade.marketing.service.PointService;
 import com.idlefish.trade.marketing.invite.service.InviteService;
+import com.idlefish.trade.member.service.GrowthValueService;
 import com.idlefish.trade.member.service.MemberLevelService;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.pricing.service.PricingService;
@@ -44,6 +45,8 @@ public class PayService {
     private final PointService pointService;
     private final InviteService inviteService;
     private final MemberLevelService memberLevelService;
+    /** ITER-F07：成长值多维累计（交易/发布/评价/验货/和解 + 防刷 + 流水），best-effort。 */
+    private final GrowthValueService growthValueService;
     private final PricingService pricingService;
     /** 领域事件发布（ITER-T06）：支付/退款事件 best-effort 发布，Outbox 同事务保证不丢。 */
     private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
@@ -53,7 +56,8 @@ public class PayService {
                       ObjectMapper objectMapper,
                       @Lazy DelayQueueService delayQueueService, NotificationService notificationService,
                       MetricsRegistry metrics, PointService pointService, InviteService inviteService,
-                      MemberLevelService memberLevelService, PricingService pricingService,
+                      MemberLevelService memberLevelService, GrowthValueService growthValueService,
+                      PricingService pricingService,
                       com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
         this.payOrderMapper = payOrderMapper;
         this.orderMapper = orderMapper;
@@ -66,6 +70,7 @@ public class PayService {
         this.pointService = pointService;
         this.inviteService = inviteService;
         this.memberLevelService = memberLevelService;
+        this.growthValueService = growthValueService;
         this.pricingService = pricingService;
         this.eventPublisher = eventPublisher;
     }
@@ -245,6 +250,12 @@ public class PayService {
         try {
             memberLevelService.addGrowth(order.getBuyerId(),
                     com.idlefish.trade.member.MemberLevelCalculator.growthFromTrade(po.getAmount()));
+        } catch (Exception ignore) {
+        }
+
+        // ITER-F07：交易成功买家得成长值（多维累计 + 防刷 + 全量流水，best-effort）
+        try {
+            growthValueService.earnTrade(order.getBuyerId(), order.getOrderNo(), po.getAmount());
         } catch (Exception ignore) {
         }
 

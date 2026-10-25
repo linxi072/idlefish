@@ -45,6 +45,8 @@ public class IdlefishProperties {
     private Export export = new Export();
     /** 事件驱动架构（ITER-T06 / PRD-P2-T06）：Outbox 分发重试、死信、回放限流与持久化保留期。 */
     private Event event = new Event();
+    /** 会员积分成长深化（ITER-F07 / PRD-P2-F07）：成长值（不可消耗）多维累计、防刷、衰减与权益兑换。 */
+    private Growth growth = new Growth();
 
     @Data
     public static class Jwt {
@@ -494,5 +496,61 @@ public class IdlefishProperties {
         private long replayIntervalMs = 200L;
         /** 单个回放任务最大事件数（防误操作全量回放）。默认 10000。 */
         private int replayMaxEvents = 10000;
+    }
+
+    /**
+     * 会员积分成长深化配置（ITER-F07 / PRD-P2-F07）。
+     * <p>成长值不可消耗、仅决定等级（REQ-01）；与积分（{@link Point}）完全解耦。
+     * 规则变更只对新行为生效，不追溯重算历史成长值（REQ-14）。</p>
+     */
+    @Data
+    public static class Growth {
+        /** 成长值功能总开关；关闭后所有来源一律不计成长值（best-effort，不阻断交易主流程）。 */
+        private boolean enabled = true;
+
+        // ===== REQ-02 多维累计 =====
+        /** 交易：每 1 元（100 分）得多少成长值。默认 1（≈1% 返值，与等级阈值 100/500/2000/8000 匹配）。 */
+        private int tradeGrowthPerYuanFen = 1;
+        /** 交易：单笔成长值封顶（防大额订单一次性冲级）。默认 0 不封顶。 */
+        private int tradeCapPerOrder = 0;
+        /** 发布：每发布一个商品固定成长值。 */
+        private int publishFixed = 10;
+        /** 评价：评价通过固定成长值。 */
+        private int reviewFixed = 20;
+        /** 验货配合（F-02 验货单完成）固定成长值。 */
+        private int inspectionFixed = 30;
+        /** 纠纷和解（F-17 判责且双方和解）固定成长值。 */
+        private int reconcileFixed = 15;
+
+        // ===== REQ-03 刷分识别 =====
+        /** 关联账户阈值：同设备绑定账号数超过即视为团伙刷分。默认 3。 */
+        private int maxLinkedAccounts = 3;
+        /** 频次阈值：窗口内成长值发放次数达到即拦截。默认 20。 */
+        private int maxEarnInWindow = 20;
+        /** 频次统计窗口（天）。默认 1。 */
+        private int earnWindowDays = 1;
+        /** 金额门槛（分）：交易金额低于该值不发成长值，防 1 分钱刷量。默认 100 分 = 1 元。 */
+        private long minAmountFen = 100L;
+
+        // ===== REQ-05 不活跃衰减 / 降级 =====
+        /** 衰减开关。 */
+        private boolean decayEnabled = true;
+        /** 不活跃阈值（天）：超过该天数未活跃才进入衰减。默认 90 天。 */
+        private int decayThresholdDays = 90;
+        /** 每衰减日扣减成长值。默认 5。 */
+        private int decayPerDay = 5;
+        /** 衰减下限：成长值扣到该值不再继续扣（保底留在 L1）。默认 0。 */
+        private int decayFloor = 0;
+        /** 提前通知天数（REQ-05 提前 7 日）。默认 7。 */
+        private int decayNotifyDays = 7;
+        /** 衰减/降级通知与告警接收者（管理员 userId）；为空回退 notify.alertAdminUserId。 */
+        private Long alertAdminUserId;
+
+        // ===== REQ-10 判责扣减 =====
+        /** F-17 判责扣减成长值：单次封顶（0=不封顶，按当前值全扣下限 0）。默认 500。 */
+        private int disputePenaltyCap = 500;
+
+        /** 规则版本号（REQ-14）：变更规则时递增，流水快照该值以便区分口径、支撑不追溯重算。 */
+        private String ruleVersion = "v1";
     }
 }
