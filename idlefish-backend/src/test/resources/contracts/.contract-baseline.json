@@ -1,7 +1,7 @@
 {
   "version" : 1,
-  "generatedAt" : "2026-10-23",
-  "endpointCount" : 166,
+  "generatedAt" : "2026-10-25",
+  "endpointCount" : 191,
   "generatedBy" : "ContractBaselineRegenerateTest（ITER-T03）；不兼容变更请走评审后再生，禁止为绕过门禁随意再生",
   "endpoints" : {
     "DELETE /api/address/{id}" : {
@@ -135,6 +135,60 @@
       "expectStatus" : 200,
       "fields" : [ "data" ],
       "file" : "export.json"
+    },
+    "GET /api/admin/growth/account" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.frozen", "data.growthValue", "data.levelCode" ],
+      "file" : "member.json"
+    },
+    "GET /api/admin/growth/accounts" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "member.json"
+    },
+    "GET /api/admin/growth/antifraud" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "member.json"
+    },
+    "GET /api/admin/growth/benefits" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
+    "GET /api/admin/growth/config" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.decayThresholdDays", "data.enabled", "data.ruleVersion" ],
+      "file" : "member.json"
+    },
+    "GET /api/admin/growth/exchanges" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "member.json"
+    },
+    "GET /api/admin/growth/logs" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "member.json"
+    },
+    "GET /api/admin/member/level/growth" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "member.json"
+    },
+    "GET /api/admin/member/level/list" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
     },
     "GET /api/admin/price/abnormal" : {
       "auth" : "admin",
@@ -303,6 +357,42 @@
       "expectStatus" : 200,
       "fields" : [ "data" ],
       "file" : "local.json"
+    },
+    "GET /api/member/growth/account" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.daysUntilDecay", "data.frozen", "data.growthValue", "data.levelCode", "data.ruleVersion", "data.totalEarned" ],
+      "file" : "member.json"
+    },
+    "GET /api/member/growth/benefits" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "member.json"
+    },
+    "GET /api/member/growth/benefits/detail" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.benefitName", "data.exchangeable", "data.id" ],
+      "file" : "member.json"
+    },
+    "GET /api/member/growth/config" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.decayThresholdDays", "data.enabled", "data.ruleVersion" ],
+      "file" : "member.json"
+    },
+    "GET /api/member/growth/exchanges" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "member.json"
+    },
+    "GET /api/member/growth/logs" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "member.json"
     },
     "GET /api/member/level/mine" : {
       "auth" : "user",
@@ -652,6 +742,54 @@
       "fields" : [ "data.headers", "data.orgIds", "data.rowCount" ],
       "file" : "export.json"
     },
+    "POST /api/admin/growth/benefits/delete" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
+    "POST /api/admin/growth/benefits/save" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
+    "POST /api/admin/growth/benefits/status" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
+    "POST /api/admin/growth/decay/run" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.decayed", "data.scanned" ],
+      "file" : "member.json"
+    },
+    "POST /api/admin/growth/freeze" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
+    "POST /api/admin/growth/unfreeze" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
+    "POST /api/admin/member/level/delete" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
+    "POST /api/admin/member/level/save" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
     "POST /api/admin/price/config" : {
       "auth" : "admin",
       "expectStatus" : 200,
@@ -831,6 +969,18 @@
       "expectStatus" : 200,
       "fields" : [ "data" ],
       "file" : "local.json"
+    },
+    "POST /api/member/growth/exchange" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
+    "POST /api/member/growth/touch" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
     },
     "POST /api/mq/consume" : {
       "auth" : "none",

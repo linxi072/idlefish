@@ -5,6 +5,7 @@ import com.idlefish.trade.common.enums.RefundStatus;
 import com.idlefish.trade.common.idempotent.IdempotentService;
 import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.item.service.ItemService;
+import com.idlefish.trade.member.service.GrowthValueService;
 import com.idlefish.trade.trade.entity.Refund;
 import com.idlefish.trade.trade.mapper.FundFlowMapper;
 import com.idlefish.trade.trade.mapper.OrderMapper;
@@ -53,6 +54,8 @@ class RefundServiceTest {
     @Mock private MetricsRegistry metrics;
     @Mock private IdempotentService idempotentService;
     @Mock private com.idlefish.trade.event.DomainEventPublisher eventPublisher;
+    /** ITER-F07：退款冲正成长值（mock 直通，默认不触发任何行为）。 */
+    @Mock private GrowthValueService growthValueService;
 
     /** 模拟数据库：refundId -> 当前状态。 */
     private final Map<Long, String> db = new ConcurrentHashMap<>();
@@ -67,8 +70,8 @@ class RefundServiceTest {
 
     private RefundService service() {
         return new RefundService(refundMapper, orderMapper, payOrderMapper, payService,
-                itemService, fundFlowMapper, notificationService, metrics, idempotentService,
-                eventPublisher);
+                itemService, fundFlowMapper, notificationService, metrics, growthValueService,
+                idempotentService, eventPublisher);
     }
 
     /** 装配模拟 DB：selectOne 始终返回 WAIT_SELLER（建模并发竞态「两线程写入前均读到待处理态」的 TOCTOU 前置）；
@@ -130,6 +133,8 @@ class RefundServiceTest {
         verify(payService, times(1)).refund(eq(PAY_NO), eq(AMOUNT));
         assertEquals(RefundStatus.REFUNDED.getCode(), db.get(REFUND_ID),
                 "退款完成后状态应推进为 refunded");
+        // ITER-F07：退款成功应冲正该订单的交易成长值（幂等，按订单号）
+        verify(growthValueService, times(1)).reverseByOrder(eq(ORDER_NO));
     }
 
     /**

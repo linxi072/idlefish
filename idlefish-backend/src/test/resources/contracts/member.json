@@ -1,6 +1,6 @@
 {
   "domain": "member",
-  "description": "会员等级与权益（F-13.2）：用户端我的等级与权益",
+  "description": "会员等级与成长值（F-13.2 + ITER-F07 深化）：用户端等级/成长中心/权益兑换，运营后台等级与成长值运营",
   "endpoints": [
     {
       "method": "GET",
@@ -9,6 +9,206 @@
       "expectStatus": 200,
       "expectFields": ["data.levelCode", "data.levelName", "data.growthValue", "data.percent"],
       "notes": "F-13.2 我的会员等级、权益与升级进度"
+    },
+    {
+      "method": "GET",
+      "path": "/api/member/growth/account",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.levelCode", "data.growthValue", "data.totalEarned", "data.frozen", "data.daysUntilDecay", "data.ruleVersion"],
+      "notes": "ITER-F07 我的成长中心：等级权益+进度+冻结+距衰减天数"
+    },
+    {
+      "method": "GET",
+      "path": "/api/member/growth/logs",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F07 成长值流水（可按 bizType 过滤，REQ-09 对账）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/member/growth/config",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.enabled", "data.ruleVersion", "data.decayThresholdDays"],
+      "notes": "ITER-F07 成长值规则配置（获得口径/衰减参数/规则版本）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/member/growth/benefits",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F07 权益兑换中心：上架中权益+可兑换判定"
+    },
+    {
+      "method": "GET",
+      "path": "/api/member/growth/benefits/detail",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.id", "data.benefitName", "data.exchangeable"],
+      "notes": "ITER-F07 权益详情（含可兑换判定）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/member/growth/exchange",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F07 权益兑换：等级/库存/积分/每日上限校验后原子发放，返回兑换单号"
+    },
+    {
+      "method": "GET",
+      "path": "/api/member/growth/exchanges",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F07 我的兑换记录"
+    },
+    {
+      "method": "POST",
+      "path": "/api/member/growth/touch",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F07 上报活跃：刷新衰减基准"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/member/level/list",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "F-13.2 等级配置清单（按阈值升序）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/member/level/growth",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "F-13.2 会员成长值概览（分页）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/member/level/save",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "F-13.2 新增/更新等级配置"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/member/level/delete",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "F-13.2 删除等级配置"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/config",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.enabled", "data.ruleVersion", "data.decayThresholdDays"],
+      "notes": "ITER-F07 运营后台成长值规则配置"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/accounts",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F07 成长值账户列表（可按冻结状态过滤）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/account",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.levelCode", "data.growthValue", "data.frozen"],
+      "notes": "ITER-F07 单个用户成长值账户（只读）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/logs",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F07 指定用户成长值流水（可按来源过滤，对账）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/antifraud",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F07 刷分冻结名单（REQ-03）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/growth/freeze",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F07 冻结发放通道（REQ-03）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/growth/unfreeze",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F07 解冻发放通道（已跳过成长值不回补）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/benefits",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F07 权益配置清单（全部）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/growth/benefits/save",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F07 新增/更新权益配置"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/growth/benefits/delete",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F07 删除权益配置"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/growth/benefits/status",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F07 权益上下架（REQ-12）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/growth/exchanges",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F07 兑换记录（可按用户过滤，积分消耗对账）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/growth/decay/run",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.scanned", "data.decayed"],
+      "notes": "ITER-F07 手动触发衰减扫描/预警（补跑/演练）"
     }
   ]
 }
