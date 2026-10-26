@@ -427,4 +427,74 @@ export function searchTermHotWords() {
   ];
 }
 
-export default { categories, items, activities, reviews, orders, users, riskEvents, auditLogs, riskRules, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList, recommend, inviteRelations, searchTermSynonyms, searchTermHotWords };
+// ===== 成长值运营（ITER-F07，对齐 AdminGrowthController /api/admin/growth/*） =====
+// 规则配置（只读）：镜像 IdlefishProperties.Growth，运营后台仅展示口径，不可改。
+export const growthConfig = {
+  enabled: true,
+  tradeGrowthPerYuanFen: 1,
+  tradeCapPerOrder: 0,
+  publishFixed: 10,
+  reviewFixed: 20,
+  inspectionFixed: 30,
+  reconcileFixed: 15,
+  maxLinkedAccounts: 3,
+  maxEarnInWindow: 20,
+  earnWindowDays: 1,
+  minAmountFen: 100,
+  decayEnabled: true,
+  decayThresholdDays: 90,
+  decayPerDay: 5,
+  decayFloor: 0,
+  decayNotifyDays: 7,
+  alertAdminUserId: 1,
+  disputePenaltyCap: 500,
+  ruleVersion: 'v1'
+};
+
+// 成长值账户（GrowthAccountAdminVO）：冻结名单 / 流失预警共用；freeze/unfreeze 原地改 frozen。
+export const growthAccounts = [
+  { userId: 2001, levelCode: 'L3', levelName: '白银会员', growthValue: 760, totalEarned: 820, frozen: false, lastActiveAt: '2026-09-27 21:30', daysUntilDecay: 64 },
+  { userId: 1001, levelCode: 'L4', levelName: '黄金会员', growthValue: 2150, totalEarned: 2300, frozen: false, lastActiveAt: '2026-09-28 09:10', daysUntilDecay: 70 },
+  { userId: 1002, levelCode: 'L1', levelName: '注册会员', growthValue: 40, totalEarned: 55, frozen: false, lastActiveAt: '2026-09-10 12:00', daysUntilDecay: 72 },
+  { userId: 1003, levelCode: 'L1', levelName: '注册会员', growthValue: 30, totalEarned: 30, frozen: true, lastActiveAt: '2026-09-21 07:55', daysUntilDecay: 80 },
+  { userId: 1004, levelCode: 'L2', levelName: '青铜会员', growthValue: 230, totalEarned: 260, frozen: true, lastActiveAt: '2026-09-25 18:20', daysUntilDecay: 65 },
+  { userId: 2002, levelCode: 'L3', levelName: '白银会员', growthValue: 640, totalEarned: 700, frozen: false, lastActiveAt: '2026-09-26 20:00', daysUntilDecay: 58 },
+  { userId: 2003, levelCode: 'L5', levelName: '钻石会员', growthValue: 8120, totalEarned: 8600, frozen: false, lastActiveAt: '2026-09-28 08:00', daysUntilDecay: 88 },
+  { userId: 2004, levelCode: 'L2', levelName: '青铜会员', growthValue: 150, totalEarned: 180, frozen: false, lastActiveAt: '2026-06-15 10:00', daysUntilDecay: 0 }
+];
+
+// 成长值流水（GrowthValueLogVO）：来源 code / 变更前后值 / 规则版本 / 关联单号全量可见，支撑对账。
+export const growthLogs = [
+  { id: 1, userId: 2001, bizType: 'EARN_TRADE', bizId: 'NO20260921001', delta: 13, beforeValue: 747, afterValue: 760, levelCode: 'L3', ruleVersion: 'v1', remark: '交易完成得成长值', createdAt: '2026-09-21 11:05' },
+  { id: 2, userId: 2001, bizType: 'EARN_REVIEW', bizId: '2', delta: 20, beforeValue: 727, afterValue: 747, levelCode: 'L3', ruleVersion: 'v1', remark: '评价通过得成长值', createdAt: '2026-09-22 14:35' },
+  { id: 3, userId: 2001, bizType: 'EARN_PUBLISH', bizId: '9001', delta: 10, beforeValue: 717, afterValue: 727, levelCode: 'L3', ruleVersion: 'v1', remark: '发布商品得成长值', createdAt: '2026-09-20 10:00' },
+  { id: 4, userId: 1001, bizType: 'EARN_TRADE', bizId: 'NO20260919003', delta: 52, beforeValue: 2098, afterValue: 2150, levelCode: 'L4', ruleVersion: 'v1', remark: '交易完成得成长值', createdAt: '2026-09-19 12:20' },
+  { id: 5, userId: 1001, bizType: 'EARN_INSPECTION', bizId: 'INSP20260918001', delta: 30, beforeValue: 2068, afterValue: 2098, levelCode: 'L4', ruleVersion: 'v1', remark: '验货配合得成长值', createdAt: '2026-09-18 16:40' },
+  { id: 6, userId: 1001, bizType: 'DEDUCT_DISPUTE', bizId: 'DP20260905001', delta: -500, beforeValue: 2568, afterValue: 2068, levelCode: 'L4', ruleVersion: 'v1', remark: '判责扣减（卖家责任）', createdAt: '2026-09-05 15:00' },
+  { id: 7, userId: 1004, bizType: 'EARN_PUBLISH', bizId: '9010', delta: 10, beforeValue: 220, afterValue: 230, levelCode: 'L2', ruleVersion: 'v1', remark: '发布商品得成长值', createdAt: '2026-09-25 18:22' },
+  { id: 8, userId: 1004, bizType: 'EARN_TRADE', bizId: 'NO20260924007', delta: 12, beforeValue: 218, afterValue: 230, levelCode: 'L2', ruleVersion: 'v1', remark: '交易完成得成长值', createdAt: '2026-09-24 19:00' },
+  { id: 9, userId: 2002, bizType: 'EARN_RECONCILE', bizId: 'DP20260910002', delta: 15, beforeValue: 625, afterValue: 640, levelCode: 'L3', ruleVersion: 'v1', remark: '纠纷和解得成长值', createdAt: '2026-09-10 11:00' },
+  { id: 10, userId: 2002, bizType: 'EARN_TRADE', bizId: 'NO20260923005', delta: 8, beforeValue: 632, afterValue: 640, levelCode: 'L3', ruleVersion: 'v1', remark: '交易完成得成长值', createdAt: '2026-09-23 09:30' },
+  { id: 11, userId: 2004, bizType: 'DECAY', bizId: '2026-06-15', delta: -30, beforeValue: 180, afterValue: 150, levelCode: 'L2', ruleVersion: 'v1', remark: '不活跃衰减', createdAt: '2026-06-15 03:30' },
+  { id: 12, userId: 2003, bizType: 'EARN_TRADE', bizId: 'NO20260922003', delta: 89, beforeValue: 8031, afterValue: 8120, levelCode: 'L5', ruleVersion: 'v1', remark: '交易完成得成长值', createdAt: '2026-09-22 12:10' }
+];
+
+// 权益目录（Benefit）：运营可配置可兑换权益（消耗积分，成长值仅作门槛）。
+export const growthBenefits = [
+  { id: 1, benefitCode: 'FREE_SHIP_1', benefitName: '免邮券', benefitType: 'COUPON', description: '兑换后获赠免邮券一张，限指定类目', costPoints: 200, minLevelCode: 'L2', couponId: 2, voucherAmountFen: null, stock: 500, totalStock: 1000, dailyLimit: 2, status: 'ON_SHELF', onlineAt: null, offlineAt: null, sortOrder: 1 },
+  { id: 2, benefitCode: 'VOUCHER_5', benefitName: '¥5 抵扣券', benefitType: 'VOUCHER', description: '账户余额类抵扣券，面额 5 元', costPoints: 500, minLevelCode: 'L3', couponId: null, voucherAmountFen: 500, stock: 300, totalStock: 500, dailyLimit: 1, status: 'ON_SHELF', onlineAt: null, offlineAt: null, sortOrder: 2 },
+  { id: 3, benefitCode: 'POINT_PACK_100', benefitName: '积分加赠包(100)', benefitType: 'POINT_PACKAGE', description: '兑换得 100 积分加赠', costPoints: 0, minLevelCode: 'L1', couponId: null, voucherAmountFen: null, stock: 999, totalStock: 999, dailyLimit: 0, status: 'ON_SHELF', onlineAt: null, offlineAt: null, sortOrder: 3 },
+  { id: 4, benefitCode: 'SVC_VIP', benefitName: '专属客服', benefitType: 'SERVICE', description: '专属客服优先响应 30 天', costPoints: 800, minLevelCode: 'L4', couponId: null, voucherAmountFen: null, stock: 50, totalStock: 50, dailyLimit: 1, status: 'OFF_SHELF', onlineAt: null, offlineAt: null, sortOrder: 4 }
+];
+
+// 权益兑换记录（BenefitExchangeVO）：串联兑换单号、积分扣减与发放结果，支持对账。
+export const growthExchanges = [
+  { id: 1, exchangeNo: 'BX20260925001', benefitId: 1, benefitCode: 'FREE_SHIP_1', benefitName: '免邮券', userId: 2002, costPoints: 200, benefitType: 'COUPON', couponId: 2, status: 'SUCCESS', remark: '', createdAt: '2026-09-25 14:20' },
+  { id: 2, exchangeNo: 'BX20260926002', benefitId: 2, benefitCode: 'VOUCHER_5', benefitName: '¥5 抵扣券', userId: 2001, costPoints: 500, benefitType: 'VOUCHER', couponId: null, status: 'SUCCESS', remark: '', createdAt: '2026-09-26 10:05' },
+  { id: 3, exchangeNo: 'BX20260927003', benefitId: 4, benefitCode: 'SVC_VIP', benefitName: '专属客服', userId: 2003, costPoints: 800, benefitType: 'SERVICE', couponId: null, status: 'FAILED', remark: '权益已下架', createdAt: '2026-09-27 09:30' }
+];
+
+// 衰减任务执行摘要（DecaySummary）。
+export const growthDecaySummary = { scanned: 1560, decayed: 42, downgraded: 8, notified: 96 };
+
+export default { categories, items, activities, reviews, orders, users, riskEvents, auditLogs, riskRules, stats, adminUsers, roles, orgTree, menuTree, dictTypes, dictData, withdrawals, attrTemplates, notifications, coupons, memberLevels, memberMyLevel, memberGrowthList, analyticsOverview, analyticsFunnel, analyticsCategory, analyticsCondition, logisticsTrack, couponAnalyticsOverview, couponAnalyticsTypeDist, disputeList, recommend, inviteRelations, searchTermSynonyms, searchTermHotWords, growthConfig, growthAccounts, growthLogs, growthBenefits, growthExchanges, growthDecaySummary };

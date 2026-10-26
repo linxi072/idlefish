@@ -13,6 +13,7 @@ import Risk from '@/views/risk/Risk.vue';
 import Analytics from '@/views/analytics/Analytics.vue';
 import Marketing from '@/views/marketing/Marketing.vue';
 import Member from '@/views/marketing/Member.vue';
+import Growth from '@/views/member/Growth.vue';
 import Recommend from '@/views/marketing/Recommend.vue';
 import Invite from '@/views/marketing/Invite.vue';
 import SearchTerm from '@/views/marketing/SearchTerm.vue';
@@ -39,6 +40,7 @@ const routes = [
   { path: '/analytics', name: 'analytics', component: Analytics },
   { path: '/marketing', name: 'marketing', component: Marketing },
   { path: '/member', name: 'member', component: Member },
+  { path: '/growth', name: 'growth', component: Growth },
   { path: '/recommend', name: 'recommend', component: Recommend },
   { path: '/invite', name: 'invite', component: Invite },
   { path: '/search-term', name: 'search-term', component: SearchTerm },

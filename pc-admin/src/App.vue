@@ -65,6 +65,7 @@ export default {
         { group: '用户管理', icon: 'User', children: [
           { key: 'users', label: '用户列表', icon: 'User' },
           { key: 'member', label: '会员等级', icon: 'Medal' },
+          { key: 'growth', label: '成长值运营', icon: 'TrendCharts' },
           { key: 'invite', label: '邀请拉新', icon: 'Connection' }
         ] },
         { group: '商品与内容', icon: 'ShoppingCart', children: [

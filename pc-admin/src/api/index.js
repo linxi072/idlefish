@@ -10,6 +10,7 @@ export { couponApi } from './modules/coupon.api.js';
 export { analyticsApi } from './modules/analytics.api.js';
 export { marketingApi } from './modules/marketing.api.js';
 export { memberApi } from './modules/member.api.js';
+export { growthApi } from './modules/growth.api.js';
 export { disputeApi } from './modules/dispute.api.js';
 export { reviewApi } from './modules/review.api.js';
 export { activityApi } from './modules/activity.api.js';
