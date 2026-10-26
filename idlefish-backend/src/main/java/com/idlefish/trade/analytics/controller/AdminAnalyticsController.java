@@ -6,6 +6,7 @@ import com.idlefish.trade.analytics.service.AdminAnalyticsService;
 import com.idlefish.trade.analytics.vo.AnalyticsCategoryGmv;
 import com.idlefish.trade.analytics.vo.AnalyticsCondition;
 import com.idlefish.trade.analytics.vo.AnalyticsFunnelStage;
+import com.idlefish.trade.analytics.vo.AnalyticsMemberGrowth;
 import com.idlefish.trade.analytics.vo.AnalyticsOverview;
 import com.idlefish.trade.analytics.vo.CsvExport;
 import com.idlefish.trade.common.Result;
@@ -37,6 +38,12 @@ public class AdminAnalyticsController {
     public Result<AnalyticsOverview> overview(@CurrentAdmin AdminUser admin,
                                               @RequestParam(defaultValue = "30") int days) {
         return Result.ok(analyticsService.overview(days));
+    }
+
+    /** 会员成长值对账报表（ITER-F07 遗留项④ / PRD §12.4）：用户/账户/流水三方聚合 + 对账差额。 */
+    @GetMapping("/member-growth")
+    public Result<AnalyticsMemberGrowth> memberGrowth(@CurrentAdmin AdminUser admin) {
+        return Result.ok(analyticsService.memberGrowth());
     }
 
     /** 转化漏斗。 */

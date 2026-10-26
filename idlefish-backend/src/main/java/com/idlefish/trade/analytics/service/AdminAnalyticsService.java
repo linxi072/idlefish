@@ -5,10 +5,17 @@ import com.idlefish.trade.analytics.mapper.AnalyticsMapper;
 import com.idlefish.trade.analytics.vo.AnalyticsCategoryGmv;
 import com.idlefish.trade.analytics.vo.AnalyticsCondition;
 import com.idlefish.trade.analytics.vo.AnalyticsFunnelStage;
+import com.idlefish.trade.analytics.vo.AnalyticsMemberGrowth;
 import com.idlefish.trade.analytics.vo.AnalyticsOverview;
 import com.idlefish.trade.analytics.vo.CsvExport;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
+import com.idlefish.trade.member.mapper.GrowthValueLogMapper;
+import com.idlefish.trade.member.mapper.UserGrowthMapper;
+import com.idlefish.trade.member.entity.UserGrowth;
+import com.idlefish.trade.member.service.GrowthValueService;
+import com.idlefish.trade.user.mapper.UserMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -28,9 +35,18 @@ public class AdminAnalyticsService {
     private static final int MAX_DAYS = 365;
 
     private final AnalyticsMapper analyticsMapper;
+    private final UserMapper userMapper;
+    private final UserGrowthMapper userGrowthMapper;
+    private final GrowthValueLogMapper growthValueLogMapper;
 
-    public AdminAnalyticsService(AnalyticsMapper analyticsMapper) {
+    public AdminAnalyticsService(AnalyticsMapper analyticsMapper,
+                                 UserMapper userMapper,
+                                 UserGrowthMapper userGrowthMapper,
+                                 GrowthValueLogMapper growthValueLogMapper) {
         this.analyticsMapper = analyticsMapper;
+        this.userMapper = userMapper;
+        this.userGrowthMapper = userGrowthMapper;
+        this.growthValueLogMapper = growthValueLogMapper;
     }
 
     /** 概览：GMV / 订单 / 退款率 / 客单价 / 用户 / 商品 + 每日趋势。 */
@@ -56,6 +72,60 @@ public class AdminAnalyticsService {
         o.setItemTotalCount(analyticsMapper.itemTotalCount());
         o.setTrend(trend);
         return o;
+    }
+
+    /**
+     * 会员成长值对账报表（ITER-F07 遗留项④ / PRD §12.4）：跨 t_user / t_user_growth /
+     * t_growth_value_log 三方聚合。核心是核对「账户存量总成长值」与「流水总账」是否一致，
+     * {@code reconciliationDiff} 应≈0，非 0 提示存在未对账的脏数据。
+     * <p>best-effort：任一聚合为 0 不抛异常（无数据时各字段为 0，对账差额为 0）。</p>
+     */
+    public AnalyticsMemberGrowth memberGrowth() {
+        long totalUsers = safe(() -> userMapper.selectCount(null));
+        long usersWithAccount = safe(() -> userGrowthMapper.selectCount(null));
+        long totalGrowthValue = safe(userGrowthMapper::sumGrowthValue);
+        long ledgerSum = safe(growthValueLogMapper::sumTotalDelta);
+        long cumulativeEarned = safe(growthValueLogMapper::sumPositiveDelta);
+        long cumulativeDecay = safe(
+                () -> growthValueLogMapper.sumAbsByBizType(GrowthValueService.BIZ_DECAY));
+        long cumulativeDeductDispute = safe(
+                () -> growthValueLogMapper.sumAbsByBizType(GrowthValueService.BIZ_DEDUCT_DISPUTE));
+        long cumulativeDeductReverse = safe(
+                () -> growthValueLogMapper.sumAbsByBizType(GrowthValueService.BIZ_DEDUCT_REVERSE));
+        long restored = safe(
+                () -> growthValueLogMapper.sumAbsByBizType(GrowthValueService.BIZ_RESTORE_DISPUTE));
+        long frozenAccounts = safe(() -> userGrowthMapper.selectCount(
+                new LambdaQueryWrapper<UserGrowth>().eq(UserGrowth::getGrowthFrozen, 1)));
+
+        AnalyticsMemberGrowth r = new AnalyticsMemberGrowth();
+        r.setTotalUsers(totalUsers);
+        r.setUsersWithAccount(usersWithAccount);
+        r.setUsersWithoutAccount(Math.max(0, totalUsers - usersWithAccount));
+        r.setTotalGrowthValue(totalGrowthValue);
+        r.setCumulativeEarned(cumulativeEarned);
+        r.setCumulativeDecay(cumulativeDecay);
+        r.setCumulativeDeductDispute(cumulativeDeductDispute);
+        r.setCumulativeDeductReverse(cumulativeDeductReverse);
+        r.setRestored(restored);
+        r.setFrozenAccounts(frozenAccounts);
+        r.setLedgerSum(ledgerSum);
+        r.setReconciliationDiff(totalGrowthValue - ledgerSum);
+        return r;
+    }
+
+    /** 安全取 long 聚合：映射异常（如表不存在 / 连接失败）降级为 0，保证报表接口不崩溃。 */
+    private long safe(LongSupplier supplier) {
+        try {
+            return supplier.getAsLong();
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+
+    /** 函数式 long 供应者（避免引入额外依赖）。 */
+    @FunctionalInterface
+    private interface LongSupplier {
+        long getAsLong();
     }
 
     /** 转化漏斗：浏览 → 搜索 → 收藏 → 下单 → 支付（含环比/整体转化率）。 */

@@ -209,6 +209,22 @@
       "expectStatus": 200,
       "expectFields": ["data.scanned", "data.decayed"],
       "notes": "ITER-F07 手动触发衰减扫描/预警（补跑/演练）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/growth/init-stock",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F07 存量用户成长值账户初始化（PRD §12.4 遗留项②）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/growth/restore-by-dispute",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F07 申诉成功回补判责扣减（REQ-10，按工单号自动反查）"
     }
   ]
 }

@@ -16,6 +16,7 @@ import com.idlefish.trade.member.entity.UserGrowth;
 import com.idlefish.trade.member.mapper.GrowthValueLogMapper;
 import com.idlefish.trade.member.mapper.MemberLevelMapper;
 import com.idlefish.trade.member.mapper.UserGrowthMapper;
+import com.idlefish.trade.user.mapper.UserMapper;
 import com.idlefish.trade.member.vo.GrowthAccountAdminVO;
 import com.idlefish.trade.member.vo.GrowthAccountVO;
 import com.idlefish.trade.member.vo.GrowthValueLogVO;
@@ -76,6 +77,7 @@ public class GrowthValueService {
     private static final String DEFAULT_LEVEL = "L1";
 
     private final UserGrowthMapper userGrowthMapper;
+    private final UserMapper userMapper;
     private final GrowthValueLogMapper growthValueLogMapper;
     private final MemberLevelMapper memberLevelMapper;
     private final DeviceFingerprintMapper deviceFingerprintMapper;
@@ -84,6 +86,7 @@ public class GrowthValueService {
     private final IdlefishProperties.Growth growth;
 
     public GrowthValueService(UserGrowthMapper userGrowthMapper,
+                              UserMapper userMapper,
                               GrowthValueLogMapper growthValueLogMapper,
                               MemberLevelMapper memberLevelMapper,
                               DeviceFingerprintMapper deviceFingerprintMapper,
@@ -91,6 +94,7 @@ public class GrowthValueService {
                               MetricsRegistry metrics,
                               IdlefishProperties idlefishProperties) {
         this.userGrowthMapper = userGrowthMapper;
+        this.userMapper = userMapper;
         this.growthValueLogMapper = growthValueLogMapper;
         this.memberLevelMapper = memberLevelMapper;
         this.deviceFingerprintMapper = deviceFingerprintMapper;
@@ -203,6 +207,26 @@ public class GrowthValueService {
     }
 
     /**
+     * 申诉成功回补（REQ-10，便捷重载）：自动反查该工单的历史判责扣减量并回补，按工单号幂等。
+     * 供维权申诉成功流调用，调用方无需感知扣减幅度；无判责扣减（或已回补）时返回 0。
+     */
+    @Transactional
+    public int restoreByDispute(Long userId, String disputeNo) {
+        if (!growth.isEnabled() || userId == null || disputeNo == null || disputeNo.isBlank()) {
+            return 0;
+        }
+        if (alreadyLogged(userId, BIZ_RESTORE_DISPUTE, disputeNo)) {
+            return 0;
+        }
+        long deducted = growthValueLogMapper.sumAbsDeltaByBiz(userId, BIZ_DEDUCT_DISPUTE, disputeNo);
+        if (deducted <= 0) {
+            return 0; // 无判责扣减可回补
+        }
+        int amount = (int) Math.min(deducted, Integer.MAX_VALUE);
+        return restoreByDispute(userId, disputeNo, amount, "申诉成功自动回补");
+    }
+
+    /**
      * 退款 / 退货冲正：按订单号找到该订单的交易成长值流水，逐用户扣回（负向流水）。
      * 与 {@code PointService.releaseByOrder} 同范式，幂等可重复调用。
      */
@@ -288,6 +312,41 @@ public class GrowthValueService {
             return empty;
         }
         return toAccountVO(g, false);
+    }
+
+    /**
+     * 存量用户初始化（PRD §12.4 遗留项②）：为尚未建立成长值账户的存量用户批量创建
+     * 默认 L1 / 0 成长值账户。幂等 best-effort——复用 {@link #ensure} 的惰性创建逻辑，
+     * 唯一索引兜底不会产生重复账户；单条失败不影响其余。
+     *
+     * @param limit 单次最多初始化用户数（防止超大事务，后台分页调用）
+     * @return 实际初始化的账户数量
+     */
+    @Transactional
+    public int initMissingUsers(int limit) {
+        if (!growth.isEnabled() || limit <= 0) {
+            return 0;
+        }
+        List<Long> ids = userMapper.selectMissingGrowthUserIds(Math.max(1, limit));
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        for (Long userId : ids) {
+            try {
+                UserGrowth created = ensure(userId);
+                if (created != null) {
+                    count++;
+                }
+            } catch (Exception e) {
+                // best-effort：单条初始化失败仅记指标，不阻断其余存量用户
+                metrics.increment("growth.init.error");
+            }
+        }
+        if (count > 0) {
+            metrics.increment("growth.init.stock");
+        }
+        return count;
     }
 
     /**

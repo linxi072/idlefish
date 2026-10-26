@@ -149,4 +149,25 @@ public class AdminGrowthController {
                 : growthDecayService.scanAndDecay();
         return Result.ok(s);
     }
+
+    /**
+     * 存量用户成长值账户初始化（PRD §12.4 遗留项②）：为尚未建立账户的存量用户批量补建
+     * 默认 L1 / 0 账户。{@code limit} 控制单次批量规模，返回本次初始化数量；可分页多次调用。
+     */
+    @PostMapping("/init-stock")
+    public Result<Integer> initStock(@CurrentAdmin AdminUser admin,
+                                     @RequestParam(defaultValue = "1000") int limit) {
+        return Result.ok(growthValueService.initMissingUsers(limit));
+    }
+
+    /**
+     * 申诉成功回补判责扣减（REQ-10）：按工单号自动反查历史判责扣减量并回补，幂等。
+     * 供运营在维权申诉裁定通过后手动触发；无判责扣减或已回补时返回 0。
+     */
+    @PostMapping("/restore-by-dispute")
+    public Result<Integer> restoreByDispute(@CurrentAdmin AdminUser admin,
+                                            @RequestParam Long userId,
+                                            @RequestParam String disputeNo) {
+        return Result.ok(growthValueService.restoreByDispute(userId, disputeNo));
+    }
 }

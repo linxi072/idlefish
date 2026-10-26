@@ -299,6 +299,14 @@
     },
     {
       "method": "GET",
+      "path": "/api/admin/analytics/member-growth",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.totalUsers", "data.usersWithAccount", "data.totalGrowthValue", "data.ledgerSum", "data.reconciliationDiff"],
+      "notes": "ITER-F07 会员成长值对账报表：用户/账户/流水三方聚合 + 对账差额"
+    },
+    {
+      "method": "GET",
       "path": "/api/admin/member/level/list",
       "auth": "admin",
       "expectStatus": 200,
