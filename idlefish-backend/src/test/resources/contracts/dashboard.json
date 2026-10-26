@@ -1,0 +1,25 @@
+{
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/admin/dashboard/overview",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["cards", "health", "anomalies"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/dashboard/anomalies",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["metric", "current", "previous", "delta", "severity", "message"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/dashboard/contribution",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["label", "value", "share", "cumulativeShare", "top"]
+    }
+  ]
+}
