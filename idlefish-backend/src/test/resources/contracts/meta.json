@@ -1,0 +1,32 @@
+{
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/admin/meta/status-dict",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["domain", "label", "items"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/meta/status-dict/{domain}",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["domain", "label", "items"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/meta/terms",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["term", "definition", "synonym", "domain"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/meta/design-tokens",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["token", "value", "platforms", "usage"]
+    }
+  ]
+}
