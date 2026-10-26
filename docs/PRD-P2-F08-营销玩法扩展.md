@@ -4,7 +4,7 @@
 |---|---|
 | 编号 | ITER-F08 |
 | 维度 / 优先级 | 功能完善 / **P2** |
-| 状态 | 待评审 |
+| 状态 | 已实现（后端 + 小程序 + PC 后台代码交付，待联调/压测闭环） |
 | 建议负责 | 后端负责人（活动/库存/并发）+ 产品负责人（玩法规则）+ 前端负责人（活动页） |
 | 关联模块 | F-10 券（发放/限领/唯一索引兜底）、F-13.3 拼团秒杀（`ActivityValidator` 纯函数、并发限领）、F-13.1 积分、F-13.4 邀请拉新、RocketMQ（削峰）、Redis（库存与限流）、F-15.2 限流、F-14.5 BI（活动 ROI） |
 | 被依赖 | 大促运营、ITER-U06（经营看板的活动效果模块） |
@@ -187,3 +187,48 @@ F-10 券与 F-13.3 拼团秒杀已落地，覆盖了「打折」与「多人成�
 | 风险 | 抽奖合规（有奖销售） | 概率明示 + 法务评审 + 价值上限校验 |
 | 风险 | 直播流媒体能力缺失 | 本项仅做商品/库存/发券对接，视频流后续专项 |
 | 风险 | 离线沙箱无法做真实高并发验证 | 纯函数 + Mockito 单测覆盖逻辑；峰值验证留压测环境 |
+
+---
+
+## 十二、实现说明（ITER-F08 交付记录）
+
+> 状态：后端 + 小程序 + PC 后台均已代码交付；契约门禁与单测离线全绿，全量回归 893 例 0F 0E；待联调与压测闭环。
+
+### 12.1 架构落地
+
+- **统一活动内核** `com.idlefish.trade.marketing.activity.service.ActivityKernelService`：封装「库存原子扣减 / 限领校验 / 时间窗判定 / 对账流水 / 亏损阻断 / 风控钩子 / 幂等」，三玩法（`MktBargainService` 砍价、`LotteryService` 抽奖、`LiveSeckillService` 直播秒杀）共享，互不重复实现（REQ-01）。
+- **纯函数内核**：`BargainCalculator`（逐刀金额计算，总额受控不穿底价）、`ActivityValidator`（参与资格校验），入参确定→输出确定，离线单测覆盖（REQ-12 / REQ-14 亏损阻断在配置阶段判定）。
+- **金额全链路「分」**：砍价底价、券面额、奖品价值均按分存储与计算（REQ-04）。
+- **库存与削峰**：秒杀 Redis 预扣 + RocketMQ 异步落库（`SeckillAsyncDispatcher` / `RocketMqSeckillDispatcher`），超时回滚（`SeckillSettleRecovery`），最终一致（REQ-07）；库存原子扣减 + `(user_id, activity_id)` 唯一索引兜底防超发（REQ-03 / REQ-06）。
+- **幂等**：`requestId` / `deviceId` + 幂等键保证并发/重放仅生效一次（REQ-06）。
+- **人群定向**：`AudienceType`（新客/等级/地区）在列表可见性与参与校验同时生效（REQ-13）。
+- **风控与实名**：参与前经风控钩子（设备/频率/画像，REQ-05）；抽奖实物/高价值奖品触发合规浮层 + 实名校验与收货信息补录（REQ-10）。
+- **对账与 ROI**：活动结束回收剩余库存并结算补贴成本（`ActivityReconciliation`），补贴流水写入营销 ROI 数据源（REQ-11 / REQ-15）。
+
+### 12.2 接口与契约
+
+- 用户端基路径 `/api/mkt/activity`（9 端点：list / detail / bargain/create / bargain/assist / bargain/{sessionNo} / lottery/draw / lottery/realname / seckill/grab / my-records）。
+  - 注：用户端路径刻意避开 legacy F-13.3 拼团秒杀的 `/api/activity`，避免冲突；运营端 `/api/admin/activity` 独立。
+- 运营端 `/api/admin/activity`（7 端点：list / detail / create / publish / reconcile / monitor / 抽奖奖品配置）。
+- 契约文件 `marketing-activity.json`，基线 225 端点（含本模块 16 端点），契约门禁（一致性 + 兼容性）双绿。
+
+### 12.3 数据落地
+
+- Schema 7 张表：`t_marketing_activity`、`t_activity_record`、`t_bargain_session`、`t_bargain_assist`、`t_lottery_prize`、`t_lottery_prize_entity`、`t_activity_reconciliation`（随 `schema-mysql.sql` 迁移）。
+
+### 12.4 前端交付
+
+- **小程序**：`pages/mkt/*`（index 聚合 / detail 兜底 / bargain 砍价 / lottery 抽奖 / seckill 秒杀）+ 通用合规浮层组件 `components/compliance-overlay`；`utils/api.js`、`utils/mock.js` 新增 F-08 营销方法；`app.json` 注册 5 个页面。
+- **PC 后台**：`src/views/marketing/MktActivity.vue`（el-tabs 四区块：活动列表 / 监控报表 / 抽奖奖品配置 / 创建向导）+ `src/api/modules/mkt-activity.api.js`；`router/index.js` 注册 `/mkt-activity`，`App.vue` 菜单「营销管理」组新增「营销玩法」；`npm run build` 通过。
+
+### 12.5 测试与验收
+
+- 离线单测：`ActivityCoreTest`（33 例，纯函数与边界）、`ActivityKernelServiceTest`（13 例，Mockito 装配与回滚）+ 契约门禁 2 例。
+- 全量回归：893 例 0F 0E 1skip BUILD SUCCESS（含 `@SpringBootTest` 集成测试依赖真实 MySQL/Redis）。
+- 验收清单 REQ-01~REQ-15 后端代码就绪；联调与压测（G3 QPS / 风控准确率）留压测环境闭环。
+
+### 12.6 关键修复（装配期缺陷）
+
+1. **Bean 重名冲突**：legacy `trade.controller.ActivityController` 与 F-08 `marketing.controller.ActivityController` 同名（Spring 按简单类名派生 bean 名 `activityController` 冲突）→ F-08 用户端控制器改名为 `MktActivityController`。同因 `trade.service.BargainService` 与 `marketing.activity.service.BargainService` 同名 `bargainService` → F-08 服务改名为 `MktBargainService`。
+2. **MapperScan 漏包**：`@MapperScan` 仅含 `marketing.mapper` / `marketing.invite.mapper`，未含 `marketing.activity.mapper`，导致 F-08 全部 Mapper（`SeckillSettleTaskMapper` 等）无法装配，引发 `UnsatisfiedDependencyException`。已在 `TradeApplication` 补 `"com.idlefish.trade.marketing.activity.mapper"`。
+3. 上述两缺陷导致 `@SpringBootTest` 集成测试上下文加载失败（30 Errors），修复后全绿。
