@@ -14,6 +14,7 @@ export { growthApi } from './modules/growth.api.js';
 export { disputeApi } from './modules/dispute.api.js';
 export { reviewApi } from './modules/review.api.js';
 export { activityApi } from './modules/activity.api.js';
+export { mktActivityApi } from './modules/mkt-activity.api.js';
 export { inviteApi } from './modules/invite.api.js';
 export { recommendApi } from './modules/recommend.api.js';
 export { searchTermApi } from './modules/search-term.api.js';

@@ -19,6 +19,7 @@ import Invite from '@/views/marketing/Invite.vue';
 import SearchTerm from '@/views/marketing/SearchTerm.vue';
 import Coupon from '@/views/marketing/Coupon.vue';
 import Activity from '@/views/marketing/Activity.vue';
+import MktActivity from '@/views/marketing/MktActivity.vue';
 import Wallet from '@/views/finance/Wallet.vue';
 import Notify from '@/views/notify/Notify.vue';
 import SysUser from '@/views/system/SysUser.vue';
@@ -48,6 +49,7 @@ const routes = [
   { path: '/attributes', name: 'attributes', component: Attributes },
   { path: '/coupon', name: 'coupon', component: Coupon },
   { path: '/activity', name: 'activity', component: Activity },
+  { path: '/mkt-activity', name: 'mkt-activity', component: MktActivity },
   { path: '/notify', name: 'notify', component: Notify },
   { path: '/sysuser', name: 'sysuser', component: SysUser },
   { path: '/role', name: 'role', component: Role },

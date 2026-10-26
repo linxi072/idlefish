@@ -82,7 +82,8 @@ export default {
         { group: '营销管理', icon: 'Promotion', children: [
           { key: 'marketing', label: '营销驾驶舱', icon: 'Aim' },
           { key: 'coupon', label: '发券管理', icon: 'Ticket' },
-          { key: 'activity', label: '活动管理', icon: 'MagicStick' }
+          { key: 'activity', label: '活动管理', icon: 'MagicStick' },
+          { key: 'mkt-activity', label: '营销玩法', icon: 'MagicStick' }
         ] },
         { group: '财务运营', icon: 'Wallet', children: [
           { key: 'wallet', label: '资金财务', icon: 'CreditCard' },

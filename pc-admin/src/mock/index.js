@@ -37,6 +37,61 @@ export const activities = [
   { id: 5, itemId: 9005, type: 'SECKILL', activityPrice: 99900, stock: 20, soldCount: 18, limitPerUser: 1, groupSize: null, groupValidMinutes: null, status: 'ONGOING', startAt: '2026-09-30 08:00:00', endAt: '2026-10-03 23:59:59' }
 ];
 
+// ===== 营销玩法（ITER-F08：砍价/抽奖/直播秒杀，金额单位：分）=====
+// 复用在售商品 9001~9003（9004/9005/9006/9007 用于其它场景），playConfig 为玩法特有 JSON 透传
+export const mktActivities = [
+  { id: 201, kind: 'BARGAIN', title: 'iPhone 14 Pro 砍到底', itemId: 9002, activityPrice: 399900, stock: 50, soldCount: 6, limitPerUser: 1, status: 'ONGOING', startAt: '2026-10-20 00:00:00', endAt: '2026-11-03 23:59:59', audienceType: 'ALL', riskLevel: 'LOW', subsidyBudgetFen: null, subsidyUsedFen: 0, playConfig: JSON.stringify({ originPriceFen: 899900, floorPriceFen: 399900 }) },
+  { id: 202, kind: 'LOTTERY', title: '新人抽奖 100% 中奖', itemId: null, activityPrice: 0, stock: 500, soldCount: 213, limitPerUser: 1, status: 'ONGOING', startAt: '2026-10-21 00:00:00', endAt: '2026-11-04 23:59:59', audienceType: 'NEW_USER', riskLevel: 'LOW', subsidyBudgetFen: 500000, subsidyUsedFen: 120000, playConfig: null },
+  { id: 203, kind: 'SECKILL', title: '今晚 8 点 直播秒杀', itemId: 9001, activityPrice: 9900, stock: 100, soldCount: 41, limitPerUser: 1, status: 'ONGOING', startAt: '2026-10-22 00:00:00', endAt: '2026-10-29 23:59:59', audienceType: 'ALL', riskLevel: 'MID', subsidyBudgetFen: null, subsidyUsedFen: 0, playConfig: null },
+  { id: 204, kind: 'BARGAIN', title: 'MacBook Air 砍价', itemId: 9003, activityPrice: 399900, stock: 30, soldCount: 0, limitPerUser: 1, status: 'DRAFT', startAt: '2026-10-25 00:00:00', endAt: '2026-11-10 23:59:59', audienceType: 'ALL', riskLevel: 'LOW', subsidyBudgetFen: null, subsidyUsedFen: 0, playConfig: JSON.stringify({ originPriceFen: 799900, floorPriceFen: 399900 }) }
+];
+
+const mktPrizes = {}; // 抽奖奖品：key=activityId
+
+export function mktActivityList() { return mktActivities.map(a => Object.assign({}, a)); }
+export function mktActivityDetail(id) { return Object.assign({}, mktActivities.find(a => a.id === Number(id)) || {}); }
+export function mktActivityCreate(dto) {
+  const id = Math.max(0, ...mktActivities.map(a => a.id)) + 1;
+  const a = Object.assign({ id, soldCount: 0, status: 'DRAFT', subsidyUsedFen: 0 }, dto);
+  if (typeof a.startAt === 'string' && a.startAt.indexOf(':') < 0) a.startAt = a.startAt + ' 00:00:00';
+  if (typeof a.endAt === 'string' && a.endAt.indexOf(':') < 0) a.endAt = a.endAt + ' 23:59:59';
+  mktActivities.push(a);
+  return id;
+}
+export function mktActivityPublish(id) {
+  const a = mktActivities.find(x => x.id === Number(id));
+  if (a) a.status = 'ONGOING';
+  return Object.assign({}, a || {});
+}
+export function mktActivityReconcile(id) {
+  const a = mktActivities.find(x => x.id === Number(id)) || {};
+  if (a.status) a.status = 'ENDED';
+  return {
+    activityId: Number(id),
+    stockSold: a.soldCount || 0,
+    stockRecycled: (a.stock || 0) - (a.soldCount || 0),
+    subsidyTotalFen: a.subsidyUsedFen || 0,
+    lossFen: 0,
+    status: 'ENDED',
+    records: []
+  };
+}
+export function mktMonitor() {
+  const ongoing = mktActivities.filter(a => a.status === 'ONGOING').length;
+  const draft = mktActivities.filter(a => a.status === 'DRAFT').length;
+  const ended = mktActivities.filter(a => a.status === 'ENDED').length;
+  const totalStock = mktActivities.reduce((s, a) => s + (a.stock || 0), 0);
+  return {
+    ongoing, draft, ended, joinedToday: 58, totalStock,
+    riskBlocked: 3, subsidyBudgetExceeded: 0, bargainQualified: 12, lotteryWon: 41
+  };
+}
+export function mktSavePrizes(activityId, prizes) {
+  mktPrizes[activityId] = (prizes || []).map((p, i) => Object.assign({ sort: i + 1 }, p));
+  return true;
+}
+export function mktPrizeList(activityId) { return (mktPrizes[activityId] || []).map(p => Object.assign({}, p)); }
+
 // 待审评价（F-06，status: 0=待审核 / 1=通过 / 2=驳回；后端 pendingList 仅返 0）
 // 引用在售商品 9001~9006；评价人 reviewerId / 被评人 targetId 取自 users（2001=我/买家，1001~1004=卖家）
 export const reviews = [
