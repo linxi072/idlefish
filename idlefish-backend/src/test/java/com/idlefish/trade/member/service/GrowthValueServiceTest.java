@@ -14,6 +14,7 @@ import com.idlefish.trade.member.entity.UserGrowth;
 import com.idlefish.trade.member.mapper.GrowthValueLogMapper;
 import com.idlefish.trade.member.mapper.MemberLevelMapper;
 import com.idlefish.trade.member.mapper.UserGrowthMapper;
+import com.idlefish.trade.user.mapper.UserMapper;
 import com.idlefish.trade.member.vo.GrowthAccountAdminVO;
 import com.idlefish.trade.member.vo.GrowthAccountVO;
 import com.idlefish.trade.member.vo.GrowthValueLogVO;
@@ -57,6 +58,7 @@ import static org.mockito.Mockito.when;
 class GrowthValueServiceTest {
 
     @Mock private UserGrowthMapper userGrowthMapper;
+    @Mock private UserMapper userMapper;
     @Mock private GrowthValueLogMapper growthValueLogMapper;
     @Mock private MemberLevelMapper memberLevelMapper;
     @Mock private DeviceFingerprintMapper deviceFingerprintMapper;
@@ -84,7 +86,7 @@ class GrowthValueServiceTest {
     void setUp() {
         growth = new IdlefishProperties.Growth();
         when(idlefishProperties.getGrowth()).thenReturn(growth);
-        service = new GrowthValueService(userGrowthMapper, growthValueLogMapper, memberLevelMapper,
+        service = new GrowthValueService(userGrowthMapper, userMapper, growthValueLogMapper, memberLevelMapper,
                 deviceFingerprintMapper, notificationService, metrics, idlefishProperties);
     }
 
@@ -368,5 +370,63 @@ class GrowthValueServiceTest {
 
         verify(growthValueLogMapper, times(1)).insert(any(GrowthValueLog.class)); // 一条 DEDUCT_REVERSE 负向流水
         verify(userGrowthMapper, times(1)).update(any(), any(LambdaUpdateWrapper.class)); // CAS 扣回 100 点
+    }
+
+    // ===== 存量用户初始化（PRD §12.4 遗留项②）=====
+
+    @Test
+    void initMissingUsers_createsDefaultAccounts() {
+        when(userMapper.selectMissingGrowthUserIds(anyInt())).thenReturn(List.of(2L, 3L, 4L));
+        when(userGrowthMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null); // ensure 触发插入
+        when(userGrowthMapper.insert(any(UserGrowth.class))).thenReturn(1);
+
+        int count = service.initMissingUsers(1000);
+
+        assertEquals(3, count);
+        verify(userGrowthMapper, times(3)).insert(any(UserGrowth.class));
+    }
+
+    @Test
+    void initMissingUsers_returnsZeroWhenNoneMissing() {
+        when(userMapper.selectMissingGrowthUserIds(anyInt())).thenReturn(java.util.Collections.emptyList());
+
+        assertEquals(0, service.initMissingUsers(1000));
+        verify(userGrowthMapper, never()).insert(any(UserGrowth.class));
+    }
+
+    @Test
+    void initMissingUsers_disabledSkipsQuery() {
+        growth.setEnabled(false);
+
+        assertEquals(0, service.initMissingUsers(1000));
+        verify(userMapper, never()).selectMissingGrowthUserIds(anyInt());
+        verify(userGrowthMapper, never()).insert(any(UserGrowth.class));
+    }
+
+    // ===== 申诉成功回补（REQ-10 便捷重载）=====
+
+    @Test
+    void restoreByDispute_autoDerivesPenaltyAndRestores() {
+        when(growthValueLogMapper.sumAbsDeltaByBiz(eq(USER), eq(GrowthValueService.BIZ_DEDUCT_DISPUTE), anyString()))
+                .thenReturn(200L);
+        when(userGrowthMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(account(500, 0));
+        stubTiers();
+        stubNotLogged();
+        when(userGrowthMapper.update(any(), any(LambdaUpdateWrapper.class))).thenReturn(1);
+        when(growthValueLogMapper.insert(any(GrowthValueLog.class))).thenReturn(1);
+
+        assertEquals(200, service.restoreByDispute(USER, "DP9"));
+        verify(growthValueLogMapper, times(1))
+                .sumAbsDeltaByBiz(eq(USER), eq(GrowthValueService.BIZ_DEDUCT_DISPUTE), anyString());
+        verify(growthValueLogMapper, times(1)).insert(any(GrowthValueLog.class)); // 一条 RESTORE_DISPUTE 正流水
+    }
+
+    @Test
+    void restoreByDispute_noPenaltyReturnsZero() {
+        when(growthValueLogMapper.sumAbsDeltaByBiz(anyLong(), anyString(), anyString())).thenReturn(0L);
+
+        assertEquals(0, service.restoreByDispute(USER, "DP9"));
+        verify(userGrowthMapper, never()).update(any(), any(LambdaUpdateWrapper.class));
+        verify(growthValueLogMapper, never()).insert(any(GrowthValueLog.class));
     }
 }
