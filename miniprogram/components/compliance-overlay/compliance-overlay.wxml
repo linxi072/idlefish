@@ -1,0 +1,12 @@
+<view class="co-mask" wx:if="{{show}}" catchtap="onClose">
+  <view class="co-card" catchtap="stop">
+    <view class="co-title">{{title}}</view>
+    <scroll-view class="co-body" scroll-y>
+      <view class="co-p" wx:for="{{content}}" wx:key="*this">{{item}}</view>
+    </scroll-view>
+    <view class="co-actions">
+      <view class="co-btn co-cancel" bindtap="onClose">取消</view>
+      <view class="co-btn co-confirm" bindtap="onConfirm">{{confirmText}}</view>
+    </view>
+  </view>
+</view>

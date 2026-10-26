@@ -1,0 +1,25 @@
+<view class="page mkt-index">
+  <view class="tabs">
+    <view class="tab {{activeKind === item.key ? 'active' : ''}}" wx:for="{{tabs}}" wx:key="key" data-kind="{{item.key}}" bindtap="switchTab">{{item.name}}</view>
+  </view>
+
+  <view class="list">
+    <view class="card act" wx:for="{{activities}}" wx:key="id" data-id="{{item.id}}" data-kind="{{item.kind}}" bindtap="goPlay">
+      <image class="act-img" src="{{item.cover}}" mode="aspectFill" wx:if="{{item.cover}}" />
+      <view class="act-ph" wx:else>🎁</view>
+      <view class="act-info">
+        <view class="act-kind k-{{item.kind}}">{{item.kindName}}</view>
+        <view class="act-title ellipsis-2">{{item.title}}</view>
+        <view class="act-price">
+          <text class="price">¥{{item.priceText}}</text>
+          <text class="origin" wx:if="{{item.originalPriceFen}}">¥{{item.originalText}}</text>
+        </view>
+        <view class="act-bar">
+          <view class="act-bar-in" style="width:{{item.progress}}%"></view>
+        </view>
+        <view class="act-meta">已参与 {{item.soldCount}}/{{item.stock}}</view>
+      </view>
+    </view>
+    <view wx:if="{{!loading && !activities.length}}" class="empty"><view class="icon">🛍️</view><view class="tip">暂无进行中的活动</view></view>
+  </view>
+</view>

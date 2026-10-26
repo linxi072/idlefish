@@ -1,0 +1,26 @@
+.co-mask {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.co-card {
+  width: 86%; max-height: 70vh; background: #fff; border-radius: 20rpx;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.co-title {
+  font-size: 32rpx; font-weight: 600; color: #1a1a1a;
+  padding: 32rpx 32rpx 16rpx; text-align: center;
+}
+.co-body { padding: 0 32rpx; flex: 1; }
+.co-p {
+  font-size: 26rpx; color: #555; line-height: 1.7; margin: 10rpx 0;
+}
+.co-actions {
+  display: flex; border-top: 1rpx solid #eee; margin-top: 16rpx;
+}
+.co-btn {
+  flex: 1; text-align: center; padding: 28rpx 0; font-size: 30rpx;
+}
+.co-cancel { color: #999; border-right: 1rpx solid #eee; }
+.co-confirm { color: #fff; background: #FFB300; font-weight: 600; }

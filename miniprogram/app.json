@@ -37,6 +37,11 @@
     "pages/activity/list/list",
     "pages/activity/detail/detail",
     "pages/bargain/bargain",
+    "pages/mkt/index/index",
+    "pages/mkt/detail/detail",
+    "pages/mkt/bargain/bargain",
+    "pages/mkt/lottery/lottery",
+    "pages/mkt/seckill/seckill",
     "pages/settings/settings"
   ],
   "window": {

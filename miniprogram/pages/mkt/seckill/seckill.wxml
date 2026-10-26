@@ -1,0 +1,25 @@
+<view class="page mkt-seckill">
+  <view class="card live" wx:if="{{activity}}">
+    <view class="live-badge">● LIVE</view>
+    <view class="g-title">{{activity.title}}</view>
+    <view class="live-price">
+      <text class="price">¥{{activity.priceText}}</text>
+      <text class="origin">¥{{activity.originalText}}</text>
+    </view>
+    <view class="bar"><view class="bar-in" style="width:{{activity.progress}}%"></view></view>
+    <view class="live-meta">已抢 {{activity.soldCount}}/{{activity.stock}}</view>
+  </view>
+
+  <view class="card sec" wx:if="{{!result}}">
+    <view class="btn btn-primary" bindtap="confirmGrab">{{grabbing ? '抢购中…' : '立即抢购'}}</view>
+    <view class="tip">库存实时预扣，抢到后请尽快支付</view>
+  </view>
+
+  <view class="card sec" wx:if="{{result}}">
+    <view class="r-emoji">✅</view>
+    <view class="r-title">抢购成功</view>
+    <view class="r-prize">实付 ¥{{result.amountText}}，订单正在生成</view>
+  </view>
+
+  <compliance-overlay show="{{overlay.show}}" title="{{overlay.title}}" content="{{overlay.content}}" confirm-text="{{overlay.confirmText}}" bind:confirm="onOverlayConfirm" bind:close="onOverlayClose" />
+</view>

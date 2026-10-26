@@ -1,0 +1,19 @@
+.page.mkt-seckill { padding: 20rpx; }
+.card.live { background: linear-gradient(135deg, #FF4D4F, #FF7A00); border-radius: 16rpx; padding: 28rpx; margin-bottom: 20rpx; color: #fff; }
+.live-badge { font-size: 22rpx; opacity: 0.9; }
+.g-title { font-size: 32rpx; font-weight: 600; margin: 8rpx 0; }
+.live-price { display: flex; align-items: baseline; }
+.live-price .price { font-size: 48rpx; font-weight: 700; }
+.live-price .origin { font-size: 26rpx; opacity: 0.8; text-decoration: line-through; margin-left: 16rpx; }
+.bar { height: 14rpx; background: rgba(255,255,255,0.3); border-radius: 7rpx; margin: 16rpx 0 8rpx; overflow: hidden; }
+.bar-in { height: 100%; background: #fff; }
+.live-meta { font-size: 24rpx; opacity: 0.9; }
+
+.card.sec { background: #fff; border-radius: 16rpx; padding: 40rpx 24rpx; margin-bottom: 20rpx; text-align: center; }
+.tip { font-size: 24rpx; color: #999; margin-top: 20rpx; }
+.r-emoji { font-size: 96rpx; }
+.r-title { font-size: 32rpx; font-weight: 600; color: #1a1a1a; margin: 12rpx 0; }
+.r-prize { font-size: 28rpx; color: #FF4D4F; font-weight: 600; }
+
+.btn { text-align: center; padding: 28rpx 0; border-radius: 44rpx; font-size: 32rpx; }
+.btn-primary { background: #FF4D4F; color: #fff; font-weight: 700; }

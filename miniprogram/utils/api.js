@@ -332,6 +332,31 @@ const api = {
   // 我的活动参与记录：List<ActivityParticipant>
   activityMy() { return route(() => mock.activityMy(), () => http.get('/api/activity/my')); },
 
+  // ===== 营销活动（ITER-F08，对齐 MarketingActivityController /api/mkt/activity/*，金额单位：分）=====
+  // 活动列表（仅进行中 + 人群定向可见，REQ-13）：List<MarketingActivityVO>
+  mktActivityList(kind) {
+    return route(
+      () => mock.mktActivityList(kind),
+      () => http.get('/api/mkt/activity/list' + (kind ? '?kind=' + kind : ''))
+    );
+  },
+  // 活动详情（含当前用户是否已参与）：MarketingActivityVO
+  mktActivityDetail(id) { return route(() => mock.mktActivityDetail(id), () => http.get('/api/mkt/activity/' + id)); },
+  // 砍价：发起砍价会话（占用 1 内核名额 + 建 BargainSession，REQ-08）
+  mktBargainCreate(dto) { return route(() => mock.mktBargainCreate(dto), () => http.post('/api/mkt/activity/bargain/create', dto)); },
+  // 砍价：好友助力（逐刀纯函数算额 + 成团判定，REQ-08/REQ-09）
+  mktBargainAssist(dto) { return route(() => mock.mktBargainAssist(dto), () => http.post('/api/mkt/activity/bargain/assist', dto)); },
+  // 砍价：会话详情/进度（含底价/当前价/助力人数）
+  mktBargainDetail(sessionNo) { return route(() => mock.mktBargainDetail(sessionNo), () => http.get('/api/mkt/activity/bargain/' + sessionNo)); },
+  // 抽奖：抽一次（内核占名额 + 奖品原子扣减 + 概率快照，REQ-06/REQ-09）
+  mktLotteryDraw(dto) { return route(() => mock.mktLotteryDraw(dto), () => http.post('/api/mkt/activity/lottery/draw', dto)); },
+  // 抽奖：高价值/实物奖品补充实名与收货信息（脱敏身份证，REQ-10）
+  mktLotteryRealname(dto) { return route(() => mock.mktLotteryRealname(dto), () => http.post('/api/mkt/activity/lottery/realname', dto)); },
+  // 直播秒杀：抢购（Redis 预扣 + MQ 异步落库 + 降级强一致，REQ-07）
+  mktSeckillGrab(dto) { return route(() => mock.mktSeckillGrab(dto), () => http.post('/api/mkt/activity/seckill/grab', dto)); },
+  // 我的活动参与记录：List<ActivityRecord>
+  mktMyRecords() { return route(() => mock.mktMyRecords(), () => http.get('/api/mkt/activity/my-records')); },
+
   // ===== 站内通知（对齐 NotificationController / NotificationVO，IPage → {records,total}）=====
   notifyList(page, size) {
     return route(

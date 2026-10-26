@@ -1,0 +1,19 @@
+<view class="page mkt-detail">
+  <view class="card head" wx:if="{{activity}}">
+    <image class="cover" src="{{activity.cover}}" mode="aspectFill" wx:if="{{activity.cover}}" />
+    <view class="ph" wx:else>🎁</view>
+    <view class="h-kind k-{{activity.kind}}">{{activity.kindName}}</view>
+    <view class="h-title">{{activity.title}}</view>
+    <view class="h-price">
+      <text class="price">¥{{activity.priceText}}</text>
+      <text class="origin" wx:if="{{activity.originalPriceFen}}">¥{{activity.originalText}}</text>
+    </view>
+  </view>
+
+  <view class="card sec" wx:if="{{activity}}">
+    <view class="sec-title">活动规则</view>
+    <view class="rule">{{activity.rule || '本活动由统一活动内核驱动，库存实时扣减，限量参与。'}}</view>
+  </view>
+
+  <view class="btn btn-primary" wx:if="{{activity}}" bindtap="goPlay">参与{{activity.kindName}}</view>
+</view>

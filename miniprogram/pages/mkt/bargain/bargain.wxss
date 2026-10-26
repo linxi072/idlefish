@@ -1,0 +1,27 @@
+.page.mkt-bargain { padding: 20rpx; }
+.card.goods { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.g-title { font-size: 30rpx; color: #1a1a1a; }
+.g-price { margin-top: 12rpx; display: flex; align-items: baseline; }
+.g-price .price { font-size: 40rpx; color: #FF4D4F; font-weight: 700; }
+.g-price .origin { font-size: 26rpx; color: #999; text-decoration: line-through; margin-left: 16rpx; }
+
+.card.sec { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.sec-title { font-size: 28rpx; font-weight: 600; color: #1a1a1a; margin-bottom: 12rpx; }
+.tip { font-size: 24rpx; color: #888; line-height: 1.7; margin-bottom: 20rpx; }
+
+.price-now { font-size: 28rpx; color: #333; }
+.price-now .big { font-size: 44rpx; color: #FF4D4F; font-weight: 700; }
+.price-floor { font-size: 24rpx; color: #999; margin: 8rpx 0 16rpx; }
+.bar { height: 16rpx; background: #f0f0f0; border-radius: 8rpx; overflow: hidden; }
+.bar-in { height: 100%; background: linear-gradient(90deg, #FFB300, #FF7A00); }
+.status { font-size: 24rpx; color: #666; margin: 12rpx 0 20rpx; }
+.status.ok { color: #07c160; font-weight: 600; }
+
+.rec { display: flex; justify-content: space-between; padding: 16rpx 0; border-bottom: 1rpx solid #f4f5f7; }
+.rec-nick { font-size: 26rpx; color: #333; }
+.rec-amt { font-size: 26rpx; color: #FF4D4F; }
+.empty { font-size: 24rpx; color: #999; text-align: center; padding: 24rpx 0; }
+
+.btn { text-align: center; padding: 26rpx 0; border-radius: 44rpx; font-size: 30rpx; margin-top: 8rpx; }
+.btn-primary { background: #FFB300; color: #fff; font-weight: 600; }
+.btn-done { background: #07c160; color: #fff; font-weight: 600; }

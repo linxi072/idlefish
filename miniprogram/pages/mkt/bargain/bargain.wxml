@@ -1,0 +1,38 @@
+<view class="page mkt-bargain">
+  <!-- 商品摘要 -->
+  <view class="card goods" wx:if="{{activity}}">
+    <view class="g-title">{{activity.title}}</view>
+    <view class="g-price">
+      <text class="price">¥{{activity.priceText}}</text>
+      <text class="origin">¥{{activity.originalText}}</text>
+    </view>
+  </view>
+
+  <!-- 未发起：发起砍价 -->
+  <view class="card sec" wx:if="{{!session}}">
+    <view class="sec-title">砍价玩法</view>
+    <view class="tip">发起砍价后，邀请好友助力，逐刀砍到底价即可成团下单。库存由统一活动内核实时扣减。</view>
+    <view class="btn btn-primary" bindtap="create">{{submitting ? '发起中…' : '发起砍价'}}</view>
+  </view>
+
+  <!-- 已发起：进度 + 助力 -->
+  <block wx:if="{{session}}">
+    <view class="card sec">
+      <view class="price-now">当前价 <text class="big">¥{{session.currentText}}</text></view>
+      <view class="price-floor">底价 ¥{{session.floorText}} · 已砍 ¥{{session.cutText}}</view>
+      <view class="bar"><view class="bar-in" style="width:{{session.progress}}%"></view></view>
+      <view class="status {{session.qualified ? 'ok' : ''}}">{{session.statusText}} · 已助力 {{session.assistCount}} 人</view>
+      <view class="btn btn-primary" bindtap="assist" wx:if="{{!session.qualified}}">{{submitting ? '助力中…' : '找好友助力'}}</view>
+      <view class="btn btn-done" wx:else>已可下单</view>
+    </view>
+
+    <view class="card sec">
+      <view class="sec-title">助力记录</view>
+      <view class="rec" wx:for="{{session.assists}}" wx:key="id">
+        <text class="rec-nick">{{item.nick}}</text>
+        <text class="rec-amt">砍了 ¥{{item.amountText}}</text>
+      </view>
+      <view wx:if="{{!session.assists.length}}" class="empty">还没有好友助力，快去邀请吧</view>
+    </view>
+  </block>
+</view>

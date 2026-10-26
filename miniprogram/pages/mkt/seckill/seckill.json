@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "compliance-overlay": "/components/compliance-overlay/compliance-overlay"
+  },
+  "navigationBarTitleText": "直播秒杀"
+}

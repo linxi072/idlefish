@@ -1,0 +1,44 @@
+<view class="page mkt-lottery">
+  <view class="card goods" wx:if="{{activity}}">
+    <view class="g-title">{{activity.title}}</view>
+    <view class="g-sub">活动由统一活动内核驱动，抽奖概率可审计（REQ-09）</view>
+  </view>
+
+  <!-- 未抽：抽奖按钮 -->
+  <view class="card sec" wx:if="{{!result}}">
+    <view class="turntable">🎉</view>
+    <view class="btn btn-primary" bindtap="draw">{{drawing ? '抽奖中…' : '点击抽奖'}}</view>
+    <view class="tip">每个用户限参与 1 次（内核幂等，REQ-06）</view>
+  </view>
+
+  <!-- 已抽：结果 -->
+  <view class="card sec" wx:if="{{result}}">
+    <view wx:if="{{result.won}}" class="result won">
+      <view class="r-emoji">🎁</view>
+      <view class="r-title">恭喜中奖</view>
+      <view class="r-prize">{{result.prizeName}}</view>
+      <view class="r-extra" wx:if="{{result.prizeType === 'COUPON'}}">券额 ¥{{result.couponText}}，已发放至账户</view>
+    </view>
+    <view wx:else class="result lose">
+      <view class="r-emoji">🍀</view>
+      <view class="r-title">谢谢参与</view>
+      <view class="r-prize">下次好运～</view>
+    </view>
+  </view>
+
+  <!-- 实物奖品实名表单（合规浮层确认后展示） -->
+  <view class="card sec" wx:if="{{result.won && result.needRealname && showForm}}">
+    <view class="sec-title">填写收货信息（实名核验）</view>
+    <view class="field">
+      <text class="label">收货人</text>
+      <input class="input" placeholder="请输入姓名" value="{{realName}}" bindinput="onRealNameInput" />
+    </view>
+    <view class="field">
+      <text class="label">身份证号</text>
+      <input class="input" placeholder="用于发货核验，将脱敏存储" value="{{idCard}}" bindinput="onIdCardInput" />
+    </view>
+    <view class="btn btn-primary" bindtap="submitRealname">{{submitting ? '提交中…' : '提交实名信息'}}</view>
+  </view>
+
+  <compliance-overlay show="{{overlay.show}}" title="{{overlay.title}}" content="{{overlay.content}}" confirm-text="{{overlay.confirmText}}" bind:confirm="onOverlayConfirm" bind:close="onOverlayClose" />
+</view>

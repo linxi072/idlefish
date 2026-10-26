@@ -1,0 +1,18 @@
+.page.mkt-detail { padding: 20rpx; }
+.card.head { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; text-align: center; }
+.cover { width: 100%; height: 360rpx; border-radius: 12rpx; }
+.ph { width: 100%; height: 360rpx; border-radius: 12rpx; background: #f4f5f7; display: flex; align-items: center; justify-content: center; font-size: 96rpx; }
+.h-kind { display: inline-block; font-size: 22rpx; color: #fff; background: #FFB300; padding: 2rpx 12rpx; border-radius: 8rpx; margin: 16rpx 0 8rpx; }
+.h-kind.k-LOTTERY { background: #7C5CFF; }
+.h-kind.k-SECKILL { background: #FF4D4F; }
+.h-title { font-size: 32rpx; color: #1a1a1a; font-weight: 600; }
+.h-price { margin-top: 12rpx; display: flex; align-items: baseline; justify-content: center; }
+.h-price .price { font-size: 44rpx; color: #FF4D4F; font-weight: 700; }
+.h-price .origin { font-size: 26rpx; color: #999; text-decoration: line-through; margin-left: 16rpx; }
+
+.card.sec { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.sec-title { font-size: 28rpx; font-weight: 600; color: #1a1a1a; margin-bottom: 12rpx; }
+.rule { font-size: 26rpx; color: #666; line-height: 1.8; }
+
+.btn { text-align: center; padding: 28rpx 0; border-radius: 44rpx; font-size: 32rpx; }
+.btn-primary { background: #FFB300; color: #fff; font-weight: 700; }

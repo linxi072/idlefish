@@ -228,6 +228,8 @@ const memberLevel = {
 };
 // 本地活动集合（Activity：type=SECKILL/GROUP，activityPrice=分，status=ONGOING，金额单位：分）
 const ACT_DAY = 86400000;
+// 砍价会话内存态（F-08 mock）：键为 sessionNo
+const bargainSessions = {};
 const activities = [
   { id: 1, itemId: 9001, type: 'SECKILL', activityPrice: 990, stock: 50, soldCount: 32, limitPerUser: 1, groupSize: 0, groupValidMinutes: 0, status: 'ONGOING', startAt: Date.now() - ACT_DAY, endAt: Date.now() + 2 * ACT_DAY },
   { id: 2, itemId: 9003, type: 'GROUP', activityPrice: 3180, stock: 30, soldCount: 12, limitPerUser: 2, groupSize: 3, groupValidMinutes: 1440, status: 'ONGOING', startAt: Date.now() - ACT_DAY, endAt: Date.now() + 3 * ACT_DAY },
@@ -624,6 +626,88 @@ module.exports = {
       const a = activities.find(x => x.id === p.activityId) || {};
       return Object.assign({}, p, { type: a.type, activityPrice: a.activityPrice, itemId: a.itemId, statusName: a.status });
     }));
+  },
+
+  // ===== 营销活动（ITER-F08 对齐 ActivityKernelService / 三类玩法，金额单位：分）=====
+  // 活动基础数据（同步，供列表/详情/玩法复用；每次返回新对象）
+  _mktActivities() {
+    return [
+      { id: 101, kind: 'BARGAIN', title: 'iPhone 14 Pro 砍到底', status: 'ONGOING', stock: 20, soldCount: 6, limitPerUser: 1, audienceType: 'ALL', priceFen: 399900, originalPriceFen: 899900, startAt: Date.now() - ACT_DAY, endAt: Date.now() + 2 * ACT_DAY, cover: IMG('mkt-bargain') },
+      { id:102, kind: 'LOTTERY', title: '新人抽奖 100% 中奖', status: 'ONGOING', stock: 500, soldCount: 213, limitPerUser: 1, audienceType: 'NEW_USER', priceFen: 0, originalPriceFen: 0, startAt: Date.now() - ACT_DAY, endAt: Date.now() + 3 * ACT_DAY, cover: IMG('mkt-lottery') },
+      { id: 103, kind: 'SECKILL', title: '今晚 8 点 直播秒杀', status: 'ONGOING', stock: 100, soldCount: 41, limitPerUser: 1, audienceType: 'ALL', priceFen: 9900, originalPriceFen: 19900, startAt: Date.now() - ACT_DAY, endAt: Date.now() + ACT_DAY, cover: IMG('mkt-seckill') }
+    ];
+  },
+  // 活动列表（仅进行中）：List<MarketingActivityVO>
+  mktActivityList(kind) {
+    const all = this._mktActivities();
+    const list = (kind ? all.filter(a => a.kind === kind) : all).filter(a => a.status === 'ONGOING');
+    return delay(list.map(a => Object.assign({}, a, { joined: false })));
+  },
+  mktActivityDetail(id) {
+    const a = this._mktActivities().find(x => x.id === Number(id)) || this._mktActivities()[0];
+    return delay(a ? Object.assign({}, a, { joined: false, rule: '本活动由统一活动内核驱动，库存实时扣减，限量参与。' }) : null);
+  },
+  // 砍价：发起会话（占用 1 内核名额 + 建 BargainSession）
+  mktBargainCreate(dto) {
+    const a = this._mktActivities().find(x => x.id === Number(dto.activityId)) || this._mktActivities()[0];
+    if (!a) return failMock('活动不存在');
+    const sessionNo = 'BS' + Date.now();
+    const session = {
+      sessionNo, activityId: a.id, currentPriceFen: a.originalPriceFen, floorPriceFen: a.priceFen,
+      originalPriceFen: a.originalPriceFen, assistCount: 0, assists: [], status: 'ONGOING', qualified: false, createdAt: Date.now()
+    };
+    bargainSessions[sessionNo] = session;
+    return delay(Object.assign({}, session));
+  },
+  // 砍价：好友助力（逐刀纯函数算额 + 成团判定）
+  mktBargainAssist(dto) {
+    const s = bargainSessions[dto.sessionNo];
+    if (!s) return failMock('砍价会话不存在');
+    if (s.status !== 'ONGOING') return failMock('砍价已结束');
+    const remain = s.currentPriceFen - s.floorPriceFen;
+    const step = Math.max(100, Math.round(remain / 2)); // 每刀砍掉约一半差额
+    const assisted = remain <= 1500 ? remain : step; // 临近底价时一次性到底，约 10 刀内成团
+    s.currentPriceFen -= assisted;
+    s.assistCount += 1;
+    s.assists.push({ id: Date.now(), nick: '好友' + s.assistCount, assistAmountFen: assisted, createdAt: Date.now() });
+    s.qualified = s.currentPriceFen <= s.floorPriceFen;
+    if (s.qualified) s.status = 'QUALIFIED';
+    return delay(Object.assign({}, s));
+  },
+  mktBargainDetail(sessionNo) {
+    const s = bargainSessions[sessionNo];
+    return delay(s ? Object.assign({}, s) : null);
+  },
+  // 抽奖：抽一次（内核占名额 + 奖品原子扣减 + 概率快照，REQ-06/REQ-09）
+  mktLotteryDraw(dto) {
+    const r = Math.random();
+    if (r < 0.4) {
+      return delay({ won: true, prizeName: '8 元无门槛券', prizeType: 'COUPON', needRealname: false, couponAmountFen: 800, recordId: 'MR' + Date.now() });
+    } else if (r < 0.55) {
+      return delay({ won: true, prizeName: '品牌蓝牙耳机（实物）', prizeType: 'PHYSICAL', needRealname: true, recordId: 'MR' + Date.now() });
+    }
+    return delay({ won: false, prizeName: '谢谢参与', prizeType: 'NONE', needRealname: false, recordId: 'MR' + Date.now() });
+  },
+  // 抽奖：高价值/实物奖品补充实名与收货信息（脱敏身份证，REQ-10）
+  mktLotteryRealname(dto) {
+    if (!dto.idCard || dto.idCard.length < 6) return failMock('请填写有效身份证号');
+    if (!dto.realName) return failMock('请填写收货人姓名');
+    return delay({ ok: true, recordId: dto.recordId });
+  },
+  // 直播秒杀：抢购（Redis 预扣 + MQ 异步落库 + 降级强一致，REQ-07）
+  mktSeckillGrab(dto) {
+    const a = this._mktActivities().find(x => x.id === Number(dto.activityId)) || this._mktActivities()[2];
+    if (!a) return failMock('活动不存在');
+    if (a.soldCount >= a.stock) return failMock('已抢光');
+    a.soldCount += 1;
+    return delay({ status: 'ACCEPTED', recordId: 'MR' + Date.now(), activityId: a.id, amountFen: a.priceFen });
+  },
+  // 我的活动参与记录：List<ActivityRecord>
+  mktMyRecords() {
+    return delay([
+      { id: 1, activityId: 103, kind: 'SECKILL', status: 'JOINED', amountFen: 9900, createdAt: Date.now() - 3600 * 1000 * 2 },
+      { id: 2, activityId: 102, kind: 'LOTTERY', status: 'WON', amountFen: 0, prizeName: '8 元无门槛券', createdAt: Date.now() - 3600 * 1000 * 5 }
+    ]);
   },
 
   // ===== 站内通知（对齐 NotificationController / NotificationVO：IPage → {records,total}）=====
