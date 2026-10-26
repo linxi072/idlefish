@@ -121,6 +121,26 @@ public enum Code {
     IM_KNOWLEDGE_NOT_FOUND(30061, "知识库条目不存在"),
     /** 自动应答记录不存在（ITER-F06：反馈/查询未命中）。 */
     IM_AUTO_REPLY_NOT_FOUND(30062, "自动应答记录不存在"),
+    /** 不支持的活动玩法类型（ITER-F08 营销玩法扩展 / REQ-01 统一活动内核）。 */
+    ACTIVITY_KIND_NOT_SUPPORTED(30063, "不支持的活动玩法类型"),
+    /** 砍价已触底价，不可继续砍（ITER-F08 / REQ-08）。 */
+    BARGAIN_FLOOR_REACHED(30064, "砍价已触底价，不可继续砍"),
+    /** 砍价已达目标人数，已生成下单资格（ITER-F08 / REQ-08）。 */
+    BARGAIN_TARGET_REACHED(30065, "砍价已达目标，已生成下单资格"),
+    /** 抽奖奖品已抢光（ITER-F08 / REQ-06 防超发）。 */
+    LOTTERY_PRIZE_SOLD_OUT(30066, "该奖品已抢光"),
+    /** 高价值/实物奖品需补充实名与收货信息（ITER-F08 / REQ-10）。 */
+    LOTTERY_REALNAME_REQUIRED(30067, "高价值奖品需补充实名与收货信息"),
+    /** 直播秒杀预扣失败（缓存/DB 均不足，ITER-F08 / REQ-07）。 */
+    LIVE_SECKILL_PREEMPTED(30068, "手慢了，秒杀商品已抢光"),
+    /** 不符合活动人群定向条件（ITER-F08 / REQ-13）。 */
+    AUDIENCE_NOT_MATCH(30069, "您不在该活动参与人群范围内"),
+    /** 活动存在亏损风险（砍价底价低于成本），配置阶段被阻断（ITER-F08 / REQ-14）。 */
+    ACTIVITY_LOSS_RISK(30070, "活动存在亏损风险（底价低于成本），配置被阻断"),
+    /** 活动补贴预算已用尽（ITER-F08 / REQ-15 ROI 预算控制）。 */
+    SUBSIDY_BUDGET_EXCEEDED(30071, "活动补贴预算已用尽"),
+    /** 参与被风控拦截（ITER-F08 / REQ-05）。 */
+    ACTIVITY_RISK_BLOCKED(30072, "参与被风控拦截，请稍后再试"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

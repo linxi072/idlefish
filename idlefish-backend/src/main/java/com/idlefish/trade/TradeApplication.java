@@ -25,6 +25,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.idlefish.trade.dispute.mapper",
         "com.idlefish.trade.marketing.mapper",
         "com.idlefish.trade.marketing.invite.mapper",
+        "com.idlefish.trade.marketing.activity.mapper",
         "com.idlefish.trade.member.mapper",
         "com.idlefish.trade.search.term.mapper",
         "com.idlefish.trade.common.idempotent.mapper",

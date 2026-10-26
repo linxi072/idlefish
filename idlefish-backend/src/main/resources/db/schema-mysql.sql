@@ -1388,6 +1388,144 @@ CREATE TABLE IF NOT EXISTS t_im_unanswered (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
+-- ===== ITER-F08 营销玩法扩展（幂等） =====
+-- 统一活动内核 + 三玩法（砍价/抽奖/直播秒杀）共用一套定义表与参与记录表；玩法特有表承载逐刀/奖品/结算。
+
+-- 营销活动定义表：砍价/抽奖/直播秒杀共用一张，玩法特有配置序列化于 play_config（JSON）（REQ-01 复用内核）
+CREATE TABLE IF NOT EXISTS t_marketing_activity (
+    id                BIGINT       PRIMARY KEY,
+    kind              VARCHAR(32)  NOT NULL COMMENT '玩法类型 BARGAIN/LOTTERY/LIVE_SECKILL',
+    title             VARCHAR(128) NOT NULL COMMENT '活动标题',
+    item_id           BIGINT       COMMENT '关联商品（秒杀/砍价标的）',
+    activity_price    BIGINT       COMMENT '基准价/秒杀价（分）',
+    stock             INT          NOT NULL DEFAULT 0 COMMENT '活动库存（营销配额，独立于商品库存）',
+    sold_count        INT          NOT NULL DEFAULT 0 COMMENT '已锁定/已售数量',
+    limit_per_user    INT          DEFAULT 0 COMMENT '每人限购（<=0 表示不限，REQ-03）',
+    status            VARCHAR(16)  NOT NULL DEFAULT 'DRAFT' COMMENT 'DRAFT/ONGOING/ENDED',
+    start_at          DATETIME     COMMENT '活动开始时间',
+    end_at            DATETIME     COMMENT '活动结束时间',
+    audience_type     VARCHAR(32)  DEFAULT 'ALL' COMMENT '人群定向 ALL/NEW_USER/LEVEL/REALNAME（REQ-13）',
+    audience_value    VARCHAR(64)  COMMENT '定向参数：NEW_USER=天数 / LEVEL=最低信用分',
+    risk_level        VARCHAR(16)  DEFAULT 'LOW' COMMENT '风控等级 LOW/MID/HIGH（REQ-05）',
+    subsidy_budget_fen BIGINT     DEFAULT 0 COMMENT '补贴预算（分，REQ-15）',
+    subsidy_used_fen  BIGINT       DEFAULT 0 COMMENT '已用补贴（分，原子累加）',
+    loss_floor_fen    BIGINT       DEFAULT 0 COMMENT '成本线（分）：低于此值配置阶段阻断（REQ-14）',
+    play_config       TEXT         COMMENT '玩法特有配置 JSON',
+    created_at        DATETIME,
+    updated_at        DATETIME,
+    KEY idx_act_kind (kind, status),
+    KEY idx_act_item (item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 活动参与记录：所有玩法共用，承载幂等键（REQ-06）与补贴数据（REQ-15）
+CREATE TABLE IF NOT EXISTS t_activity_record (
+    id               BIGINT       PRIMARY KEY,
+    record_no        VARCHAR(32)  NOT NULL COMMENT '记录单号（MR 前缀，幂等可读）',
+    activity_id      BIGINT       NOT NULL COMMENT '活动 ID',
+    user_id          BIGINT       NOT NULL COMMENT '用户 ID',
+    kind             VARCHAR(32)  NOT NULL COMMENT '玩法类型',
+    biz_id           VARCHAR(64)  COMMENT '玩法业务 ID：砍价会话/抽奖轮次/秒杀订单占位',
+    idempotency_key  VARCHAR(64)  NOT NULL COMMENT '幂等键（REQ-06）',
+    status           VARCHAR(32)  NOT NULL DEFAULT 'JOINED' COMMENT 'JOINED/WON/LOST/QUALIFIED/PENDING_REALNAME/SETTLED/CANCELLED',
+    amount_fen       BIGINT       DEFAULT 0 COMMENT '成交金额/奖品价值（分）',
+    subsidy_fen      BIGINT       DEFAULT 0 COMMENT '平台补贴（分）',
+    coupon_id        BIGINT       COMMENT '关联发放券（F-10 链路）',
+    device_id        VARCHAR(64)  COMMENT '设备指纹（REQ-05）',
+    extra            TEXT         COMMENT '审计扩展 JSON：抽奖概率快照/砍价逐刀明细等（REQ-09）',
+    created_at       DATETIME,
+    updated_at       DATETIME,
+    UNIQUE KEY uk_activity_idem (activity_id, idempotency_key),
+    KEY idx_rec_user (user_id, activity_id),
+    KEY idx_rec_no (record_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 活动对账流水（REQ-11）：每活动一条，结束/异常时结算；记录库存消耗/补贴成本/亏损
+CREATE TABLE IF NOT EXISTS t_activity_reconciliation (
+    id                BIGINT       PRIMARY KEY,
+    activity_id       BIGINT       NOT NULL COMMENT '活动 ID',
+    kind              VARCHAR(32)  COMMENT '玩法类型',
+    stock_total       INT          DEFAULT 0 COMMENT '库存总量',
+    stock_sold        INT          DEFAULT 0 COMMENT '实际售出/消耗',
+    stock_recycled    INT          DEFAULT 0 COMMENT '回收未使用库存（REQ-11）',
+    subsidy_total_fen BIGINT       DEFAULT 0 COMMENT '补贴总成本（分）',
+    participant_count INT          DEFAULT 0 COMMENT '参与人次',
+    draw_count        INT          DEFAULT 0 COMMENT '抽奖次数',
+    win_count         INT          DEFAULT 0 COMMENT '中奖次数',
+    loss_fen          BIGINT       DEFAULT 0 COMMENT '亏损额（分）= 成本−营收',
+    status            VARCHAR(16)  DEFAULT 'OPEN' COMMENT 'OPEN/SETTLED',
+    settled_at        DATETIME     COMMENT '结算时间',
+    created_at        DATETIME,
+    updated_at        DATETIME,
+    KEY idx_recon_act (activity_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 砍价会话（REQ-08）：一次砍价发起对应一条会话，达成底价/目标人数置 QUALIFIED 并生成下单资格
+CREATE TABLE IF NOT EXISTS t_bargain_session (
+    id                BIGINT       PRIMARY KEY,
+    session_no        VARCHAR(32)  NOT NULL COMMENT '会话单号（BS 前缀，幂等可读）',
+    activity_id       BIGINT       NOT NULL COMMENT '活动 ID',
+    initiator_user_id BIGINT       NOT NULL COMMENT '发起人（享受砍后价下单的用户）',
+    record_no         VARCHAR(32)  COMMENT '关联内核参与记录单号',
+    current_price_fen BIGINT       NOT NULL COMMENT '当前价（分）',
+    floor_price_fen   BIGINT       NOT NULL COMMENT '底价（分）',
+    target_assist_count INT        DEFAULT 0 COMMENT '目标助力人数',
+    assist_count      INT          DEFAULT 0 COMMENT '已助力人数',
+    status            VARCHAR(16)  DEFAULT 'ONGOING' COMMENT 'ONGOING/QUALIFIED/EXPIRED',
+    expire_at         DATETIME     COMMENT '活动结束时间（逾期未成团转 EXPIRED）',
+    qualify_expire_at DATETIME     COMMENT '下单资格有效期（QUALIFIED 后生效，REQ-08）',
+    created_at        DATETIME,
+    updated_at        DATETIME,
+    UNIQUE KEY uk_session_no (session_no),
+    KEY idx_bs_act (activity_id, status),
+    KEY idx_bs_user (initiator_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 砍价助力记录（REQ-08/REQ-09）：同一用户对同一会话仅可助力一次，逐刀明细供审计防刷
+CREATE TABLE IF NOT EXISTS t_bargain_assist (
+    id            BIGINT       PRIMARY KEY,
+    session_id    BIGINT       NOT NULL COMMENT '会话 ID',
+    session_no    VARCHAR(32)  NOT NULL COMMENT '会话单号',
+    assist_user_id BIGINT      NOT NULL COMMENT '助力用户（好友）',
+    device_id     VARCHAR(64)  COMMENT '设备指纹（防刷，REQ-05）',
+    amount_fen    BIGINT       DEFAULT 0 COMMENT '本次助力砍价额（分）',
+    created_at    DATETIME,
+    updated_at    DATETIME,
+    UNIQUE KEY uk_session_assist (session_id, assist_user_id),
+    KEY idx_assist_session (session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 抽奖奖品（REQ-09/REQ-10）：probability 配置概率（之和 ≤1，余量为未中奖），stock 原子扣减防超发
+CREATE TABLE IF NOT EXISTS t_lottery_prize (
+    id                 BIGINT       PRIMARY KEY,
+    activity_id        BIGINT       NOT NULL COMMENT '活动 ID',
+    prize_id           VARCHAR(32)  NOT NULL COMMENT '活动内奖品唯一标识',
+    name               VARCHAR(128) NOT NULL COMMENT '奖品名称',
+    type               VARCHAR(16)  NOT NULL DEFAULT 'COUPON' COMMENT 'COUPON/PHYSICAL/VIRTUAL',
+    value_fen          BIGINT       DEFAULT 0 COMMENT '奖品价值（分），ROI 核算/高价值判定',
+    probability        DECIMAL(10,6) DEFAULT 0 COMMENT '配置概率（0~1）',
+    stock              INT          DEFAULT 0 COMMENT '奖品份数（原子扣减）',
+    coupon_template_id BIGINT       COMMENT '关联券模板（type=COUPON，REQ-10 经 F-10 发放）',
+    status             VARCHAR(16)  DEFAULT 'ACTIVE' COMMENT 'ACTIVE/INACTIVE',
+    created_at         DATETIME,
+    updated_at         DATETIME,
+    KEY idx_prize_act (activity_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 直播秒杀结算兜底任务（REQ-07）：MQ 发送失败时由 SeckillSettleRecovery 调度补偿，保证最终一致
+CREATE TABLE IF NOT EXISTS t_seckill_settle_task (
+    id             BIGINT       PRIMARY KEY,
+    task_type      VARCHAR(32)  COMMENT '任务类型',
+    biz_id         VARCHAR(64)  COMMENT '业务 ID',
+    payload        TEXT         COMMENT '结算指令 JSON（SeckillSettleCommand）',
+    status         VARCHAR(16)  DEFAULT 'pending' COMMENT 'pending/processing/done/failed',
+    next_execute_at DATETIME    COMMENT '下次执行时间',
+    retry_count    INT          DEFAULT 0 COMMENT '重试次数',
+    created_at     DATETIME,
+    updated_at     DATETIME,
+    KEY idx_seckill_task (status, next_execute_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
 -- ===== 幂等列迁移（存量库升级：仅当列缺失时补齐；新库由上方 CREATE TABLE 直接建齐） =====
 -- 说明：CREATE TABLE IF NOT EXISTS 不会为已存在的表追加新列，历史库需在此处做幂等 ADD COLUMN。
 -- 采用 information_schema 探测 + PREPARE 动态执行（兼容 spring.sql.init 的分号切分，无需 DELIMITER）。

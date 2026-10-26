@@ -90,4 +90,19 @@ public class IdGenerator {
     public static String disputeWarningNo() {
         return next("DW");
     }
+
+    /** 营销活动单号（ITER-F08 营销玩法扩展；MA 前缀避免与券 C/会员 M 混淆）。 */
+    public static String activityNo() {
+        return next("MA");
+    }
+
+    /** 活动参与记录单号（ITER-F08；MR 前缀）。 */
+    public static String activityRecordNo() {
+        return next("MR");
+    }
+
+    /** 砍价会话单号（ITER-F08；BS 前缀）。 */
+    public static String bargainSessionNo() {
+        return next("BS");
+    }
 }
