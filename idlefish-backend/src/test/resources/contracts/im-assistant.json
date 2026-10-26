@@ -1,0 +1,134 @@
+{
+  "domain": "im-assistant",
+  "description": "IM 智能助手（ITER-F06 / PRD-P2-F06）：用户端转人工/代答开关/反馈，运营后台知识库/未命中池/拦截记录/纠纷预警/应答审计/质量统计",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/im/assistant/human",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.convId", "data.humanTakeover", "data.summary"],
+      "notes": "ITER-F06 转人工：置位人工接管并下发带身份明示的提示；已接管则不重复下发"
+    },
+    {
+      "method": "POST",
+      "path": "/api/im/assistant/auto-reply",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F06 卖家会话级自动代答开关（仅卖家可操作）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/im/assistant/takeover/clear",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F06 解除人工接管，恢复自动代答（仅卖家可操作）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/im/assistant/status",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data.convId", "data.autoReplyEnabled", "data.humanTakeover", "data.assistantEnabled"],
+      "notes": "ITER-F06 会话助手状态（前端展示转人工按钮与代答标识）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/im/assistant/feedback",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F06 自动应答反馈 USEFUL/USELESS（点踩入未命中池 REQ-14）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/im/assistant/knowledge",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F06 知识库列表（可按意图/状态过滤，品类优先排序）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/im/assistant/knowledge/save",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F06 新增/更新知识库话术（裁决类意图禁止配置，REQ-04）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/im/assistant/knowledge/delete",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F06 删除知识库话术"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/im/assistant/knowledge/status",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F06 知识库上下架（ON/OFF）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/im/assistant/unanswered",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F06 未命中问题池（按热度降序，供补充话术 REQ-14）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/im/assistant/unanswered/resolve",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F06 标记未命中问题已补充话术"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/im/assistant/blocks",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F06 内容拦截记录（引流/站外联系方式留痕 REQ-08）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/im/assistant/warnings",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F06 纠纷预警列表（可按未跟进过滤 REQ-06）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/im/assistant/warnings/handle",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F06 标记纠纷预警已跟进"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/im/assistant/replies",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.records", "data.total"],
+      "notes": "ITER-F06 自动应答记录审计（来源/意图过滤，REQ-10）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/im/assistant/stats",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.totalReplies", "data.escalated", "data.autoResolveRate", "data.escalateRate", "data.fallbackRate", "data.satisfactionRate", "data.warnings", "data.blocks", "data.pendingUnanswered"],
+      "notes": "ITER-F06 质量统计（自动解决率/转人工率/降级率/满意度，PRD §七）"
+    }
+  ]
+}

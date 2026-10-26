@@ -117,6 +117,10 @@ public enum Code {
     GROWTH_NOT_ENOUGH(30059, "成长值不足"),
     /** 兑换记录不存在（ITER-F07 / REQ-09）。 */
     BENEFIT_EXCHANGE_NOT_FOUND(30060, "兑换记录不存在"),
+    /** 知识库条目不存在（ITER-F06 IM 客服智能化 / REQ-11）。 */
+    IM_KNOWLEDGE_NOT_FOUND(30061, "知识库条目不存在"),
+    /** 自动应答记录不存在（ITER-F06：反馈/查询未命中）。 */
+    IM_AUTO_REPLY_NOT_FOUND(30062, "自动应答记录不存在"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

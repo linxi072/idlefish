@@ -30,6 +30,9 @@ import java.util.stream.Collectors;
 /**
  * IM 服务：一对一会话（买卖家围绕商品沟通）。
  * 发送消息 → 落库 → 更新会话 → 在线实时推送（离线由未读计数兜底）。
+ * <p>ITER-F06：买家消息落库后 best-effort 触发智能助手（{@link ImAssistantService}），
+ * 助手的代答消息以卖家侧身份经 {@link #sendAssistantReply} 发出（不再次触发助手，防回路）；
+ * 助手任何异常都被吞掉，绝不影响消息主流程（REQ-12 降级不阻塞）。</p>
  */
 @Service
 public class ImService {
@@ -37,26 +40,43 @@ public class ImService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ImService.class);
     private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
 
+    /** 平台客服账号（PRD §D4）：与平台客服的会话不触发智能助手。 */
+    public static final long PLATFORM_CS_ID = 10000L;
+
     private final ConversationMapper conversationMapper;
     private final MessageMapper messageMapper;
     private final WsSessionManager wsSessionManager;
     private final UserService userService;
     private final ObjectMapper objectMapper;
     private final ContentAuditService contentAuditService;
+    private final ImAssistantService imAssistantService;
 
     public ImService(ConversationMapper conversationMapper, MessageMapper messageMapper,
                      WsSessionManager wsSessionManager, UserService userService, ObjectMapper objectMapper,
-                     ContentAuditService contentAuditService) {
+                     ContentAuditService contentAuditService, ImAssistantService imAssistantService) {
         this.conversationMapper = conversationMapper;
         this.messageMapper = messageMapper;
         this.wsSessionManager = wsSessionManager;
         this.userService = userService;
         this.objectMapper = objectMapper;
         this.contentAuditService = contentAuditService;
+        this.imAssistantService = imAssistantService;
     }
 
     /** 发送消息（sender→receiver，围绕 itemId）。 */
     public MessageVO send(Long senderId, Long receiverId, Long itemId, String content, String type) {
+        return sendInternal(senderId, receiverId, itemId, content, type, true);
+    }
+
+    /**
+     * 智能助手代答消息（ITER-F06）：以卖家侧身份发出，不触发助手链路（防回路）。
+     */
+    public MessageVO sendAssistantReply(Long sellerId, Long buyerId, Long itemId, String content) {
+        return sendInternal(sellerId, buyerId, itemId, content, "text", false);
+    }
+
+    private MessageVO sendInternal(Long senderId, Long receiverId, Long itemId, String content, String type,
+                                   boolean triggerAssistant) {
         if (receiverId == null || receiverId.equals(senderId)) {
             throw new BizException(Code.PARAM_INVALID, "接收人无效");
         }
@@ -105,7 +125,30 @@ public class ImService {
         // 实时推送
         push(receiverId, msg);
 
+        // ITER-F06：买家消息后 best-effort 触发智能助手（平台客服会话与卖家消息不触发）
+        if (triggerAssistant && !receiverId.equals(PLATFORM_CS_ID) && senderId.equals(conv.getBuyerId())) {
+            triggerAssistantReply(conv, senderId, receiverId, itemId, msg.getId(), content);
+        }
+
         return toVO(msg);
+    }
+
+    /**
+     * 触发智能助手代答（ITER-F06 / REQ-12 best-effort）：异常全部吞掉，仅记日志。
+     */
+    private void triggerAssistantReply(Conversation conv, Long buyerId, Long sellerId, Long itemId,
+                                       Long triggerMessageId, String content) {
+        try {
+            List<String> replies = imAssistantService.handleBuyerMessage(
+                    conv, buyerId, sellerId, itemId, triggerMessageId, content);
+            for (String reply : replies) {
+                if (reply != null && !reply.isBlank()) {
+                    sendAssistantReply(sellerId, buyerId, itemId, reply);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[im] 智能助手处理异常（不影响消息主流程） convId={}", conv.getConvId(), e);
+        }
     }
 
     /** 平台客服会话入口：返回（或创建）用户与平台客服的会话 ID。 */

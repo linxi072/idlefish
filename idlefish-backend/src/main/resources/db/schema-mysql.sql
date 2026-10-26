@@ -188,6 +188,10 @@ CREATE TABLE IF NOT EXISTS t_conversation (
     last_sender_id   BIGINT,
     buyer_unread     INT          DEFAULT 0,
     seller_unread    INT          DEFAULT 0,
+    auto_reply_enabled INT       DEFAULT 1 COMMENT 'ITER-F06 智能助手会话级开关：0=卖家关闭代答，1=开启',
+    human_takeover   INT          DEFAULT 0 COMMENT 'ITER-F06 人工接管标记：置 1 后停止一切自动作答（REQ-09）',
+    dispute_risk_score INT        DEFAULT 0 COMMENT 'ITER-F06 会话累计纠纷风险分（窗口内，封顶 100）',
+    dispute_risk_at  DATETIME     COMMENT 'ITER-F06 风险分最近更新时间（窗口重置基准）',
     created_at       DATETIME,
     updated_at       DATETIME,
     UNIQUE KEY uk_conv_id (conv_id),
@@ -1290,6 +1294,100 @@ CREATE TABLE IF NOT EXISTS t_benefit_exchange (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
+-- ===== ITER-F06 IM 客服智能化（PRD-P2-F06）=====
+-- 知识库话术（REQ-11 品类话术优先）：category_id=0 为通用回落，keywords 逗号分隔小写比对。
+CREATE TABLE IF NOT EXISTS t_im_knowledge (
+    id              BIGINT       PRIMARY KEY,
+    category_id     BIGINT       NOT NULL DEFAULT 0 COMMENT '类目 ID，0=通用话术（全品类回落）',
+    intent          VARCHAR(32)  NOT NULL COMMENT '意图枚举名（SHIPPING/PRICE/REFUND/INSPECTION/LOGISTICS/CHITCHAT）',
+    keywords        VARCHAR(500) NOT NULL COMMENT '触发词（逗号分隔，小写比对）',
+    answer_template VARCHAR(1000) NOT NULL COMMENT '答案模板（金额占位按「分」存储，展示时格式化为元）',
+    priority        INT          NOT NULL DEFAULT 0 COMMENT '运营排序权重（同分竞争时生效）',
+    status          VARCHAR(16)  NOT NULL DEFAULT 'ON' COMMENT 'ON/OFF',
+    remark          VARCHAR(500) COMMENT '说明',
+    created_at      DATETIME,
+    updated_at      DATETIME,
+    KEY idx_imkb_intent (intent, status),
+    KEY idx_imkb_cat (category_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 自动应答记录（REQ-10 来源标记可审计 / REQ-14 反馈入池）
+CREATE TABLE IF NOT EXISTS t_im_auto_reply (
+    id                 BIGINT       PRIMARY KEY,
+    reply_no           VARCHAR(32)  NOT NULL COMMENT '应答单号（AR 前缀）',
+    conv_id            VARCHAR(64)  NOT NULL COMMENT '会话 ID',
+    item_id            BIGINT       COMMENT '商品 ID',
+    buyer_id           BIGINT       COMMENT '买家（提问方）',
+    seller_id          BIGINT       COMMENT '卖家（代答方）',
+    trigger_message_id BIGINT       COMMENT '触发挥答的买家消息 ID',
+    intent             VARCHAR(32)  COMMENT '识别意图',
+    source             VARCHAR(32)  NOT NULL COMMENT 'KNOWLEDGE/TEMPLATE_FALLBACK/LLM',
+    confidence         DOUBLE       COMMENT '匹配置信度（0~1）',
+    content            VARCHAR(1024) NOT NULL COMMENT '实际发出内容（脱敏后）',
+    question           VARCHAR(255) COMMENT '触发问题的脱敏原文（反馈入池定位 REQ-14）',
+    summary            VARCHAR(1000) COMMENT '升级时的会话摘要（REQ-07，仅 escalated=1 有值）',
+    feedback           VARCHAR(16)  NOT NULL DEFAULT 'NONE' COMMENT 'NONE/USEFUL/USELESS',
+    escalated          INT          NOT NULL DEFAULT 0 COMMENT '是否伴随转人工 0/1',
+    escalate_reason    VARCHAR(32)  COMMENT '转人工原因',
+    created_at         DATETIME,
+    updated_at         DATETIME,
+    UNIQUE KEY uk_reply_no (reply_no),
+    KEY idx_ar_conv (conv_id, created_at),
+    KEY idx_ar_intent (intent, created_at),
+    KEY idx_ar_feedback (feedback)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 纠纷预警记录（REQ-06 信号预警 + 一键 F-17 提示）
+CREATE TABLE IF NOT EXISTS t_im_dispute_warning (
+    id           BIGINT       PRIMARY KEY,
+    warning_no   VARCHAR(32)  NOT NULL COMMENT '预警单号（DW 前缀）',
+    conv_id      VARCHAR(64)  NOT NULL COMMENT '会话 ID',
+    item_id      BIGINT       COMMENT '商品 ID',
+    buyer_id     BIGINT       COMMENT '买家',
+    seller_id    BIGINT       COMMENT '卖家',
+    risk_score   INT          NOT NULL DEFAULT 0 COMMENT '风险分（封顶 100）',
+    level        VARCHAR(16)  NOT NULL COMMENT 'WARN/HIGH',
+    signals      VARCHAR(255) COMMENT '命中信号（逗号分隔）',
+    notice_text  VARCHAR(500) COMMENT '会话内提示卡文案',
+    handled_flag INT          NOT NULL DEFAULT 0 COMMENT '人工是否已跟进 0/1',
+    handled_by   BIGINT       COMMENT '跟进人（管理员 userId）',
+    created_at   DATETIME,
+    updated_at   DATETIME,
+    UNIQUE KEY uk_warning_no (warning_no),
+    KEY idx_dw_conv (conv_id, created_at),
+    KEY idx_dw_level (level, handled_flag)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 内容拦截记录（REQ-08 屏蔽词/引流拦截并记风控；文本脱敏后存储）
+CREATE TABLE IF NOT EXISTS t_im_content_block (
+    id           BIGINT       PRIMARY KEY,
+    conv_id      VARCHAR(64)  NOT NULL COMMENT '会话 ID',
+    user_id      BIGINT       COMMENT '触发用户',
+    hit_type     VARCHAR(16)  NOT NULL COMMENT 'CONTACT（站外联系方式）/LEAD（引流话术）',
+    matched_text VARCHAR(255) COMMENT '脱敏后的命中文本',
+    action       VARCHAR(32)  COMMENT '处置：BLOCK_AND_ESCALATE',
+    created_at   DATETIME,
+    updated_at   DATETIME,
+    KEY idx_cb_conv (conv_id, created_at),
+    KEY idx_cb_user (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 未命中问题池（REQ-14 点踩/追问入池，供运营补充话术）
+CREATE TABLE IF NOT EXISTS t_im_unanswered (
+    id           BIGINT       PRIMARY KEY,
+    question     VARCHAR(255) NOT NULL COMMENT '脱敏后的问题原文',
+    intent       VARCHAR(32)  COMMENT '识别意图（可为空）',
+    category_id  BIGINT       COMMENT '商品类目 ID',
+    hit_count    INT          NOT NULL DEFAULT 1 COMMENT '累计出现次数',
+    last_conv_id VARCHAR(64)  COMMENT '最近一次出现的会话',
+    status       VARCHAR(16)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING/RESOLVED',
+    created_at   DATETIME,
+    updated_at   DATETIME,
+    KEY idx_un_status (status, hit_count),
+    KEY idx_un_intent (intent)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
 -- ===== 幂等列迁移（存量库升级：仅当列缺失时补齐；新库由上方 CREATE TABLE 直接建齐） =====
 -- 说明：CREATE TABLE IF NOT EXISTS 不会为已存在的表追加新列，历史库需在此处做幂等 ADD COLUMN。
 -- 采用 information_schema 探测 + PREPARE 动态执行（兼容 spring.sql.init 的分号切分，无需 DELIMITER）。
@@ -1345,6 +1443,62 @@ SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE table_schema = DATABASE() AND table_name = 't_user_growth' AND column_name = 'total_earned');
 SET @ddl := IF(@col_exists = 0,
     'ALTER TABLE t_user_growth ADD COLUMN total_earned INT NOT NULL DEFAULT 0 COMMENT ''累计获得成长值（对账口径，REQ-09）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+-- ITER-F06 IM 客服智能化：t_conversation 追加自动代答开关 / 人工接管标记两列
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_conversation' AND column_name = 'auto_reply_enabled');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_conversation ADD COLUMN auto_reply_enabled INT DEFAULT 1 COMMENT ''ITER-F06 智能助手会话级开关：0=卖家关闭代答，1=开启''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_conversation' AND column_name = 'human_takeover');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_conversation ADD COLUMN human_takeover INT DEFAULT 0 COMMENT ''ITER-F06 人工接管标记：置 1 后停止一切自动作答（REQ-09）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_conversation' AND column_name = 'dispute_risk_score');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_conversation ADD COLUMN dispute_risk_score INT DEFAULT 0 COMMENT ''ITER-F06 会话累计纠纷风险分（窗口内，封顶 100）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_conversation' AND column_name = 'dispute_risk_at');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_conversation ADD COLUMN dispute_risk_at DATETIME COMMENT ''ITER-F06 风险分最近更新时间（窗口重置基准）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+-- ITER-F06：t_im_auto_reply 追加触发问题原文 / 升级会话摘要两列
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_im_auto_reply' AND column_name = 'question');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_im_auto_reply ADD COLUMN question VARCHAR(255) COMMENT ''触发问题的脱敏原文（反馈入池定位 REQ-14）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_im_auto_reply' AND column_name = 'summary');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_im_auto_reply ADD COLUMN summary VARCHAR(1000) COMMENT ''升级时的会话摘要（REQ-07，仅 escalated=1 有值）''',
     'SELECT 1');
 PREPARE mig_stmt FROM @ddl;
 EXECUTE mig_stmt;

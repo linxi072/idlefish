@@ -80,4 +80,14 @@ public class IdGenerator {
     public static String benefitExchangeNo() {
         return next("BX");
     }
+
+    /** 智能助手应答单号（ITER-F06 IM 客服智能化；AR 前缀）。 */
+    public static String assistantReplyNo() {
+        return next("AR");
+    }
+
+    /** 纠纷预警单号（ITER-F06；DW 前缀）。 */
+    public static String disputeWarningNo() {
+        return next("DW");
+    }
 }

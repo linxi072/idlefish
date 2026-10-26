@@ -24,6 +24,20 @@ public class Conversation extends BaseEntity implements Serializable {
     private Integer buyerUnread = 0;
     /** 卖家未读条数。 */
     private Integer sellerUnread = 0;
+    /**
+     * 智能助手自动代答开关（ITER-F06）：卖家可在会话级关闭（0=关闭，1=开启，默认 1）。
+     * 关闭后买家消息不再触发自动应答，仅转人工链路。
+     */
+    private Integer autoReplyEnabled = 1;
+    /**
+     * 人工接管标记（ITER-F06 / REQ-09）：买家要求转人工或裁决类升级后置 1，
+     * 之后停止一切自动作答，直至卖家/客服手动恢复。
+     */
+    private Integer humanTakeover = 0;
+    /** ITER-F06 会话累计纠纷风险分（窗口内，封顶 100；超过 disputeSignalWindowHours 未更新则重置）。 */
+    private Integer disputeRiskScore = 0;
+    /** ITER-F06 风险分最近更新时间（窗口重置基准）。 */
+    private java.time.LocalDateTime disputeRiskAt;
 
     public String getConvId() {
         return convId;
@@ -87,5 +101,37 @@ public class Conversation extends BaseEntity implements Serializable {
 
     public void setSellerUnread(Integer sellerUnread) {
         this.sellerUnread = sellerUnread;
+    }
+
+    public Integer getAutoReplyEnabled() {
+        return autoReplyEnabled;
+    }
+
+    public void setAutoReplyEnabled(Integer autoReplyEnabled) {
+        this.autoReplyEnabled = autoReplyEnabled;
+    }
+
+    public Integer getHumanTakeover() {
+        return humanTakeover;
+    }
+
+    public void setHumanTakeover(Integer humanTakeover) {
+        this.humanTakeover = humanTakeover;
+    }
+
+    public Integer getDisputeRiskScore() {
+        return disputeRiskScore;
+    }
+
+    public void setDisputeRiskScore(Integer disputeRiskScore) {
+        this.disputeRiskScore = disputeRiskScore;
+    }
+
+    public java.time.LocalDateTime getDisputeRiskAt() {
+        return disputeRiskAt;
+    }
+
+    public void setDisputeRiskAt(java.time.LocalDateTime disputeRiskAt) {
+        this.disputeRiskAt = disputeRiskAt;
     }
 }

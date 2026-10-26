@@ -47,6 +47,8 @@ public class IdlefishProperties {
     private Event event = new Event();
     /** 会员积分成长深化（ITER-F07 / PRD-P2-F07）：成长值（不可消耗）多维累计、防刷、衰减与权益兑换。 */
     private Growth growth = new Growth();
+    /** IM 智能助手（ITER-F06 / PRD-P2-F06）：意图路由、知识库话术、置信度分流、纠纷预警与 LLM 增强。 */
+    private ImAssistant imAssistant = new ImAssistant();
 
     @Data
     public static class Jwt {
@@ -552,5 +554,56 @@ public class IdlefishProperties {
 
         /** 规则版本号（REQ-14）：变更规则时递增，流水快照该值以便区分口径、支撑不追溯重算。 */
         private String ruleVersion = "v1";
+    }
+
+    /**
+     * IM 智能助手配置（ITER-F06 / PRD-P2-F06）。
+     * <p>金额口径：知识库模板中金额一律「分」存储，展示由 {@code AnswerComposer.formatFen} 格式化为元（REQ-05）。
+     * LLM 默认关闭：零模型可用时知识库模板 + 通用回落保证链路不阻塞（REQ-12）。</p>
+     */
+    @Data
+    public static class ImAssistant {
+        /** 智能助手总开关；关闭后买家消息不触发自动应答（仅人工链路）。 */
+        private boolean enabled = true;
+        /** 新会话默认开启卖家自动代答（卖家可会话级关闭，反向保护 REQ-09）。 */
+        private boolean sellerAutoReplyDefault = true;
+        /** 置信度阈值：达到即模板化自动作答（REQ-03，默认 0.6）。 */
+        private double confidenceThreshold = 0.6;
+        /** 纠纷预警风险分阈值（REQ-06，默认 60）。 */
+        private int disputeWarnThreshold = 60;
+        /** 纠纷信号累计窗口（小时）：窗口内同会话风险分累加（REQ-06）。 */
+        private int disputeSignalWindowHours = 24;
+        /** 会话级刷量限流：单会话每日最大自动应答条数（边界场景 8）。 */
+        private int maxAutoReplyPerConvPerDay = 20;
+        /** 卖家超时未响应阈值（小时）：触发纠纷信号 SLOW_REPLY（REQ-06）。 */
+        private int sellerSlowReplyHours = 24;
+        /** LLM 增强配置（默认关闭；开启后对中等置信度问题试探生成，失败回落模板 REQ-12）。 */
+        private Llm llm = new Llm();
+
+        /**
+         * LLM（OpenAI 兼容）真实 HTTP 接入配置。
+         * <p>未配置 baseUrl/apiKey 或 enabled=false 时 {@code LlmClient.isAvailable()=false}，
+         * 链路走模板回落，绝不静默失败（REQ-12 降级不阻塞）。</p>
+         */
+        @Data
+        public static class Llm {
+            /** 是否启用 LLM 增强（默认关闭）。 */
+            private boolean enabled = false;
+            /** OpenAI 兼容接口基址，例如 https://api.openai.com/v1。 */
+            private String baseUrl = "";
+            /** API Key（生产经环境变量注入，切勿明文提交）。 */
+            private String apiKey = "";
+            /** 模型名，例如 gpt-4o-mini / qwen-plus。 */
+            private String model = "";
+            /** 读取超时（毫秒，默认 3000）。 */
+            private long timeoutMs = 3000L;
+            /**
+             * 系统提示词（幻觉约束）：只依据给定知识库条目与平台规则作答；
+             * 不得代接受报价、不得对退款/责任/赔付作裁决、不确定时明确说明并建议转人工。
+             */
+            private String systemPrompt = "你是闲置交易平台的智能客服助手。只依据给定的知识库条目与平台规则回答买家问题；"
+                    + "不得代替卖家接受议价或承诺价格，不得对退款、责任认定、赔付金额作出裁决；"
+                    + "不确定时必须明确说明并建议转人工客服。回答简洁友好，200 字以内。";
+        }
     }
 }
