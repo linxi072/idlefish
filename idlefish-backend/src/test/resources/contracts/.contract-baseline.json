@@ -1,7 +1,7 @@
 {
   "version" : 1,
-  "generatedAt" : "2026-10-25",
-  "endpointCount" : 191,
+  "generatedAt" : "2026-10-26",
+  "endpointCount" : 207,
   "generatedBy" : "ContractBaselineRegenerateTest（ITER-T03）；不兼容变更请走评审后再生，禁止为绕过门禁随意再生",
   "endpoints" : {
     "DELETE /api/address/{id}" : {
@@ -178,6 +178,42 @@
       "fields" : [ "data.records", "data.total" ],
       "file" : "member.json"
     },
+    "GET /api/admin/im/assistant/blocks" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "im-assistant.json"
+    },
+    "GET /api/admin/im/assistant/knowledge" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "im-assistant.json"
+    },
+    "GET /api/admin/im/assistant/replies" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "im-assistant.json"
+    },
+    "GET /api/admin/im/assistant/stats" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.autoResolveRate", "data.blocks", "data.escalateRate", "data.escalated", "data.fallbackRate", "data.pendingUnanswered", "data.satisfactionRate", "data.totalReplies", "data.warnings" ],
+      "file" : "im-assistant.json"
+    },
+    "GET /api/admin/im/assistant/unanswered" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "im-assistant.json"
+    },
+    "GET /api/admin/im/assistant/warnings" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.records", "data.total" ],
+      "file" : "im-assistant.json"
+    },
     "GET /api/admin/member/level/growth" : {
       "auth" : "admin",
       "expectStatus" : 200,
@@ -279,6 +315,12 @@
       "expectStatus" : 200,
       "fields" : [ "data.records" ],
       "file" : "growth.json"
+    },
+    "GET /api/im/assistant/status" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.assistantEnabled", "data.autoReplyEnabled", "data.convId", "data.humanTakeover" ],
+      "file" : "im-assistant.json"
     },
     "GET /api/im/conversations" : {
       "auth" : "user",
@@ -778,6 +820,36 @@
       "fields" : [ "data" ],
       "file" : "member.json"
     },
+    "POST /api/admin/im/assistant/knowledge/delete" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "im-assistant.json"
+    },
+    "POST /api/admin/im/assistant/knowledge/save" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "im-assistant.json"
+    },
+    "POST /api/admin/im/assistant/knowledge/status" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "im-assistant.json"
+    },
+    "POST /api/admin/im/assistant/unanswered/resolve" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "im-assistant.json"
+    },
+    "POST /api/admin/im/assistant/warnings/handle" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "im-assistant.json"
+    },
     "POST /api/admin/member/level/delete" : {
       "auth" : "admin",
       "expectStatus" : 200,
@@ -897,6 +969,30 @@
       "expectStatus" : 200,
       "fields" : [ "data" ],
       "file" : "notify-im-search.json"
+    },
+    "POST /api/im/assistant/auto-reply" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "im-assistant.json"
+    },
+    "POST /api/im/assistant/feedback" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "im-assistant.json"
+    },
+    "POST /api/im/assistant/human" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data.convId", "data.humanTakeover", "data.summary" ],
+      "file" : "im-assistant.json"
+    },
+    "POST /api/im/assistant/takeover/clear" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "im-assistant.json"
     },
     "POST /api/im/send" : {
       "auth" : "user",
