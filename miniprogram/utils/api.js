@@ -278,6 +278,50 @@ const api = {
   // 我的会员等级与权益 + 升级进度：MemberLevelView
   memberMine() { return route(() => mock.memberMine(), () => http.get('/api/member/level/mine')); },
 
+  // ===== 成长值（ITER-F07，对齐 GrowthController /api/member/growth/*）=====
+  // 我的成长中心（等级权益 + 升级进度 + 冻结 + 距衰减天数）：GrowthAccountVO
+  growthAccount() { return route(() => mock.growthAccount(), () => http.get('/api/member/growth/account')); },
+  // 成长值流水（可按 bizType 过滤，分页）：IPage<GrowthValueLogVO> → {records,total}
+  growthLogs(page, size, bizType) {
+    return route(
+      () => mock.growthLogs(page, size, bizType),
+      () => {
+        let url = '/api/member/growth/logs?page=' + (page || 1) + '&size=' + (size || 20);
+        if (bizType) url += '&bizType=' + encodeURIComponent(bizType);
+        return http.get(url).then((p) => ({ records: (p && p.records) || [], total: (p && p.total) || 0 }));
+      }
+    );
+  },
+  // 成长值规则配置：IdlefishProperties.Growth（获得口径 / 防刷 / 衰减 / 判责）
+  growthConfig() { return route(() => mock.growthConfig(), () => http.get('/api/member/growth/config')); },
+  // 权益兑换中心（上架中权益 + 可兑换判定）：List<Benefit> / IPage → 数组
+  growthBenefits(page, size) {
+    return route(
+      () => mock.growthBenefits(page, size),
+      () => http.get('/api/member/growth/benefits?page=' + (page || 1) + '&size=' + (size || 20))
+        .then((p) => (Array.isArray(p) ? p : ((p && p.records) || [])))
+    );
+  },
+  // 权益详情（含可兑换判定）：Benefit
+  growthBenefitDetail(id) { return route(() => mock.growthBenefitDetail(id), () => http.get('/api/member/growth/benefits/detail?id=' + id)); },
+  // 兑换权益：benefitId → { exchangeNo }
+  growthExchange(benefitId) {
+    return route(
+      () => mock.growthExchange(benefitId),
+      () => http.post('/api/member/growth/exchange', { benefitId }).then((r) => ({ exchangeNo: (r && r.exchangeNo) || r }))
+    );
+  },
+  // 我的兑换记录（分页）：IPage<BenefitExchangeVO> → {records,total}
+  growthExchanges(page, size) {
+    return route(
+      () => mock.growthExchanges(page, size),
+      () => http.get('/api/member/growth/exchanges?page=' + (page || 1) + '&size=' + (size || 20))
+        .then((p) => ({ records: (p && p.records) || [], total: (p && p.total) || 0 }))
+    );
+  },
+  // 上报活跃（刷新衰减基准）：POST /api/member/growth/touch
+  growthTouch() { return route(() => mock.growthTouch(), () => http.post('/api/member/growth/touch')); },
+
   // ===== 促销活动（F-13.3，对齐 ActivityController /api/activity/*，金额单位：分）=====
   // 进行中活动列表：List<Activity>
   activityList() { return route(() => mock.activityList(), () => http.get('/api/activity/list')); },

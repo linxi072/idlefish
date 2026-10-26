@@ -12,6 +12,7 @@ Page({
       { icon: '🎟️', name: '优惠券', url: '/pages/coupon/my/my' },
       { icon: '🪙', name: '积分中心', url: '/pages/point/point' },
       { icon: '👑', name: '会员权益', url: '/pages/member/member' },
+      { icon: '🌱', name: '成长中心', url: '/pages/growth/index/index' },
       { icon: '⚡', name: '限时活动', url: '/pages/activity/list/list' },
       { icon: '⭐', name: '我的评价', url: '/pages/evaluate/list/list' },
       { icon: '⚖️', name: '我的维权', url: '/pages/dispute/list/list' },

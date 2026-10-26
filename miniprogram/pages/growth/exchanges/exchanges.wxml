@@ -1,0 +1,21 @@
+<view class="page exchanges">
+  <view class="card sec">
+    <view class="e-item" wx:for="{{exchanges}}" wx:key="id">
+      <view class="e-body">
+        <view class="e-name">{{item.benefitName}}</view>
+        <view class="e-meta">
+          <text class="e-no">单号 {{item.exchangeNo}}</text>
+          <text class="e-time">{{item.createdAt}}</text>
+        </view>
+      </view>
+      <view class="e-right">
+        <view class="e-cost">-{{item.costGrowth}}</view>
+        <view class="e-status {{item.status === 'SUCCESS' ? 'ok' : (item.status === 'FAILED' ? 'fail' : 'wait')}}">{{item.statusText}}</view>
+      </view>
+    </view>
+    <view wx:if="{{!loadErr && !exchanges.length}}" class="empty"><view class="icon">🧾</view><view class="tip">暂无兑换记录</view></view>
+    <view wx:elif="{{loadErr}}" class="foot">加载失败，下拉重试</view>
+    <view wx:elif="{{finished}}" class="foot">没有更多了</view>
+    <view wx:elif="{{loading}}" class="foot">加载中...</view>
+  </view>
+</view>

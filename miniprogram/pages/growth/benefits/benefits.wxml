@@ -1,0 +1,27 @@
+<view class="page benefits">
+  <view class="hint">用成长值兑换平台权益，兑换后可在「我的兑换」查看记录</view>
+
+  <view class="card sec">
+    <view class="b-item" wx:for="{{benefits}}" wx:key="id">
+      <view class="b-icon">{{item.benefitType === 'COUPON' ? '🎟️' : (item.benefitType === 'VOUCHER' ? '💰' : (item.benefitType === 'SERVICE' ? '🛎️' : '✨'))}}</view>
+      <view class="b-body">
+        <view class="b-name">{{item.benefitName}}</view>
+        <view class="b-meta">
+          <text class="cost">{{item.costGrowth}} 成长值</text>
+          <text class="stock" wx:if="{{item.soldOut}}">已兑完</text>
+          <text class="stock" wx:elif="{{item.exchangeable}}">库存 {{item.stock}}</text>
+          <text class="stock off" wx:else>暂不可兑</text>
+        </view>
+      </view>
+      <view class="btn btn-sm {{item.exchangeable ? '' : 'btn-disabled'}}" data-id="{{item.id}}" bindtap="onExchange">
+        {{exchangingId === item.id ? '兑换中' : '兑换'}}
+      </view>
+    </view>
+    <view wx:if="{{!loadErr && !benefits.length}}" class="empty"><view class="icon">🎁</view><view class="tip">暂无上架权益</view></view>
+    <view wx:elif="{{loadErr}}" class="foot">加载失败，下拉重试</view>
+    <view wx:elif="{{finished}}" class="foot">没有更多了</view>
+    <view wx:elif="{{loading}}" class="foot">加载中...</view>
+  </view>
+
+  <view class="btn btn-ghost btn-block go-exc" bindtap="goExchanges">查看我的兑换</view>
+</view>

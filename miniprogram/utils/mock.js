@@ -745,6 +745,72 @@ module.exports = {
     return delay({ ok: true });
   },
 
+  // ===== 成长值（ITER-F07 对齐 GrowthService / GrowthAccountVO / Benefit / BenefitExchange）=====
+  // 演示账户：青铜会员，部分成长值，距衰减较远
+  growthAccount() {
+    return delay({
+      levelCode: 'L2', levelName: '青铜会员', growthValue: 320, totalEarned: 420,
+      icon: '🥉', color: '#CD7F32', freeShipping: 1, priorityReview: 0, commissionDiscount: 0,
+      nextLevelName: '白银会员', growthToNext: 180, percent: 0.64,
+      frozen: false, daysUntilDecay: 64, decayNotifyDays: 7, ruleVersion: 'v1'
+    });
+  },
+  // 成长值流水（演示 6 条，覆盖主要 bizType）
+  growthLogs(page, size, bizType) {
+    const all = [
+      { id: 1, userId: me.id, bizType: 'EARN_TRADE', bizId: 'ORD20260901001', delta: 123, beforeValue: 197, afterValue: 320, levelCode: 'L2', ruleVersion: 'v1', remark: '交易完成得成长值', createdAt: '2026-09-01 10:22' },
+      { id: 2, userId: me.id, bizType: 'EARN_PUBLISH', bizId: '9001', delta: 20, beforeValue: 177, afterValue: 197, levelCode: 'L2', ruleVersion: 'v1', remark: '发布商品得成长值', createdAt: '2026-08-28 09:10' },
+      { id: 3, userId: me.id, bizType: 'EARN_REVIEW', bizId: '55', delta: 10, beforeValue: 167, afterValue: 177, levelCode: 'L2', ruleVersion: 'v1', remark: '评价通过得成长值', createdAt: '2026-08-25 20:31' },
+      { id: 4, userId: me.id, bizType: 'EARN_INSPECTION', bizId: 'INSP20260820', delta: 30, beforeValue: 137, afterValue: 167, levelCode: 'L2', ruleVersion: 'v1', remark: '验货配合得成长值', createdAt: '2026-08-20 14:05' },
+      { id: 5, userId: me.id, bizType: 'DECAY', bizId: '2026-07-20', delta: -30, beforeValue: 167, afterValue: 137, levelCode: 'L2', ruleVersion: 'v1', remark: '不活跃衰减', createdAt: '2026-07-20 03:30' },
+      { id: 6, userId: me.id, bizType: 'DEDUCT_DISPUTE', bizId: 'DP20260710', delta: -50, beforeValue: 217, afterValue: 167, levelCode: 'L2', ruleVersion: 'v1', remark: '维权判责扣减成长值', createdAt: '2026-07-10 16:48' }
+    ].filter((l) => !bizType || l.bizType === bizType);
+    const p = Number(page || 1), s = Number(size || 20);
+    const slice = all.slice((p - 1) * s, p * s);
+    return delay({ records: slice, total: all.length });
+  },
+  // 成长值规则配置（对齐 IdlefishProperties.Growth）
+  growthConfig() {
+    return delay({
+      enabled: true, ruleVersion: 'v1', tradeGrowthPerYuanFen: 1, tradeCapPerOrder: 500,
+      publishFixed: 20, reviewFixed: 10, inspectionFixed: 30, reconcileFixed: 20,
+      earnWindowDays: 7, maxLinkedAccounts: 3, maxEarnInWindow: 10, minAmountFen: 100,
+      decayThresholdDays: 90, decayNotifyDays: 7, disputePenaltyCap: 500, defaultLevel: 'L1'
+    });
+  },
+  // 权益兑换中心（仅上架 ONLINE 且可兑换）
+  growthBenefits(page, size) {
+    const all = [
+      { id: 1, benefitName: '免邮券（1 张）', benefitType: 'COUPON', costGrowth: 100, stock: 50, dailyLimit: 5, status: 'ONLINE', exchangeable: true },
+      { id: 2, benefitName: '5 元无门槛红包', benefitType: 'VOUCHER', costGrowth: 200, stock: 30, dailyLimit: 3, status: 'ONLINE', exchangeable: true },
+      { id: 3, benefitName: '优先客服接入', benefitType: 'SERVICE', costGrowth: 80, stock: 999, dailyLimit: 1, status: 'ONLINE', exchangeable: true },
+      { id: 4, benefitName: '成长值加速卡', benefitType: 'BUFF', costGrowth: 150, stock: 0, dailyLimit: 2, status: 'ONLINE', exchangeable: false }
+    ];
+    const p = Number(page || 1), s = Number(size || 20);
+    return delay({ records: all.slice((p - 1) * s, p * s), total: all.length });
+  },
+  growthBenefitDetail(id) {
+    const map = { 1: { id: 1, benefitName: '免邮券（1 张）', benefitType: 'COUPON', costGrowth: 100, stock: 50, dailyLimit: 5, status: 'ONLINE', exchangeable: true },
+      2: { id: 2, benefitName: '5 元无门槛红包', benefitType: 'VOUCHER', costGrowth: 200, stock: 30, dailyLimit: 3, status: 'ONLINE', exchangeable: true } };
+    return delay(map[id] || { id, benefitName: '权益', benefitType: 'OTHER', costGrowth: 0, stock: 0, status: 'OFFLINE', exchangeable: false });
+  },
+  // 兑换权益：演示返回兑换单号（幂等由后端保证）
+  growthExchange(benefitId) {
+    return delay({ exchangeNo: 'EXC' + Date.now().toString().slice(-8) + benefitId });
+  },
+  // 我的兑换记录（演示 3 条）
+  growthExchanges(page, size) {
+    const all = [
+      { id: 1, benefitId: 1, benefitName: '免邮券（1 张）', costGrowth: 100, status: 'SUCCESS', exchangeNo: 'EXC20260901001', createdAt: '2026-09-01 11:00' },
+      { id: 2, benefitId: 3, benefitName: '优先客服接入', costGrowth: 80, status: 'SUCCESS', exchangeNo: 'EXC20260820002', createdAt: '2026-08-20 15:20' },
+      { id: 3, benefitId: 2, benefitName: '5 元无门槛红包', costGrowth: 200, status: 'SUCCESS', exchangeNo: 'EXC20260815003', createdAt: '2026-08-15 19:45' }
+    ];
+    const p = Number(page || 1), s = Number(size || 20);
+    return delay({ records: all.slice((p - 1) * s, p * s), total: all.length });
+  },
+  // 上报活跃
+  growthTouch() { return delay({ ok: true }); },
+
   // —— 后台 mock ——
   adminLogin() { return delay({ token: 'admin-mock-token', user: { username: 'admin', role: 'admin' } }); },
   adminStats() { return delay({ gmv: 128600, orderCnt: 342, userCnt: 1560, itemCnt: 892, pendingReview: 23, refunding: 5, todayRegister: 42 }); },

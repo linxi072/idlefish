@@ -1,0 +1,47 @@
+<view class="page index">
+  <!-- 等级头部 -->
+  <view class="hero">
+    <view class="level-badge">{{levelName || '注册会员'}}</view>
+    <view class="hero-num">{{growthValue}}</view>
+    <view class="hero-label">我的成长值</view>
+    <view class="hero-sub">累计获得 {{totalEarned}} 点</view>
+  </view>
+
+  <!-- 升级进度 -->
+  <view class="card sec" wx:if="{{nextLevelName}}">
+    <view class="progress-head">
+      <text class="ph-name">距离「{{nextLevelName}}」还差 {{growthToNext}} 点</text>
+      <text class="ph-pct">{{percent}}%</text>
+    </view>
+    <view class="progress-bar"><view class="progress-fill" style="width:{{percent}}%"></view></view>
+  </view>
+
+  <!-- 冻结 / 衰减预警 -->
+  <view class="status-bar warn" wx:if="{{frozen}}">⚠️ 成长值发放通道已冻结，获得类行为暂不计成长值（判责扣减不受影响）</view>
+  <view class="status-bar warn" wx:elif="{{decayWarning}}">⏳ 您已 {{daysUntilDecay}} 天未活跃，超过 {{decayNotifyDays}} 天将衰减成长值，多来逛逛吧</view>
+
+  <!-- 快捷入口 -->
+  <view class="card sec entry">
+    <view class="entry-item" bindtap="goLogs">
+      <view class="e-ico">📈</view><view class="e-name">成长值明细</view><text class="m-arrow">›</text>
+    </view>
+    <view class="entry-item" bindtap="goBenefits">
+      <view class="e-ico">🎁</view><view class="e-name">权益兑换</view><text class="m-arrow">›</text>
+    </view>
+    <view class="entry-item" bindtap="goExchanges">
+      <view class="e-ico">🧾</view><view class="e-name">我的兑换</view><text class="m-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 成长规则 -->
+  <view class="card sec" wx:if="{{config}}">
+    <view class="sec-title">成长值规则（版本 {{config.ruleVersion}}）</view>
+    <view class="rule-row"><text class="r-k">交易获得</text><text class="r-v">每消费 1 元得 {{config.tradeGrowthPerYuanFen}} 点（单笔上限 {{config.tradeCapPerOrder}}）</text></view>
+    <view class="rule-row"><text class="r-k">发布商品</text><text class="r-v">每件 {{config.publishFixed}} 点</text></view>
+    <view class="rule-row"><text class="r-k">评价通过</text><text class="r-v">每条 {{config.reviewFixed}} 点</text></view>
+    <view class="rule-row"><text class="r-k">验货配合</text><text class="r-v">每次 {{config.inspectionFixed}} 点</text></view>
+    <view class="rule-row"><text class="r-k">纠纷和解</text><text class="r-v">每次 {{config.reconcileFixed}} 点</text></view>
+    <view class="rule-row"><text class="r-k">不活跃衰减</text><text class="r-v">{{config.decayThresholdDays}} 天未活跃开始衰减</text></view>
+    <view class="rule-row"><text class="r-k">判责扣减</text><text class="r-v">单次上限 {{config.disputePenaltyCap}} 点（申诉成功可回补）</text></view>
+  </view>
+</view>

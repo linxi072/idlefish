@@ -1,0 +1,18 @@
+.exchanges { padding: 24rpx; }
+.sec { margin-top: 0; }
+.e-item { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 0; border-bottom: 2rpx solid #F2F3F5; }
+.e-item:last-child { border-bottom: none; }
+.e-body { flex: 1; }
+.e-name { font-size: 28rpx; font-weight: 600; }
+.e-meta { margin-top: 8rpx; font-size: 22rpx; color: var(--t4); }
+.e-no { margin-right: 16rpx; }
+.e-right { text-align: right; }
+.e-cost { font-size: 30rpx; font-weight: 700; color: var(--xy-deep); }
+.e-status { font-size: 22rpx; margin-top: 6rpx; }
+.e-status.ok { color: var(--green); }
+.e-status.fail { color: var(--red); }
+.e-status.wait { color: var(--orange); }
+.foot { text-align: center; color: var(--t3); font-size: 24rpx; padding: 24rpx 0; }
+.empty { padding: 120rpx 0; text-align: center; color: var(--t3); }
+.empty .icon { font-size: 96rpx; }
+.empty .tip { margin-top: 20rpx; font-size: 26rpx; }

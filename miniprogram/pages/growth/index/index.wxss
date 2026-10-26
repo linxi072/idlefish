@@ -1,0 +1,33 @@
+.index { padding: 24rpx; }
+.hero {
+  background: linear-gradient(135deg, #FFCE3D, #FFB300);
+  border-radius: 24rpx; padding: 44rpx 32rpx; text-align: center; color: #5A4000;
+}
+.level-badge {
+  display: inline-block; padding: 6rpx 24rpx; background: rgba(255,255,255,0.6);
+  border-radius: 30rpx; font-size: 26rpx; font-weight: 700;
+}
+.hero-num { font-size: 88rpx; font-weight: 800; line-height: 1.1; margin-top: 18rpx; }
+.hero-label { font-size: 28rpx; margin-top: 6rpx; }
+.hero-sub { font-size: 24rpx; opacity: 0.8; margin-top: 6rpx; }
+
+.sec { margin-top: 24rpx; }
+.progress-head { display: flex; justify-content: space-between; font-size: 26rpx; margin-bottom: 14rpx; }
+.ph-name { color: var(--t2); }
+.ph-pct { color: var(--xy-deep); font-weight: 700; }
+.progress-bar { height: 16rpx; background: #F0F1F4; border-radius: 8rpx; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--xy), var(--xy-deep)); }
+
+.status-bar.warn { background: #FFF6DA; color: #8A6200; margin-top: 24rpx; border-radius: 12rpx; }
+
+.entry { padding: 8rpx 28rpx; }
+.entry-item { display: flex; align-items: center; padding: 26rpx 0; border-bottom: 2rpx solid #F2F3F5; }
+.entry-item:last-child { border-bottom: none; }
+.e-ico { font-size: 40rpx; margin-right: 20rpx; }
+.e-name { flex: 1; font-size: 28rpx; }
+.m-arrow { color: var(--t4); font-size: 36rpx; }
+.sec-title { font-size: 30rpx; font-weight: 700; margin-bottom: 20rpx; }
+.rule-row { display: flex; justify-content: space-between; padding: 14rpx 0; border-bottom: 2rpx solid #F2F3F5; font-size: 26rpx; }
+.rule-row:last-child { border-bottom: none; }
+.r-k { color: var(--t2); }
+.r-v { color: var(--t1); font-weight: 500; text-align: right; max-width: 60%; }
