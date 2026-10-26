@@ -1,7 +1,7 @@
 {
   "version" : 1,
   "generatedAt" : "2026-10-26",
-  "endpointCount" : 207,
+  "endpointCount" : 225,
   "generatedBy" : "ContractBaselineRegenerateTest（ITER-T03）；不兼容变更请走评审后再生，禁止为绕过门禁随意再生",
   "endpoints" : {
     "DELETE /api/address/{id}" : {
@@ -69,6 +69,24 @@
       "expectStatus" : 200,
       "fields" : [ "data.status", "data.title" ],
       "file" : "acceptance.json"
+    },
+    "GET /api/admin/activity/list" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "GET /api/admin/activity/monitor" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data.bargainQualified", "data.draft", "data.ended", "data.joinedToday", "data.lotteryWon", "data.ongoing", "data.riskBlocked", "data.subsidyBudgetExceeded", "data.totalStock" ],
+      "file" : "marketing-activity.json"
+    },
+    "GET /api/admin/activity/{activityId}" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
     },
     "GET /api/admin/data-scope/my-scope" : {
       "auth" : "admin",
@@ -442,6 +460,30 @@
       "fields" : [ "data.growthValue", "data.levelCode", "data.levelName", "data.percent" ],
       "file" : "member.json"
     },
+    "GET /api/mkt/activity/bargain/{sessionNo}" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "GET /api/mkt/activity/list" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "GET /api/mkt/activity/my-records" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "GET /api/mkt/activity/{id}" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
     "GET /api/notify/list" : {
       "auth" : "user",
       "expectStatus" : 200,
@@ -724,6 +766,30 @@
       "fields" : [ "data" ],
       "file" : "acceptance.json"
     },
+    "POST /api/admin/activity/create" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "POST /api/admin/activity/lottery/prizes" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "POST /api/admin/activity/{activityId}/publish" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "POST /api/admin/activity/{activityId}/reconcile" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
     "POST /api/admin/data-scope/migrate" : {
       "auth" : "admin",
       "expectStatus" : 200,
@@ -809,6 +875,18 @@
       "file" : "member.json"
     },
     "POST /api/admin/growth/freeze" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
+    "POST /api/admin/growth/init-stock" : {
+      "auth" : "admin",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "member.json"
+    },
+    "POST /api/admin/growth/restore-by-dispute" : {
       "auth" : "admin",
       "expectStatus" : 200,
       "fields" : [ "data" ],
@@ -1077,6 +1155,36 @@
       "expectStatus" : 200,
       "fields" : [ "data" ],
       "file" : "member.json"
+    },
+    "POST /api/mkt/activity/bargain/assist" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "POST /api/mkt/activity/bargain/create" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "POST /api/mkt/activity/lottery/draw" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "POST /api/mkt/activity/lottery/realname" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
+    },
+    "POST /api/mkt/activity/seckill/grab" : {
+      "auth" : "user",
+      "expectStatus" : 200,
+      "fields" : [ "data" ],
+      "file" : "marketing-activity.json"
     },
     "POST /api/mq/consume" : {
       "auth" : "none",

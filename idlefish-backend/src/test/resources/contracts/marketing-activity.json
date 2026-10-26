@@ -1,0 +1,134 @@
+{
+  "domain": "marketing-activity",
+  "description": "营销玩法扩展（ITER-F08 / REQ-01）：统一活动内核驱动的砍价 / 抽奖 / 直播秒杀，用户端与运营后台接口。复用内核（库存原子扣减/限领/时间窗/幂等/对账/亏损阻断/风控钩子）。",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/mkt/activity/list",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 活动列表（仅进行中 + 人群定向可见，REQ-13）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mkt/activity/{id}",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 活动详情（含当前用户是否已参与）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/mkt/activity/bargain/create",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 砍价：发起砍价（占用 1 内核名额 + 建 BargainSession，REQ-08）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/mkt/activity/bargain/assist",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 砍价：好友助力（逐刀纯函数算额 + 成团判定，REQ-08/REQ-09）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mkt/activity/bargain/{sessionNo}",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 砍价：会话详情 / 进度（含底价/当前价/助力人数）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/mkt/activity/lottery/draw",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 抽奖：抽一次（内核占名额 + 奖品原子扣减 + 概率快照，REQ-06/REQ-09）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/mkt/activity/lottery/realname",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 抽奖：高价值/实物奖品补充实名与收货信息（脱敏身份证，REQ-10）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/mkt/activity/seckill/grab",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 直播秒杀：抢购（Redis 预扣 + MQ 异步落库 + 降级强一致，REQ-07）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/mkt/activity/my-records",
+      "auth": "user",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 我的活动参与记录"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/activity/create",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 运营：向导式创建活动（含亏损阻断 REQ-14，草稿态）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/activity/{activityId}/publish",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 运营：发布活动（DRAFT→ONGOING + 库存预热，REQ-02）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/activity/{activityId}/reconcile",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 运营：结束并结算对账（REQ-11/REQ-15）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/activity/list",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 运营：活动列表（全部状态）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/activity/{activityId}",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 运营：活动详情"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/activity/monitor",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data.ongoing", "data.draft", "data.ended", "data.joinedToday", "data.totalStock", "data.riskBlocked", "data.subsidyBudgetExceeded", "data.bargainQualified", "data.lotteryWon"],
+      "notes": "ITER-F08 运营：监控报表（参与/库存消耗/风控拦截/补贴预算，REQ-15）"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/activity/lottery/prizes",
+      "auth": "admin",
+      "expectStatus": 200,
+      "expectFields": ["data"],
+      "notes": "ITER-F08 运营：抽奖奖品配置（REQ-09 概率留痕 + REQ-14 亏损阻断）"
+    }
+  ]
+}
