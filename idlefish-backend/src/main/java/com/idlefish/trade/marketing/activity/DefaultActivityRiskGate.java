@@ -45,11 +45,11 @@ public class DefaultActivityRiskGate implements ActivityRiskGate {
             // 风控异常不阻断主链路（best-effort）
             return true;
         }
-        // 该活动参与触发的高危开放事件 → 拒绝
+        // 拒绝判据：该用户（或设备，设备事件同样携带 userId）近 5 秒内存在高危开放风险事件。
+        // 注意：RiskEngine 落库的高危事件 bizType 为 device / user / order（非 activity_join），
+        // 故按 userId 聚合查询才能命中真实风控结果（修复前按 activity_join 过滤导致永不拦截）。
         Long hits = riskEventMapper.selectCount(new LambdaQueryWrapper<RiskEvent>()
                 .eq(RiskEvent::getUserId, userId)
-                .eq(RiskEvent::getBizType, BIZ_TYPE)
-                .eq(RiskEvent::getBizId, String.valueOf(activityId))
                 .eq(RiskEvent::getLevel, "high")
                 .eq(RiskEvent::getStatus, "open")
                 .ge(RiskEvent::getCreatedAt, LocalDateTime.now().minusSeconds(5)));
