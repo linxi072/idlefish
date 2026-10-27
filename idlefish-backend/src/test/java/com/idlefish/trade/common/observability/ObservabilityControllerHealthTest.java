@@ -1,6 +1,7 @@
 package com.idlefish.trade.common.observability;
 
 import com.idlefish.trade.common.IdlefishProperties;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -16,7 +17,9 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -36,6 +39,8 @@ class ObservabilityControllerHealthTest {
     private MetricsRegistry metrics;
     @Mock
     private DataSource dataSource;
+    @Mock
+    private HttpServletResponse response;
 
     private DependencyProbes probes(DataSource ds, IdlefishProperties props) {
         return new DependencyProbes(ds, props);
@@ -50,8 +55,10 @@ class ObservabilityControllerHealthTest {
         // 默认 mock：getConnection 返回 null → createStatement NPE → 捕获为 DOWN
         DependencyProbes probes = probes(dataSource, new IdlefishProperties());
         assertEquals("DOWN", probes.probeMysql().getStatus());
-        Map<String, Object> health = controller(metrics, probes).health();
+        Map<String, Object> health = controller(metrics, probes).health(response);
         assertEquals("DOWN", health.get("status"));
+        // T07：MySQL 不可用 → HTTP 503（触发 k8s 摘流）
+        verify(response).setStatus(503);
         @SuppressWarnings("unchecked")
         Map<String, Object> mysql = (Map<String, Object>) ((Map<?, ?>) health.get("dependencies")).get("mysql");
         assertEquals("DOWN", mysql.get("status"));
@@ -80,11 +87,12 @@ class ObservabilityControllerHealthTest {
                 return true;
             }
         };
-        Map<String, Object> health = controller(metrics, probes).health();
+        Map<String, Object> health = controller(metrics, probes).health(response);
         @SuppressWarnings("unchecked")
         Map<String, Object> deps = (Map<String, Object>) health.get("dependencies");
 
         assertEquals("UP", health.get("status"));
+        verify(response, org.mockito.Mockito.never()).setStatus(anyInt());
         assertEquals("UP", ((Map<?, ?>) deps.get("mysql")).get("status"));
         assertEquals("UP", ((Map<?, ?>) deps.get("redis")).get("status"));
         assertEquals("UP", ((Map<?, ?>) deps.get("elasticsearch")).get("status"));
@@ -105,13 +113,14 @@ class ObservabilityControllerHealthTest {
                 return false;
             }
         };
-        Map<String, Object> health = controller(metrics, probes).health();
+        Map<String, Object> health = controller(metrics, probes).health(response);
         @SuppressWarnings("unchecked")
         Map<String, Object> deps = (Map<String, Object>) health.get("dependencies");
 
         assertEquals("DEGRADED", health.get("status"));
         assertEquals("DEGRADED", ((Map<?, ?>) deps.get("redis")).get("status"));
         assertEquals("UP", ((Map<?, ?>) deps.get("mysql")).get("status"));
+        verify(response, org.mockito.Mockito.never()).setStatus(anyInt());
     }
 
     @Test
@@ -129,11 +138,12 @@ class ObservabilityControllerHealthTest {
                 return false;
             }
         };
-        Map<String, Object> health = controller(metrics, probes).health();
+        Map<String, Object> health = controller(metrics, probes).health(response);
         @SuppressWarnings("unchecked")
         Map<String, Object> deps = (Map<String, Object>) health.get("dependencies");
         assertEquals("DEGRADED", health.get("status"));
         assertEquals("DEGRADED", ((Map<?, ?>) deps.get("elasticsearch")).get("status"));
+        verify(response, org.mockito.Mockito.never()).setStatus(anyInt());
     }
 
     @Test
