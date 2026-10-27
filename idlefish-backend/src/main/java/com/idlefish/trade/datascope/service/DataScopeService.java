@@ -26,7 +26,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 数据范围服务（ITER-T05 核心，REQ-02/03/05/06/09/10）。
@@ -87,8 +90,16 @@ public class DataScopeService {
         Set<Long> merged = new LinkedHashSet<>();
         DataScope widest = DataScope.SELF;
         boolean anyAll = false;
+        // 一次性批量取角色，避免循环内逐条 selectById 的 N+1（D1 技术债务修复）
+        Set<Long> roleIds = userRoles.stream()
+                .map(AdminUserRole::getRoleId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, SysRole> roleMap = roleIds.isEmpty() ? Map.of()
+                : sysRoleMapper.selectBatchIds(roleIds).stream()
+                        .collect(Collectors.toMap(SysRole::getId, r -> r, (a, b) -> a));
         for (AdminUserRole ur : userRoles) {
-            SysRole role = sysRoleMapper.selectById(ur.getRoleId());
+            SysRole role = roleMap.get(ur.getRoleId());
             if (role == null) {
                 continue;
             }
