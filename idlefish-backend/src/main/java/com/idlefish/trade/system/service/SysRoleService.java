@@ -9,6 +9,7 @@ import com.idlefish.trade.system.entity.SysRole;
 import com.idlefish.trade.system.mapper.AdminUserRoleMapper;
 import com.idlefish.trade.system.mapper.RoleMenuMapper;
 import com.idlefish.trade.system.mapper.SysRoleMapper;
+import com.idlefish.trade.common.batch.BatchInsertService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,12 +25,14 @@ public class SysRoleService {
     private final SysRoleMapper roleMapper;
     private final RoleMenuMapper roleMenuMapper;
     private final AdminUserRoleMapper adminUserRoleMapper;
+    private final BatchInsertService batchInsertService;
 
     public SysRoleService(SysRoleMapper roleMapper, RoleMenuMapper roleMenuMapper,
-                          AdminUserRoleMapper adminUserRoleMapper) {
+                          AdminUserRoleMapper adminUserRoleMapper, BatchInsertService batchInsertService) {
         this.roleMapper = roleMapper;
         this.roleMenuMapper = roleMenuMapper;
         this.adminUserRoleMapper = adminUserRoleMapper;
+        this.batchInsertService = batchInsertService;
     }
 
     public IPage<SysRole> list(int page, int size, String keyword) {
@@ -63,12 +66,18 @@ public class SysRoleService {
     /** 重新分配角色的菜单权限（先清后插，保证幂等）。 */
     public void assignMenus(Long roleId, List<Long> menuIds) {
         roleMenuMapper.delete(new LambdaQueryWrapper<RoleMenu>().eq(RoleMenu::getRoleId, roleId));
-        for (Long menuId : menuIds) {
-            RoleMenu rm = new RoleMenu();
-            rm.setRoleId(roleId);
-            rm.setMenuId(menuId);
-            roleMenuMapper.insert(rm);
+        if (menuIds == null || menuIds.isEmpty()) {
+            return;
         }
+        List<RoleMenu> relations = menuIds.stream()
+                .map(menuId -> {
+                    RoleMenu rm = new RoleMenu();
+                    rm.setRoleId(roleId);
+                    rm.setMenuId(menuId);
+                    return rm;
+                })
+                .collect(Collectors.toList());
+        batchInsertService.batchInsert(RoleMenu.class, RoleMenuMapper.class, relations);
     }
 
     public List<Long> roleMenus(Long roleId) {

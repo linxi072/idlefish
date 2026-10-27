@@ -6,6 +6,7 @@ import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.risk.entity.RiskRule;
 import com.idlefish.trade.risk.entity.TrackEvent;
+import com.idlefish.trade.common.batch.BatchInsertService;
 import com.idlefish.trade.risk.mapper.RiskRuleMapper;
 import com.idlefish.trade.risk.mapper.TrackEventMapper;
 import org.slf4j.Logger;
@@ -32,14 +33,17 @@ public class RiskRuleEngine {
     private final TrackEventMapper trackEventMapper;
     private final DeviceFingerprintService deviceFingerprintService;
     private final IdlefishProperties props;
+    private final BatchInsertService batchInsertService;
     private final AtomicReference<List<RiskRule>> activeRules = new AtomicReference<>(List.of());
 
     public RiskRuleEngine(RiskRuleMapper ruleMapper, TrackEventMapper trackEventMapper,
-                          DeviceFingerprintService deviceFingerprintService, IdlefishProperties props) {
+                          DeviceFingerprintService deviceFingerprintService, IdlefishProperties props,
+                          BatchInsertService batchInsertService) {
         this.ruleMapper = ruleMapper;
         this.trackEventMapper = trackEventMapper;
         this.deviceFingerprintService = deviceFingerprintService;
         this.props = props;
+        this.batchInsertService = batchInsertService;
     }
 
     @PostConstruct
@@ -81,12 +85,20 @@ public class RiskRuleEngine {
         if (rules == null) {
             return;
         }
+        List<RiskRule> toInsert = new ArrayList<>();
+        List<RiskRule> toUpdate = new ArrayList<>();
         for (RiskRule r : rules) {
             if (r.getId() == null) {
-                ruleMapper.insert(r);
+                toInsert.add(r);
             } else {
-                ruleMapper.updateById(r);
+                toUpdate.add(r);
             }
+        }
+        if (!toInsert.isEmpty()) {
+            batchInsertService.batchInsert(RiskRule.class, RiskRuleMapper.class, toInsert);
+        }
+        for (RiskRule r : toUpdate) {
+            ruleMapper.updateById(r);
         }
         reload();
     }

@@ -7,6 +7,7 @@ import com.idlefish.trade.admin.entity.AdminUser;
 import com.idlefish.trade.admin.mapper.AdminUserMapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
+import com.idlefish.trade.common.batch.BatchInsertService;
 import com.idlefish.trade.common.util.PasswordUtils;
 import com.idlefish.trade.system.entity.AdminUserRole;
 import com.idlefish.trade.system.mapper.AdminUserRoleMapper;
@@ -24,10 +25,13 @@ public class SysUserService {
 
     private final AdminUserMapper adminUserMapper;
     private final AdminUserRoleMapper adminUserRoleMapper;
+    private final BatchInsertService batchInsertService;
 
-    public SysUserService(AdminUserMapper adminUserMapper, AdminUserRoleMapper adminUserRoleMapper) {
+    public SysUserService(AdminUserMapper adminUserMapper, AdminUserRoleMapper adminUserRoleMapper,
+                          BatchInsertService batchInsertService) {
         this.adminUserMapper = adminUserMapper;
         this.adminUserRoleMapper = adminUserRoleMapper;
+        this.batchInsertService = batchInsertService;
     }
 
     public IPage<AdminUser> list(int page, int size, String keyword, Long orgId, Integer status) {
@@ -76,12 +80,18 @@ public class SysUserService {
     /** 重新分配管理员的角色（先清后插，保证幂等）。 */
     public void assignRoles(Long adminUserId, List<Long> roleIds) {
         adminUserRoleMapper.delete(new LambdaQueryWrapper<AdminUserRole>().eq(AdminUserRole::getAdminUserId, adminUserId));
-        for (Long roleId : roleIds) {
-            AdminUserRole r = new AdminUserRole();
-            r.setAdminUserId(adminUserId);
-            r.setRoleId(roleId);
-            adminUserRoleMapper.insert(r);
+        if (roleIds == null || roleIds.isEmpty()) {
+            return;
         }
+        List<AdminUserRole> relations = roleIds.stream()
+                .map(roleId -> {
+                    AdminUserRole r = new AdminUserRole();
+                    r.setAdminUserId(adminUserId);
+                    r.setRoleId(roleId);
+                    return r;
+                })
+                .collect(Collectors.toList());
+        batchInsertService.batchInsert(AdminUserRole.class, AdminUserRoleMapper.class, relations);
     }
 
     public List<Long> userRoles(Long adminUserId) {
