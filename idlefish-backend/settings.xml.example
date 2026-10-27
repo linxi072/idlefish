@@ -1,0 +1,44 @@
+<!--
+  Maven settings 模板（ITER-T08 / #545）——离线 / 私服可复现构建。
+  用法：
+    1) 复制为本地 settings.xml（或 -gs 指向本文件）：
+         cp settings.xml.example ~/.m2/settings-offline.xml
+         mvn -o -gs ~/.m2/settings-offline.xml -Dmaven.repo.local=/path/to/local-repo ...
+    2) 将 <url> 改为你的企业 Nexus / Artifactory 的 maven-public 代理仓库，
+       即可在“私服已预置全部依赖”的前提下做到完全离线构建。
+
+  关键约束（与现有离线沙箱保持一致）：
+    - <mirror> 的 <id> 必须与本地仓库 _remote.repositories 中记录的远程 id 一致，
+      否则 mvn -o 离线模式会因“构件来源不匹配”而拒绝使用已缓存构件。
+    - 离线构建前，务必用  mvn dependency:go-offline -Dmaven.repo.local=<repo>  把全部
+      依赖（含插件）预置进本地仓库；否则会出现类似
+      “Cannot access ... in offline mode and the artifact ... has not been downloaded” 的报错。
+-->
+<settings>
+  <mirrors>
+    <mirror>
+      <id>tencent-maven</id>
+      <name>tencent mirror (offline: id must match local-repo _remote.repositories)</name>
+      <!-- 替换为你的私服 maven-public 地址以实现真正的离线/内网构建 -->
+      <url>https://mirrors.cloud.tencent.com/nexus/repository/maven-public/</url>
+      <mirrorOf>central,jcenter,!coding-releases,!coding-snapshots</mirrorOf>
+    </mirror>
+  </mirrors>
+
+  <!--
+    可选：固定本地仓库路径（也可用 -Dmaven.repo.local 覆盖）。
+    建议把离线仓库与日常 ~/.m2/repository 分开，避免互相污染。
+  <localRepository>/Users/mezo/Documents/localRepository/mvnRepository</localRepository>
+  -->
+
+  <!--
+    可选：私服认证（若私服需要登录）。优先使用 <servers> 而非在 URL 中写明文密码。
+  <servers>
+    <server>
+      <id>tencent-maven</id>
+      <username>deploy-user</username>
+      <password>${env.NEXUS_PASSWORD}</password>
+    </server>
+  </servers>
+  -->
+</settings>

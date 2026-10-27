@@ -1,0 +1,24 @@
+# npm 私服 / 离线镜像配置模板（ITER-T08 / #545）——前端可复现构建
+#
+# 用法：复制为 pc-admin/.npmrc 并填入你的私服地址与认证令牌。
+#   cp .npmrc.example .npmrc
+#
+# 离线 / 内网构建时，将 registry 指向企业 Nexus / Verdaccio 的 npm 代理仓库
+#（聚合 npmjs + 内部私有包），即可在“私服已缓存全部包”的前提下做到离线 npm ci。
+#
+# 关键约束：
+#   - 生产/CI 一律使用  npm ci  （而非 npm install），严格按 package-lock.json 安装，保证可复现。
+#   - save-exact=true 避免意外写入 ^/~ 范围版本，进一步收敛依赖漂移。
+
+# 私服 npm 代理仓库地址（替换为你的 Nexus/Artifactory/Verdaccio）
+registry=https://your-nexus.example.com/repository/npm-group/
+
+# 若私服需要认证，推荐使用令牌而非明文密码（scope 按需调整）
+# _authToken=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+# //your-nexus.example.com/repository/npm-group/:_authToken=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+# 可复现相关
+save-exact=true
+
+# 可选：构建期审计（CI 建议开启，本地可关）
+# audit=true

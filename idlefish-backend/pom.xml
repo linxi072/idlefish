@@ -92,7 +92,76 @@
         </dependency>
     </dependencies>
 
+    <!--
+      依赖治理（T08）：依赖版本收敛（BOM 收敛）。
+      Spring Boot parent 已通过 spring-boot-dependencies BOM 统一管理绝大多数传递依赖版本；
+      此处仅将项目“显式声明”的 3 个非 Spring 依赖纳入统一版本治理，作为单一可信源，
+      避免版本号散落在 <dependencies> 中造成漂移，并便于离线/CI 审计。
+    -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
+                <version>${mysql.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <build>
+        <!--
+          依赖治理（T08）：固定关键构建插件版本，确保离线/CI 构建可复现（不随 parent 默认版本漂移）。
+          仅固定“离线仓库已缓存”的版本，避免离线环境解析失败。未在此声明的插件仍由 parent 管理。
+        -->
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>3.3.4</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.2.5</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.4.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -166,6 +235,48 @@
                                     <sources>
                                         <source>src/main/micrometer/java</source>
                                     </sources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!--
+          依赖治理（T08）：可显式激活的“治理门禁” profile（默认关闭，避免离线构建因缺少
+          maven-enforcer-plugin 而失败）。CI / 私服环境通过 -Pgovernance 启用，强制：
+            - Maven>=3.9 / Java=17 基线
+            - 禁止 POM 内重复声明不同版本（banDuplicatePomDependencyVersions）
+            - 依赖版本收敛（dependencyConvergence）：存在传递版本冲突时构建失败，必须显式解决
+          该 profile 依赖 maven-enforcer-plugin（3.5.0），需提前置入私服/本地仓库（见
+          scripts/dependency-governance.sh 与 docs/依赖治理与离线构建可复现.md）。
+        -->
+        <profile>
+            <id>governance</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <version>3.5.0</version>
+                        <executions>
+                            <execution>
+                                <id>enforce-governance</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <requireMavenVersion>
+                                            <version>[3.9,)</version>
+                                        </requireMavenVersion>
+                                        <requireJavaVersion>
+                                            <version>17</version>
+                                        </requireJavaVersion>
+                                        <banDuplicatePomDependencyVersions/>
+                                        <dependencyConvergence/>
+                                    </rules>
                                 </configuration>
                             </execution>
                         </executions>
