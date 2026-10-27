@@ -111,7 +111,7 @@ class DataScopeServiceTest {
     void selfScope_onlyOwnOrg() {
         when(adminUserMapper.selectById(1L)).thenReturn(admin(1L, 1L, 1));
         when(adminUserRoleMapper.selectList(any())).thenReturn(List.of(aur(1L, 1L, 1L)));
-        when(sysRoleMapper.selectById(1L)).thenReturn(role("SELF", ""));
+        when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(role("SELF", "")));
         when(sysOrganizationMapper.selectList(any())).thenReturn(orgTree());
         DataScopeDecision d = service.resolveForAdmin(1L);
         assertEquals(DataScope.SELF, d.getScope());
@@ -122,7 +122,7 @@ class DataScopeServiceTest {
     void selfAndChild_includesDescendants() {
         when(adminUserMapper.selectById(1L)).thenReturn(admin(1L, 1L, 1));
         when(adminUserRoleMapper.selectList(any())).thenReturn(List.of(aur(1L, 1L, 1L)));
-        when(sysRoleMapper.selectById(1L)).thenReturn(role("SELF_AND_CHILD", ""));
+        when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(role("SELF_AND_CHILD", "")));
         when(sysOrganizationMapper.selectList(any())).thenReturn(orgTree());
         DataScopeDecision d = service.resolveForAdmin(1L);
         assertEquals(DataScope.SELF_AND_CHILD, d.getScope());
@@ -133,7 +133,7 @@ class DataScopeServiceTest {
     void allScope_unrestricted() {
         when(adminUserMapper.selectById(1L)).thenReturn(admin(1L, 1L, 1));
         when(adminUserRoleMapper.selectList(any())).thenReturn(List.of(aur(1L, 1L, 1L)));
-        when(sysRoleMapper.selectById(1L)).thenReturn(role("ALL", ""));
+        when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(role("ALL", "")));
         when(sysOrganizationMapper.selectList(any())).thenReturn(orgTree());
         DataScopeDecision d = service.resolveForAdmin(1L);
         assertTrue(d.isUnrestricted());
@@ -143,7 +143,7 @@ class DataScopeServiceTest {
     void appoint_usesSpecifiedOrgs() {
         when(adminUserMapper.selectById(1L)).thenReturn(admin(1L, 1L, 1));
         when(adminUserRoleMapper.selectList(any())).thenReturn(List.of(aur(1L, 1L, 1L)));
-        when(sysRoleMapper.selectById(1L)).thenReturn(role("APPOINT", "5,6"));
+        when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(role("APPOINT", "5,6")));
         when(sysOrganizationMapper.selectList(any())).thenReturn(orgTree());
         DataScopeDecision d = service.resolveForAdmin(1L);
         assertEquals(DataScope.APPOINT, d.getScope());
@@ -165,7 +165,7 @@ class DataScopeServiceTest {
         });
         when(adminUserMapper.selectById(1L)).thenReturn(admin(1L, 1L, 1));
         when(adminUserRoleMapper.selectList(any())).thenReturn(List.of(aur(1L, 1L, 1L)));
-        when(sysRoleMapper.selectById(1L)).thenReturn(role("SELF", ""));
+        when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(role("SELF", "")));
         when(sysOrganizationMapper.selectList(any())).thenReturn(orgTree());
         DataScopeDecision d = service.resolveForAdmin(1L);
         assertTrue(d.getOrgIds().contains(99L));
@@ -175,7 +175,7 @@ class DataScopeServiceTest {
     void assertAccessible_allowedWithinScope() {
         when(adminUserMapper.selectById(1L)).thenReturn(admin(1L, 1L, 1));
         when(adminUserRoleMapper.selectList(any())).thenReturn(List.of(aur(1L, 1L, 1L)));
-        when(sysRoleMapper.selectById(1L)).thenReturn(role("SELF", ""));
+        when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(role("SELF", "")));
         when(sysOrganizationMapper.selectList(any())).thenReturn(orgTree());
         service.assertAccessible(1L, 1L); // 自身机构，不抛
     }
@@ -184,7 +184,7 @@ class DataScopeServiceTest {
     void assertAccessible_deniedWritesAuditAndThrows() {
         when(adminUserMapper.selectById(1L)).thenReturn(admin(1L, 1L, 1));
         when(adminUserRoleMapper.selectList(any())).thenReturn(List.of(aur(1L, 1L, 1L)));
-        when(sysRoleMapper.selectById(1L)).thenReturn(role("SELF", ""));
+        when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(role("SELF", "")));
         when(sysOrganizationMapper.selectList(any())).thenReturn(orgTree());
         DataScopeException ex = assertThrows(DataScopeException.class, () -> service.assertAccessible(1L, 2L));
         assertTrue(ex.getMessage().contains("2"));
@@ -213,7 +213,7 @@ class DataScopeServiceTest {
     void orgsInScope_unrestrictedReturnsAll() {
         when(adminUserMapper.selectById(1L)).thenReturn(admin(1L, 1L, 1));
         when(adminUserRoleMapper.selectList(any())).thenReturn(List.of(aur(1L, 1L, 1L)));
-        when(sysRoleMapper.selectById(1L)).thenReturn(role("ALL", ""));
+        when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(role("ALL", "")));
         when(sysOrganizationMapper.selectList(any())).thenReturn(orgTree());
         assertEquals(Set.of(1L, 2L, 3L, 4L), service.orgsInScope(1L));
     }
