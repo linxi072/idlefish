@@ -1,0 +1,55 @@
+# idlefish-backend · HorizontalPodAutoscaler（T07 弹性伸缩）
+# 伸缩目标：Deployment/idlefish-backend（见 deployment.yaml）。
+# 指标来源：
+#   1) 主指标 —— CPU 利用率（依赖 metrics-server，开箱即用）；
+#   2) 可选 —— 入口 QPS（依赖 prometheus-adapter + 自定义指标规则，
+#      需将 /actuator/prometheus 暴露的 http_server_requests_seconds_count 注册为
+#      pods/idlefish_backend_qps_per_pod，下方为注释示例）。
+# 行为：扩容即时（应对突发流量），缩容冷静 5 分钟（避免抖动误缩）。
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: idlefish-backend
+  namespace: idlefish
+  labels:
+    app: idlefish-backend
+    part-of: idlefish-platform
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: idlefish-backend
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70        # 单 pod CPU 目标利用率
+    # - type: Pods                       # 可选：QPS 驱动伸缩（需 prometheus-adapter）
+    #   pods:
+    #     metric:
+    #       name: idlefish_backend_qps_per_pod   # 由 prometheus-adapter 映射自定义指标
+    #     target:
+    #       type: AverageValue
+    #       averageValue: "200"                  # 单 pod 目标 QPS
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0     # 立即扩容
+      policies:
+        - type: Percent
+          value: 100                    # 单次最多翻倍
+          periodSeconds: 30
+        - type: Pods
+          value: 4
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300   # 缩容冷静 5 分钟，避免流量抖动误缩
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Max

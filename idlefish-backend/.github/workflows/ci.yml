@@ -1,0 +1,115 @@
+# idlefish-backend · CI / CD（T07 容器化 GitOps 与弹性伸缩）
+# 流水线：构建 + 全量测试 → 依赖治理门禁（信息性）→ 构建镜像 + 漏洞扫描 → 推送仓库 →（手动）Argo CD 同步。
+# 说明：
+#   - 测试使用在线 Maven（GitHub 托管的 runner 联网可用），依赖由 setup-java 的 cache 加速；
+#     与本地沙箱的"离线只读仓库"构建解耦，二者均受 dependencyManagement/pluginManagement 收敛保护。
+#   - 依赖治理脚本在 CI 以非 strict 运行，作为趋势观察；main 分支可升级为 STRICT=1 阻断动态版本。
+name: CI
+
+on:
+  push:
+    branches: [ "main", "V1.0.4" ]
+    tags: [ "v*.*.*" ]
+  pull_request:
+    branches: [ "main", "V1.0.4" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build & Test (online, cached)
+        # 默认 profile 即零依赖可观测性；-P!micrometer 与本地沙箱一致，确保门禁口径统一
+        run: mvn -B -P!micrometer clean verify
+
+      - name: Dependency Governance (informational)
+        run: |
+          chmod +x scripts/dependency-governance.sh
+          bash scripts/dependency-governance.sh || echo "::warning::governance script reported degradations (non-strict)"
+
+  image:
+    name: Build & Scan Image
+    needs: build-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/V1.0.4')
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Extract image tag
+        id: tag
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./idlefish-backend
+          file: ./idlefish-backend/Dockerfile
+          push: true
+          tags: |
+            ${{ vars.REGISTRY }}/idlefish/idlefish-backend:${{ steps.tag.outputs.tag }}
+            ${{ vars.REGISTRY }}/idlefish/idlefish-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ vars.REGISTRY }}/idlefish/idlefish-backend:${{ steps.tag.outputs.tag }}
+          format: sarif
+          output: trivy.sarif
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"          # 仅报告不阻断；可按策略改为 1 阻断
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy.sarif
+
+  sync:
+    name: Argo CD Sync (GitOps)
+    needs: image
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
+    environment: production
+    steps:
+      - name: Install Argo CD CLI
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd
+      - name: Sync Application
+        run: |
+          ./argocd app sync idlefish-backend \
+            --server "${{ secrets.ARGOCD_SERVER }}" \
+            --auth-token "${{ secrets.ARGOCD_TOKEN }}" \
+            --prune --timeout 300

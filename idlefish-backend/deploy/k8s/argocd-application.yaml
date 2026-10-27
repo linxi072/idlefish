@@ -1,0 +1,44 @@
+# idlefish-backend · Argo CD Application（T07 GitOps 交付）
+# GitOps 范式：集群状态以 Git 仓库为唯一事实源，Argo CD 持续比对并自动同步。
+# 部署前：
+#   1) 安装 Argo CD（argocd CLI / 控制台）；
+#   2) 将下方 repoURL 改为本工程实际 Git 地址；
+#   3) 在 Argo CD 中配置对应私有仓库的 credentials。
+# 同步策略：automated（prune 清理删除资源 + selfHeal 纠偏），并忽略不影响运行的注解变更。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: idlefish-backend
+  namespace: argocd
+  labels:
+    app: idlefish-backend
+    part-of: idlefish-platform
+spec:
+  project: default
+  source:
+    repoURL: "https://github.com/your-org/idlefish-backend.git"   # 改为实际仓库
+    targetRevision: "V1.0.4"                                      # 与发布分支/Tag 对齐
+    path: "deploy/k8s"                                            # 本目录即 k8s 清单
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "idlefish"
+  syncPolicy:
+    automated:
+      prune: true                # Git 删除的资源同步清理
+      selfHeal: true             # 集群漂移时自动回拉至 Git 声明状态
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: "5s"
+        factor: 2
+        maxDuration: "3m"
+  ignoreDifferences:
+    - group: "apps"
+      kind: "Deployment"
+      jsonPointers:
+        - /spec/replicas        # 允许 HPA 接管副本数，避免 Argo CD 与 HPA 互相覆盖

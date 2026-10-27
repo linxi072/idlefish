@@ -1,0 +1,19 @@
+# idlefish-backend · Service（ClusterIP）
+# 供 Ingress / 内部调用 / k8s 探针访问。探针经此 ClusterIP:8080 命中 /actuator/health。
+apiVersion: v1
+kind: Service
+metadata:
+  name: idlefish-backend
+  namespace: idlefish
+  labels:
+    app: idlefish-backend
+    part-of: idlefish-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: idlefish-backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

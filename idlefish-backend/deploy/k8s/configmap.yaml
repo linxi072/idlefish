@@ -1,0 +1,27 @@
+# idlefish-backend · 非敏感配置（ConfigMap）
+# 敏感项（JWT 密钥、微信支付凭据、OSS/MQ 密钥等）一律走 Secret，禁止明文写入本文件。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: idlefish-backend
+  namespace: idlefish
+  labels:
+    app: idlefish-backend
+    part-of: idlefish-platform
+data:
+  # 容器内 Spring 激活的 profile：与 Dockerfile 默认一致，可由环境覆盖
+  SPRING_PROFILES_ACTIVE: "docker"
+  # 时区
+  TZ: "Asia/Shanghai"
+  # JVM 调优：与 HPA 资源限额（1核/1.5Gi）匹配，避免超限被 OOMKilled
+  JAVA_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxMetaspaceSize=256m -XX:+ExitOnOutOfMemoryError -Djava.io.tmpdir=/tmp"
+  # 业务开关（按环境调整）
+  IDLEFISH_OBSERVABILITY_ENABLED: "true"
+  IDLEFISH_RATELIMIT_ENABLED: "true"
+  IDLEFISH_NOTIFY_PUSH_ENABLED: "true"
+  IDLEFISH_LOCAL_ENABLED: "true"
+  IDLEFISH_SEARCH_SERVICE_ENABLED: "true"
+  IDLEFISH_SEARCH_SERVICE_MODE: "inline"
+  IDLEFISH_EVENT_ENABLED: "true"
+  # 监控端点收敛令牌（内网之外访问 /actuator/prometheus|metrics 须携带）；生产必须注入
+  IDLEFISH_OBSERVABILITY_ACTUATOR_TOKEN: ""

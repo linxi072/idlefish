@@ -1,0 +1,15 @@
+# idlefish-backend · PodDisruptionBudget（T07 高可用）
+# 节点维护/驱逐（drain）时确保至少 1 个 pod 在线，避免交易链路整体中断。
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: idlefish-backend
+  namespace: idlefish
+  labels:
+    app: idlefish-backend
+    part-of: idlefish-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: idlefish-backend

@@ -1,0 +1,109 @@
+# idlefish-backend · Deployment（T07 容器化与弹性伸缩）
+# 探针复用 F-12.5 / T01 零依赖 /actuator/health：
+#   - MySQL 不可用时返回 503（status=DOWN），readiness 摘流、liveness 重启；
+#   - 次要依赖降级（ES 等 DEGRADED）仍 200，不误摘流量。
+# 优雅停机：容器收到 SIGTERM 后 Spring 进入 graceful shutdown（见 application.yml
+#   server.shutdown=graceful + spring.lifecycle.timeout-per-shutdown-phase），
+#   preStop 先 sleep 让 LB/Ingress 完成摘流与在途连接排空，再触发 SIGTERM。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idlefish-backend
+  namespace: idlefish
+  labels:
+    app: idlefish-backend
+    part-of: idlefish-platform
+spec:
+  replicas: 2                     # 最小 HA：滚动更新/单 pod 故障不丢服务能力
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1                  # 先起新再停旧，零停机
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: idlefish-backend
+  template:
+    metadata:
+      labels:
+        app: idlefish-backend
+        part-of: idlefish-platform
+      annotations:
+        # 探针/指标抓取配置（Prometheus 经由 prometheus.io 注解自动发现）
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      terminationGracePeriodSeconds: 60   # > application-prod.yml 的 45s 停机宽限；preStop 另有 15s
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      # imagePullSecrets:
+      #   - name: registry-pull-secret   # 私有镜像仓库时启用
+      containers:
+        - name: idlefish-backend
+          # 生产请将镜像推送至私有仓库并带 digest/语义化 tag，例如：
+          # image: registry.example.com/idlefish/idlefish-backend:1.0.0
+          image: idlefish-backend:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: idlefish-backend
+            - secretRef:
+                name: idlefish-backend
+          lifecycle:
+            # 优雅停机第一步：preStop 等待 Ingress/Service 端点摘除 + 在途连接排空，
+            # 然后再由 SIGTERM 触发 Spring graceful shutdown，避免瞬时 5xx。
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 15"]
+          startupProbe:                 # 慢启动保护：前 150s 内失败不计入 liveness
+            httpGet:
+              path: /actuator/health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:               # 就绪：MySQL 不可用时 503 → 摘流
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:                # 存活：进程级；长时间无响应则重启
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "1536Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp          # readOnlyRootFilesystem 下 JVM/Spring 需可写临时目录
+      volumes:
+        - name: tmp
+          emptyDir: {}
