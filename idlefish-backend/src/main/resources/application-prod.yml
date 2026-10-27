@@ -1,6 +1,10 @@
 # 生产 Profile（mvn -Pprod 构建后，以 --spring.profiles.active=prod 启动）
 # 数据源切换为 MySQL，SQL 初始化切换为 MySQL 语法 DDL；缓存切换为 Redis。
 spring:
+  # T07 生产优雅停机宽限期：支付/结算等链路较长，给予更充裕的等待窗口。
+  # 注意：k8s deployment 的 terminationGracePeriodSeconds 必须大于此值（建议 60s）。
+  lifecycle:
+    timeout-per-shutdown-phase: 45s
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/idlefish?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
     driver-class-name: com.mysql.cj.jdbc.Driver

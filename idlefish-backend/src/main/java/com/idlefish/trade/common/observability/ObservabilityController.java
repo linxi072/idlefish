@@ -1,7 +1,9 @@
 package com.idlefish.trade.common.observability;
 
 import com.idlefish.trade.common.IdlefishProperties;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,7 +47,7 @@ public class ObservabilityController {
 
     /** 健康检查：进程 + 依赖。 */
     @GetMapping("/health")
-    public Map<String, Object> health() {
+    public Map<String, Object> health(HttpServletResponse response) {
         Map<String, Object> body = new LinkedHashMap<>();
         Map<String, Object> deps = new LinkedHashMap<>();
 
@@ -63,6 +65,11 @@ public class ObservabilityController {
                 .anyMatch(d -> "DEGRADED".equals(d.get("status")));
         String overall = mysqlDown ? "DOWN" : (anyDegraded ? "DEGRADED" : "UP");
 
+        // T07 容器化探针语义：核心依赖（MySQL）不可用时整体不可用，返回 503 触发 k8s 摘除流量；
+        // 次要依赖降级（如 ES 不可达，DEGRADED）仍返回 200，核心交易链路不受影响、不误摘流量。
+        if (mysqlDown) {
+            response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+        }
         body.put("status", overall);
         body.put("timestamp", Instant.now().toString());
         Runtime rt = Runtime.getRuntime();

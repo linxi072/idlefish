@@ -3,8 +3,14 @@ server:
   port: ${PORT:8080}
   servlet:
     context-path: /
+  # T07 优雅停机：收到 SIGTERM 后停止接收新请求，等待在途请求处理完成再下线，
+  # 避免滚动发布/缩容时切断长事务（支付、结算、退款）。与 k8s terminationGracePeriodSeconds 对齐。
+  shutdown: graceful
 
 spring:
+  # T07 停机宽限期：单阶段（web）优雅停机最长等待时间；应小于 k8s terminationGracePeriodSeconds。
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/idlefish?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
     driver-class-name: com.mysql.cj.jdbc.Driver
