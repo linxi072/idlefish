@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.idlefish.trade.admin.entity.AdminUser;
 import com.idlefish.trade.admin.web.CurrentAdmin;
 import com.idlefish.trade.common.Result;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -62,7 +65,7 @@ public class AdminEventController {
     /** 创建回放任务（限流执行，副作用监听器自动跳过，REQ-13）。 */
     @PostMapping("/replay")
     public Result<EventReplayTask> replay(@CurrentAdmin AdminUser admin,
-                                          @RequestBody ReplayRequest req) {
+                                          @Valid @RequestBody ReplayRequest req) {
         return Result.ok(replayService.createReplay(admin.getId(), req.getEventType(),
                 req.getFromTime(), req.getToTime()));
     }
@@ -89,9 +92,12 @@ public class AdminEventController {
     /** 回放创建请求。 */
     @Data
     public static class ReplayRequest {
+        @NotBlank(message = "回放事件类型不可为空")
         private String eventType;
+        @NotNull(message = "回放起始时间不可为空")
         @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
         private LocalDateTime fromTime;
+        @NotNull(message = "回放结束时间不可为空")
         @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
         private LocalDateTime toTime;
     }
