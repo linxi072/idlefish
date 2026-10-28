@@ -17,6 +17,7 @@ import com.idlefish.trade.marketing.activity.entity.ActivityReconciliation;
 import com.idlefish.trade.marketing.activity.entity.MarketingActivity;
 import com.idlefish.trade.marketing.activity.mapper.MarketingActivityMapper;
 import com.idlefish.trade.marketing.activity.dto.MarketingActivityCreateDTO;
+import jakarta.validation.Valid;
 import com.idlefish.trade.marketing.activity.service.ActivityKernelService;
 import com.idlefish.trade.marketing.activity.service.MktBargainService;
 import com.idlefish.trade.marketing.activity.service.LiveSeckillService;
@@ -68,7 +69,7 @@ public class AdminActivityController {
 
     /** 向导式创建活动（含亏损阻断 REQ-14；草稿态，发布后开放）。 */
     @PostMapping("/create")
-    public Result<Long> create(@CurrentUser LoginUser admin, @RequestBody MarketingActivityCreateDTO dto) {
+    public Result<Long> create(@CurrentUser LoginUser admin, @Valid @RequestBody MarketingActivityCreateDTO dto) {
         validateAndLossCheck(dto);
         MarketingActivity a = new MarketingActivity();
         a.setKind(dto.getKind());

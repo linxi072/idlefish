@@ -8,6 +8,7 @@ import com.idlefish.trade.pricing.dto.PriceEstimateRequest;
 import com.idlefish.trade.pricing.service.PricingService;
 import com.idlefish.trade.pricing.vo.PriceDeviationVO;
 import com.idlefish.trade.pricing.vo.PriceEstimateVO;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,14 +32,14 @@ public class PriceController {
     /** REQ-02 估价：选定品类+成色返回建议区间与样本数。 */
     @PostMapping("/estimate")
     public Result<PriceEstimateVO> estimate(@CurrentUser LoginUser user,
-                                           @RequestBody PriceEstimateRequest req) {
+                                           @Valid @RequestBody PriceEstimateRequest req) {
         return Result.ok(pricingService.estimate(req.getCategoryId(), req.getConditionLevel()));
     }
 
     /** REQ-09 偏离判定：给定报价，提示是否显著偏离建议区间（不阻断）。 */
     @PostMapping("/deviation")
     public Result<PriceDeviationVO> deviation(@CurrentUser LoginUser user,
-                                             @RequestBody PriceDeviationRequest req) {
+                                             @Valid @RequestBody PriceDeviationRequest req) {
         long price = req.getPrice() == null ? 0L : req.getPrice();
         return Result.ok(pricingService.deviation(req.getCategoryId(), req.getConditionLevel(), price));
     }

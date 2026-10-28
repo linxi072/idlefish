@@ -8,6 +8,7 @@ import com.idlefish.trade.trade.dto.ActivityJoinDTO;
 import com.idlefish.trade.trade.entity.Activity;
 import com.idlefish.trade.trade.entity.ActivityParticipant;
 import com.idlefish.trade.trade.service.ActivityService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,7 +28,7 @@ public class ActivityController {
 
     /** 创建活动（运营/管理端）。 */
     @PostMapping("/create")
-    public Result<Activity> create(@RequestBody ActivityCreateDTO dto) {
+    public Result<Activity> create(@Valid @RequestBody ActivityCreateDTO dto) {
         return Result.ok(activityService.create(dto));
     }
 
@@ -45,7 +46,7 @@ public class ActivityController {
 
     /** 参与活动（拼团可带 groupNo 加入已有团）。 */
     @PostMapping("/join")
-    public Result<ActivityParticipant> join(@CurrentUser LoginUser loginUser, @RequestBody ActivityJoinDTO dto) {
+    public Result<ActivityParticipant> join(@CurrentUser LoginUser loginUser, @Valid @RequestBody ActivityJoinDTO dto) {
         return Result.ok(activityService.join(loginUser.getUserId(), dto));
     }
 

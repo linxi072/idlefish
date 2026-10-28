@@ -1,5 +1,7 @@
 package com.idlefish.trade.trade.dto;
 
+import jakarta.validation.constraints.NotNull;
+
 import java.io.Serializable;
 
 /**
@@ -7,7 +9,9 @@ import java.io.Serializable;
  */
 public class ActivityJoinDTO implements Serializable {
 
+    @NotNull(message = "活动ID必填")
     private Long activityId;
+    @NotNull(message = "商品ID必填")
     private Long itemId;
     private String groupNo;       // 加入已有拼团时传（GROUP 类型团长 ID 字符串）
     private Integer qty = 1;

@@ -8,6 +8,7 @@ import com.idlefish.trade.pricing.dto.PriceOverrideRequest;
 import com.idlefish.trade.pricing.entity.PriceEstimateAudit;
 import com.idlefish.trade.pricing.entity.PriceEstimateConfig;
 import com.idlefish.trade.pricing.service.PricingService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,7 +43,7 @@ public class AdminPriceController {
     /** REQ-08 保存/更新品类估价配置（基准价/系数/状态）。 */
     @PostMapping("/config")
     public Result<Void> saveConfig(@CurrentAdmin AdminUser admin,
-                                  @RequestBody PriceConfigRequest req) {
+                                  @Valid @RequestBody PriceConfigRequest req) {
         pricingService.saveConfig(req.getCategoryId(), req.getBasePriceFen(),
                 req.getMultiplier(), req.getStatus(), admin.getId());
         return Result.ok();
@@ -51,7 +52,7 @@ public class AdminPriceController {
     /** REQ-08 运营系数覆盖（在既有配置上调整并留痕）。 */
     @PostMapping("/override")
     public Result<Void> override(@CurrentAdmin AdminUser admin,
-                                @RequestBody PriceOverrideRequest req) {
+                                @Valid @RequestBody PriceOverrideRequest req) {
         pricingService.override(req.getCategoryId(), req.getMultiplier(), req.getReason(), admin.getId());
         return Result.ok();
     }

@@ -15,6 +15,7 @@ import com.idlefish.trade.search.serving.SyncLagTracker;
 import com.idlefish.trade.search.serving.dto.BehaviorReport;
 import com.idlefish.trade.search.serving.dto.ItemSyncRequest;
 import com.idlefish.trade.search.serving.dto.ServingStatusVO;
+import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -105,7 +106,7 @@ public class SearchRecommendServiceController {
 
     /** 实时行为回传（60s 窗口实时兴趣，反哺搜索与推荐）。 */
     @PostMapping("/behavior")
-    public Result<Boolean> behavior(@RequestBody BehaviorReport report, HttpServletRequest request) {
+    public Result<Boolean> behavior(@Valid @RequestBody BehaviorReport report, HttpServletRequest request) {
         authorize(request);
         gateway.recordBehavior(report.getUserId(), report.getEvent(), report.getBizId());
         return Result.ok(true);
@@ -116,7 +117,7 @@ public class SearchRecommendServiceController {
      * 消息重复投递时幂等（索引写入为覆盖语义）。
      */
     @PostMapping("/sync/item")
-    public Result<Boolean> syncItem(@RequestBody ItemSyncRequest req, HttpServletRequest request) {
+    public Result<Boolean> syncItem(@Valid @RequestBody ItemSyncRequest req, HttpServletRequest request) {
         authorize(request);
         syncService.applySyncedItem(req);
         return Result.ok(true);

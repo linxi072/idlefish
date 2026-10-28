@@ -1,5 +1,6 @@
 package com.idlefish.trade.local.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 /**
@@ -9,27 +10,34 @@ import lombok.Data;
 public class LocalDeliveryApplyRequest {
 
     /** 业务类型：ORDER 订单配送 / RECYCLE 回收取件。 */
+    @NotBlank(message = "业务类型必填")
     private String bizType;
 
     /** 业务单号（订单号 / 回收单号）。 */
+    @NotBlank(message = "业务单号必填")
     private String bizNo;
 
     /** 配送城市（同城可用性判定，REQ-09）。 */
+    @NotBlank(message = "配送城市必填")
     private String city;
 
     /** 起点地址（明文入参，服务端脱敏后存储）。 */
+    @NotBlank(message = "起点地址必填")
     private String fromAddress;
 
     /** 终点地址（明文入参，服务端脱敏后存储）。 */
+    @NotBlank(message = "终点地址必填")
     private String toAddress;
 
     /** 配送距离（公里）；为空时按起步价计费。 */
     private Double distanceKm;
 
     /** 取件联系人电话（服务端脱敏）。 */
+    @NotBlank(message = "取件联系人必填")
     private String pickupContact;
 
     /** 收货联系人电话（服务端脱敏）。 */
+    @NotBlank(message = "收货联系人必填")
     private String receiverContact;
 
     private String remark;
