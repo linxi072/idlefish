@@ -43,6 +43,10 @@ public enum NotificationType {
     LOCAL_DELIVERY_CREATED("local_delivery_created", "同城配送下单"),
     LOCAL_DELIVERY_ACCEPTED("local_delivery_accepted", "骑手接单"),
     LOCAL_DELIVERY_ARRIVED("local_delivery_arrived", "同城配送送达"),
+    WORKORDER_ASSIGNED("workorder_assigned", "工单已分配"),
+    WORKORDER_RESOLVED("workorder_resolved", "工单已解决"),
+    WORKORDER_WAITING("workorder_waiting", "工单待补充"),
+    WORKORDER_CLOSED("workorder_closed", "工单已关闭"),
     SYSTEM_ALERT("system_alert", "系统告警");
 
     private final String code;

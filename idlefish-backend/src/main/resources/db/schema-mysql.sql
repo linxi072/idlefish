@@ -783,6 +783,36 @@ CREATE TABLE IF NOT EXISTS t_dispute (
     KEY idx_dispute_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- ===================== F-12 客服工单（脱离纯 IM 的独立 workflow） =====================
+-- 客服工单：用户提交问题 → 客服分配 → 处理/待用户补充 → 解决 → 关闭（含满意度回访）。
+-- 与维权纠纷（t_dispute）解耦：本表是「通用客服流转」载体，不承载资金裁决。状态流转见 WorkOrderStateMachine。
+CREATE TABLE IF NOT EXISTS t_work_order (
+    id                    BIGINT       PRIMARY KEY,
+    ticket_no             VARCHAR(32)  NOT NULL COMMENT '工单号（唯一，WO 前缀）',
+    user_id               BIGINT       NOT NULL COMMENT '发起用户 ID',
+    type                  VARCHAR(20)  NOT NULL COMMENT '工单类型：GENERAL/REFUND/TECHNICAL/COMPLAINT/SUGGESTION',
+    priority              VARCHAR(20)  NOT NULL COMMENT '优先级：LOW/NORMAL/HIGH/URGENT',
+    status                VARCHAR(20)  NOT NULL COMMENT 'OPEN/IN_PROGRESS/WAITING_USER/RESOLVED/CLOSED',
+    channel               VARCHAR(20)  NOT NULL COMMENT '来源渠道：APP/WEB/MINI/PHONE',
+    subject               VARCHAR(128) NOT NULL COMMENT '工单标题',
+    description           VARCHAR(1024) NOT NULL COMMENT '问题描述',
+    order_no              VARCHAR(64)  DEFAULT NULL COMMENT '关联订单号（可选）',
+    assignee_id           BIGINT       DEFAULT NULL COMMENT '受理客服（admin 用户 ID，分配前为空）',
+    resolution            VARCHAR(1024) DEFAULT NULL COMMENT '解决方案/处理说明',
+    satisfaction          TINYINT      DEFAULT NULL COMMENT '满意度评分 1-5（用户关闭时回填）',
+    first_response_at     DATETIME     DEFAULT NULL COMMENT '首次响应时间（SLA 度量）',
+    resolved_at           DATETIME     DEFAULT NULL COMMENT '解决时间',
+    closed_at             DATETIME     DEFAULT NULL COMMENT '关闭时间',
+    created_at            DATETIME,
+    updated_at            DATETIME,
+    UNIQUE KEY uk_ticket_no (ticket_no),
+    KEY idx_wo_user (user_id),
+    KEY idx_wo_status (status),
+    KEY idx_wo_type (type),
+    KEY idx_wo_priority (priority),
+    KEY idx_wo_order (order_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 -- ===================== F-02 鉴定验货履约 =====================
 -- 验货单：买家送检 → 机构收件 → 验货 → 通过/不通过/异常。验货中冻结订单发货（REQ-04），
 -- 服务费按「分」计入资金流水（REQ-10）。状态流转见 InspectionStateMachine。

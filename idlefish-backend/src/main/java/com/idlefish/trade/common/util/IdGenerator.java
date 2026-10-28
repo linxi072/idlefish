@@ -105,4 +105,9 @@ public class IdGenerator {
     public static String bargainSessionNo() {
         return next("BS");
     }
+
+    /** 客服工单号（F-12）。 */
+    public static String workOrderNo() {
+        return next("WO");
+    }
 }

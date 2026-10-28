@@ -61,7 +61,13 @@ public enum EventType {
     /** 维权工单已办结（协商 / 平台裁决）。 */
     DISPUTE_RESOLVED("维权工单已办结", 1, true),
     /** 验货已完成（鉴定验货出具报告）。 */
-    INSPECTION_COMPLETED("验货已完成", 1, true);
+    INSPECTION_COMPLETED("验货已完成", 1, true),
+    /** 客服工单已开启（用户提交工单）。 */
+    WORKORDER_OPENED("客服工单已开启", 1, true),
+    /** 客服工单已解决（客服标记解决）。 */
+    WORKORDER_RESOLVED("客服工单已解决", 1, true),
+    /** 客服工单已关闭（用户确认或管理员关闭）。 */
+    WORKORDER_CLOSED("客服工单已关闭", 1, true);
 
     /** 事件类型说明。 */
     private final String desc;

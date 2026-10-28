@@ -141,6 +141,20 @@ public enum Code {
     SUBSIDY_BUDGET_EXCEEDED(30071, "活动补贴预算已用尽"),
     /** 参与被风控拦截（ITER-F08 / REQ-05）。 */
     ACTIVITY_RISK_BLOCKED(30072, "参与被风控拦截，请稍后再试"),
+    /** 客服工单不存在（F-12）。 */
+    WORKORDER_NOT_FOUND(30073, "客服工单不存在"),
+    /** 当前工单状态不允许该操作（F-12）。 */
+    WORKORDER_STATE_NOT_ALLOWED(30074, "当前工单状态不允许该操作"),
+    /** 该订单存在未结客服工单（F-12）。 */
+    WORKORDER_EXISTS(30075, "该订单存在未结客服工单"),
+    /** 工单类型不合法（F-12）。 */
+    WORKORDER_TYPE_INVALID(30076, "工单类型不合法"),
+    /** 工单优先级不合法（F-12）。 */
+    WORKORDER_PRIORITY_INVALID(30077, "工单优先级不合法"),
+    /** 工单来源渠道不合法（F-12）。 */
+    WORKORDER_CHANNEL_INVALID(30078, "工单来源渠道不合法"),
+    /** 满意度评分不合法（F-12，应为 1-5）。 */
+    WORKORDER_SATISFACTION_INVALID(30079, "满意度评分不合法（应为 1-5）"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),
