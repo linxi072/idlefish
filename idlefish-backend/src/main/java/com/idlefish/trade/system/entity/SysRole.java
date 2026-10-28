@@ -2,6 +2,7 @@ package com.idlefish.trade.system.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.idlefish.trade.common.BaseEntity;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,7 +14,9 @@ import lombok.EqualsAndHashCode;
 @TableName("t_sys_role")
 public class SysRole extends BaseEntity {
 
+    @NotBlank(message = "角色名称不可为空")
     private String name;
+    @NotBlank(message = "角色编码不可为空")
     private String code;
     private Integer status;
     private Integer sort;

@@ -10,6 +10,7 @@ import com.idlefish.trade.system.entity.SysDictType;
 import com.idlefish.trade.system.service.SysDictService;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -40,14 +41,14 @@ public class SysDictController {
     }
 
     @PostMapping("/type")
-    public Result<Void> saveType(@CurrentAdmin AdminUser admin, @RequestBody SysDictType e) {
+    public Result<Void> saveType(@CurrentAdmin AdminUser admin, @Valid @RequestBody SysDictType e) {
         authService.requirePermission(admin.getId(), "system:dict:edit");
         service.saveType(e);
         return Result.ok();
     }
 
     @PutMapping("/type/{id}")
-    public Result<Void> updateType(@CurrentAdmin AdminUser admin, @PathVariable Long id, @RequestBody SysDictType e) {
+    public Result<Void> updateType(@CurrentAdmin AdminUser admin, @PathVariable Long id, @Valid @RequestBody SysDictType e) {
         authService.requirePermission(admin.getId(), "system:dict:edit");
         e.setId(id);
         service.updateType(e);
@@ -69,14 +70,14 @@ public class SysDictController {
     }
 
     @PostMapping("/data")
-    public Result<Void> saveData(@CurrentAdmin AdminUser admin, @RequestBody SysDictData e) {
+    public Result<Void> saveData(@CurrentAdmin AdminUser admin, @Valid @RequestBody SysDictData e) {
         authService.requirePermission(admin.getId(), "system:dict:edit");
         service.saveData(e);
         return Result.ok();
     }
 
     @PutMapping("/data/{id}")
-    public Result<Void> updateData(@CurrentAdmin AdminUser admin, @PathVariable Long id, @RequestBody SysDictData e) {
+    public Result<Void> updateData(@CurrentAdmin AdminUser admin, @PathVariable Long id, @Valid @RequestBody SysDictData e) {
         authService.requirePermission(admin.getId(), "system:dict:edit");
         e.setId(id);
         service.updateData(e);

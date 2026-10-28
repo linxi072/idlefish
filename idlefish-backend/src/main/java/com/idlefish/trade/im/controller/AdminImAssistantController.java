@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import java.util.List;
 
 /**
@@ -48,7 +50,7 @@ public class AdminImAssistantController {
     /** 新增 / 更新知识库条目。 */
     @PostMapping("/knowledge/save")
     public Result<Long> saveKnowledge(@CurrentAdmin AdminUser admin,
-                                      @RequestBody ImKnowledge knowledge) {
+                                      @Valid @RequestBody ImKnowledge knowledge) {
         return Result.ok(knowledgeService.save(knowledge));
     }
 

@@ -9,6 +9,7 @@ import com.idlefish.trade.system.entity.SysMenu;
 import com.idlefish.trade.system.service.SysMenuService;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 /**
@@ -42,14 +43,14 @@ public class SysMenuController {
     }
 
     @PostMapping
-    public Result<Void> save(@CurrentAdmin AdminUser admin, @RequestBody SysMenu e) {
+    public Result<Void> save(@CurrentAdmin AdminUser admin, @Valid @RequestBody SysMenu e) {
         authService.requirePermission(admin.getId(), "system:menu:edit");
         service.save(e);
         return Result.ok();
     }
 
     @PutMapping("/{id}")
-    public Result<Void> update(@CurrentAdmin AdminUser admin, @PathVariable Long id, @RequestBody SysMenu e) {
+    public Result<Void> update(@CurrentAdmin AdminUser admin, @PathVariable Long id, @Valid @RequestBody SysMenu e) {
         authService.requirePermission(admin.getId(), "system:menu:edit");
         e.setId(id);
         service.update(e);

@@ -2,6 +2,7 @@ package com.idlefish.trade.im.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.idlefish.trade.common.BaseEntity;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -28,8 +29,11 @@ public class ImKnowledge extends BaseEntity {
     public static final String STATUS_OFF = "OFF";
 
     private Long categoryId;
+    @NotBlank(message = "意图不可为空")
     private String intent;
+    @NotBlank(message = "触发词不可为空")
     private String keywords;
+    @NotBlank(message = "答案模板不可为空")
     private String answerTemplate;
     private Integer priority;
     private String status;

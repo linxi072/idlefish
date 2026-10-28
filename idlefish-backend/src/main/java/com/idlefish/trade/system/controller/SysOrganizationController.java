@@ -9,6 +9,7 @@ import com.idlefish.trade.system.entity.SysOrganization;
 import com.idlefish.trade.system.service.SysOrganizationService;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 /**
@@ -42,14 +43,14 @@ public class SysOrganizationController {
     }
 
     @PostMapping
-    public Result<Void> save(@CurrentAdmin AdminUser admin, @RequestBody SysOrganization e) {
+    public Result<Void> save(@CurrentAdmin AdminUser admin, @Valid @RequestBody SysOrganization e) {
         authService.requirePermission(admin.getId(), "system:org:edit");
         service.save(e);
         return Result.ok();
     }
 
     @PutMapping("/{id}")
-    public Result<Void> update(@CurrentAdmin AdminUser admin, @PathVariable Long id, @RequestBody SysOrganization e) {
+    public Result<Void> update(@CurrentAdmin AdminUser admin, @PathVariable Long id, @Valid @RequestBody SysOrganization e) {
         authService.requirePermission(admin.getId(), "system:org:edit");
         e.setId(id);
         service.update(e);

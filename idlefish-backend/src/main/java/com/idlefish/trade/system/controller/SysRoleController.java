@@ -42,14 +42,14 @@ public class SysRoleController {
     }
 
     @PostMapping
-    public Result<Void> save(@CurrentAdmin AdminUser admin, @RequestBody SysRole e) {
+    public Result<Void> save(@CurrentAdmin AdminUser admin, @Valid @RequestBody SysRole e) {
         authService.requirePermission(admin.getId(), "system:role:edit");
         service.save(e);
         return Result.ok();
     }
 
     @PutMapping("/{id}")
-    public Result<Void> update(@CurrentAdmin AdminUser admin, @PathVariable Long id, @RequestBody SysRole e) {
+    public Result<Void> update(@CurrentAdmin AdminUser admin, @PathVariable Long id, @Valid @RequestBody SysRole e) {
         authService.requirePermission(admin.getId(), "system:role:edit");
         e.setId(id);
         service.update(e);

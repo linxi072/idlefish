@@ -2,6 +2,7 @@ package com.idlefish.trade.system.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.idlefish.trade.common.BaseEntity;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -14,6 +15,7 @@ import lombok.EqualsAndHashCode;
 public class SysOrganization extends BaseEntity {
 
     private Long parentId;
+    @NotBlank(message = "机构名称不可为空")
     private String name;
     private String code;
     private Integer level;

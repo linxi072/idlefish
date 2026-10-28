@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import java.util.List;
 
 /**
@@ -109,7 +111,7 @@ public class AdminGrowthController {
     /** 新增 / 更新权益配置（按 id 是否存在 upsert）。 */
     @PostMapping("/benefits/save")
     public Result<Long> saveBenefit(@CurrentAdmin AdminUser admin,
-                                    @RequestBody Benefit benefit) {
+                                    @Valid @RequestBody Benefit benefit) {
         return Result.ok(benefitExchangeService.save(benefit));
     }
 

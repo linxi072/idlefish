@@ -2,6 +2,7 @@ package com.idlefish.trade.member.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.idlefish.trade.common.BaseEntity;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -14,7 +15,9 @@ import lombok.EqualsAndHashCode;
 @TableName("t_member_level")
 public class MemberLevel extends BaseEntity {
 
+    @NotBlank(message = "等级编码不可为空")
     private String levelCode;        // 等级编码（唯一，如 L1..L5）
+    @NotBlank(message = "等级名称不可为空")
     private String levelName;        // 等级名称
     private Integer minGrowth;       // 达到该等级所需成长值（阈值）
     private Integer freeShipping;    // 0/1 是否免运费

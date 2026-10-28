@@ -2,6 +2,7 @@ package com.idlefish.trade.member.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.idlefish.trade.common.BaseEntity;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -41,8 +42,11 @@ public class Benefit extends BaseEntity {
     /** 下架状态。 */
     public static final String STATUS_OFF_SHELF = "OFF_SHELF";
 
+    @NotBlank(message = "权益编码不可为空")
     private String benefitCode;        // 权益编码（唯一，运营侧引用）
+    @NotBlank(message = "权益名称不可为空")
     private String benefitName;        // 权益名称
+    @NotBlank(message = "权益类型不可为空")
     private String benefitType;        // COUPON / VOUCHER / POINT_PACKAGE / SERVICE
     private String description;        // 权益说明（使用条件 / 有效期，合规要求明示）
     private Long costPoints;           // 所需积分（可消耗）

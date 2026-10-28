@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import java.util.List;
 
@@ -46,7 +48,7 @@ public class AdminMemberLevelController {
 
     /** 新增 / 更新等级配置（按 id 是否存在 upsert）。 */
     @PostMapping("/save")
-    public Result<Long> save(@CurrentAdmin AdminUser admin, @RequestBody MemberLevel tier) {
+    public Result<Long> save(@CurrentAdmin AdminUser admin, @Valid @RequestBody MemberLevel tier) {
         return Result.ok(memberLevelService.saveTier(tier));
     }
 
