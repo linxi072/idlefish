@@ -4,6 +4,7 @@ import com.idlefish.trade.common.Result;
 import com.idlefish.trade.common.web.CurrentUser;
 import com.idlefish.trade.common.web.LoginUser;
 import com.idlefish.trade.trade.dto.BargainCreateDTO;
+import jakarta.validation.Valid;
 import com.idlefish.trade.trade.entity.Bargain;
 import com.idlefish.trade.trade.service.BargainService;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +26,7 @@ public class BargainController {
 
     /** 发起议价。 */
     @PostMapping("/create")
-    public Result<Bargain> create(@CurrentUser LoginUser loginUser, @RequestBody BargainCreateDTO dto) {
+    public Result<Bargain> create(@CurrentUser LoginUser loginUser, @Valid @RequestBody BargainCreateDTO dto) {
         return Result.ok(bargainService.create(loginUser.getUserId(), dto.getSellerId(),
                 dto.getItemId(), dto.getConvId(), dto.getOfferPrice()));
     }

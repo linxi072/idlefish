@@ -5,6 +5,7 @@ import com.idlefish.trade.admin.entity.AdminUser;
 import com.idlefish.trade.admin.web.CurrentAdmin;
 import com.idlefish.trade.common.Result;
 import com.idlefish.trade.local.dto.RecycleQuoteRequest;
+import jakarta.validation.Valid;
 import com.idlefish.trade.local.entity.LocalDelivery;
 import com.idlefish.trade.local.entity.RecycleOrder;
 import com.idlefish.trade.local.service.LocalDeliveryService;
@@ -81,7 +82,7 @@ public class AdminLocalController {
     @PostMapping("/recycle/quote")
     public Result<Void> recycleQuote(@CurrentAdmin AdminUser admin,
                                      @RequestParam Long id,
-                                     @RequestBody RecycleQuoteRequest req) {
+                                     @Valid @RequestBody RecycleQuoteRequest req) {
         recycleService.quote(id, req.getFinalAmount(), req.getQuoteRemark(), admin.getUsername());
         return Result.ok();
     }

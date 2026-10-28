@@ -5,6 +5,7 @@ import com.idlefish.trade.admin.entity.AdminUser;
 import com.idlefish.trade.admin.web.CurrentAdmin;
 import com.idlefish.trade.common.Result;
 import com.idlefish.trade.inspection.dto.InspectionResultDTO;
+import jakarta.validation.Valid;
 import com.idlefish.trade.inspection.entity.InspectionOrder;
 import com.idlefish.trade.inspection.service.InspectionService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -66,7 +67,7 @@ public class AdminInspectionController {
     @PostMapping("/result")
     public Result<Void> result(@CurrentAdmin AdminUser admin,
                               @RequestParam Long id,
-                              @RequestBody InspectionResultDTO dto) {
+                              @Valid @RequestBody InspectionResultDTO dto) {
         inspectionService.receiveResult(id, dto);
         return Result.ok();
     }
