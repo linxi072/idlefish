@@ -7,6 +7,7 @@ import com.idlefish.trade.admin.web.CurrentAdmin;
 import com.idlefish.trade.common.Result;
 import com.idlefish.trade.system.dto.AssignDTO;
 import com.idlefish.trade.system.service.SysUserService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -67,7 +68,7 @@ public class SysUserController {
 
     /** 分配管理员角色（按钮级 perm：system:user:edit）。 */
     @PostMapping("/assign-roles")
-    public Result<Void> assignRoles(@CurrentAdmin AdminUser admin, @RequestBody AssignDTO dto) {
+    public Result<Void> assignRoles(@CurrentAdmin AdminUser admin, @Valid @RequestBody AssignDTO dto) {
         authService.requirePermission(admin.getId(), "system:user:edit");
         service.assignRoles(dto.getId(), dto.getIds());
         return Result.ok();

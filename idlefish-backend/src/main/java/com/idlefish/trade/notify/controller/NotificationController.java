@@ -6,6 +6,8 @@ import com.idlefish.trade.common.web.CurrentUser;
 import com.idlefish.trade.common.web.LoginUser;
 import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.notify.vo.NotificationVO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -43,7 +45,7 @@ public class NotificationController {
 
     /** 标记单条已读。 */
     @PostMapping("/read")
-    public Result<Void> markRead(@CurrentUser LoginUser user, @RequestBody ReadDTO dto) {
+    public Result<Void> markRead(@CurrentUser LoginUser user, @Valid @RequestBody ReadDTO dto) {
         notificationService.markRead(user.getUserId(), dto.getId());
         return Result.ok();
     }
@@ -57,6 +59,7 @@ public class NotificationController {
     /** 已读入参。 */
     @Data
     public static class ReadDTO {
+        @NotNull(message = "通知 ID 不能为空")
         private Long id;
     }
 }

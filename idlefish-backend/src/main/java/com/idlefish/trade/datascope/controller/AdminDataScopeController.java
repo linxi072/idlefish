@@ -8,6 +8,7 @@ import com.idlefish.trade.datascope.dto.DataScopeAdminDTO;
 import com.idlefish.trade.datascope.entity.DataScopeTempGrant;
 import com.idlefish.trade.datascope.service.DataScopeService;
 import com.idlefish.trade.datascope.service.TempGrantService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,14 +50,14 @@ public class AdminDataScopeController {
 
     /** 越权预览：目标机构是否在当前管理员可见范围内。 */
     @PostMapping("/preview")
-    public Result<Boolean> preview(@CurrentAdmin AdminUser admin, @RequestBody DataScopeAdminDTO.PreviewRequest req) {
+    public Result<Boolean> preview(@CurrentAdmin AdminUser admin, @Valid @RequestBody DataScopeAdminDTO.PreviewRequest req) {
         return Result.ok(dataScopeService.isAccessible(admin.getId(), req.targetOrgId));
     }
 
     /** 创建临时授权（开放额外机构可见范围，限有效期）。 */
     @PostMapping("/temp-grant")
     public Result<DataScopeTempGrant> tempGrant(@CurrentAdmin AdminUser admin,
-                                                @RequestBody DataScopeAdminDTO.TempGrantRequest req) {
+                                                @Valid @RequestBody DataScopeAdminDTO.TempGrantRequest req) {
         Set<Long> orgIds = req.orgIds == null ? Set.of() : Set.copyOf(req.orgIds);
         DataScopeTempGrant g = tempGrantService.create(admin.getId(), orgIds, req.expiredAt);
         return Result.ok(g);
@@ -78,7 +79,7 @@ public class AdminDataScopeController {
     /** 数据归属迁移（REQ-10）：将源机构数据重指派到目标机构，返回受影响行数。 */
     @PostMapping("/migrate")
     public Result<Integer> migrate(@CurrentAdmin AdminUser admin,
-                                  @RequestBody DataScopeAdminDTO.MigrateRequest req) {
+                                  @Valid @RequestBody DataScopeAdminDTO.MigrateRequest req) {
         int affected = dataScopeService.migrateData(admin.getId(), req.fromOrgId, req.toOrgId);
         return Result.ok(affected);
     }

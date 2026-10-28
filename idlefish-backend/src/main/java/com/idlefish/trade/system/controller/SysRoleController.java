@@ -7,6 +7,7 @@ import com.idlefish.trade.common.Result;
 import com.idlefish.trade.system.dto.AssignDTO;
 import com.idlefish.trade.system.entity.SysRole;
 import com.idlefish.trade.system.service.SysRoleService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -64,7 +65,7 @@ public class SysRoleController {
 
     /** 分配角色的菜单权限（按钮级 perm：system:role:assign）。 */
     @PostMapping("/assign-menus")
-    public Result<Void> assignMenus(@CurrentAdmin AdminUser admin, @RequestBody AssignDTO dto) {
+    public Result<Void> assignMenus(@CurrentAdmin AdminUser admin, @Valid @RequestBody AssignDTO dto) {
         authService.requirePermission(admin.getId(), "system:role:assign");
         service.assignMenus(dto.getId(), dto.getIds());
         return Result.ok();

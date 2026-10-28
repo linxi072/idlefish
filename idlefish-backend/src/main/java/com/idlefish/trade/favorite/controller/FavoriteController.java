@@ -6,6 +6,8 @@ import com.idlefish.trade.common.web.CurrentUser;
 import com.idlefish.trade.common.web.LoginUser;
 import com.idlefish.trade.favorite.service.FavoriteService;
 import com.idlefish.trade.favorite.vo.FavoriteVO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,7 +30,7 @@ public class FavoriteController {
 
     /** 收藏 / 取消收藏切换。 */
     @PostMapping("/toggle")
-    public Result<Boolean> toggle(@CurrentUser LoginUser user, @RequestBody ToggleDTO dto) {
+    public Result<Boolean> toggle(@CurrentUser LoginUser user, @Valid @RequestBody ToggleDTO dto) {
         return Result.ok(favoriteService.toggle(user.getUserId(), dto.getItemId()));
     }
 
@@ -49,6 +51,7 @@ public class FavoriteController {
     /** 切换入参。 */
     @lombok.Data
     public static class ToggleDTO {
+        @NotNull(message = "商品 ID 不能为空")
         private Long itemId;
     }
 }

@@ -41,7 +41,7 @@ public class ItemController {
 
     /** 编辑商品。 */
     @PutMapping("/edit")
-    public Result<Void> edit(@CurrentUser LoginUser user, @RequestBody ItemEditDTO dto) {
+    public Result<Void> edit(@CurrentUser LoginUser user, @Valid @RequestBody ItemEditDTO dto) {
         itemService.edit(user.getUserId(), dto);
         return Result.ok();
     }

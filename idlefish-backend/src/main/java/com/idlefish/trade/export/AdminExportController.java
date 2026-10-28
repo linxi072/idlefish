@@ -3,6 +3,7 @@ package com.idlefish.trade.export;
 import com.idlefish.trade.admin.entity.AdminUser;
 import com.idlefish.trade.admin.web.CurrentAdmin;
 import com.idlefish.trade.common.Result;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -38,13 +39,13 @@ public class AdminExportController {
 
     /** 导出预览：校验范围并取数，返回表头与预计行数（不落盘）。 */
     @PostMapping("/preview")
-    public Result<ExportPreview> preview(@CurrentAdmin AdminUser admin, @RequestBody ExportQuery query) {
+    public Result<ExportPreview> preview(@CurrentAdmin AdminUser admin, @Valid @RequestBody ExportQuery query) {
         return Result.ok(exportService.preview(admin.getId(), query));
     }
 
     /** 执行导出：校验范围 → 取数 → 落盘 → 记任务。 */
     @PostMapping("/export")
-    public Result<ExportTask> export(@CurrentAdmin AdminUser admin, @RequestBody ExportQuery query) {
+    public Result<ExportTask> export(@CurrentAdmin AdminUser admin, @Valid @RequestBody ExportQuery query) {
         return Result.ok(exportService.export(admin.getId(), query));
     }
 

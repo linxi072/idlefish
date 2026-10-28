@@ -1,5 +1,6 @@
 package com.idlefish.trade.export;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.List;
 public class ExportQuery {
 
     /** 导出类型 code（见 ExportType）；为空或非法由 ExportType.fromCode 抛 EXPORT_TYPE_UNSUPPORTED。 */
+    @NotBlank(message = "导出类型 code 不能为空")
     private String type;
 
     /** 范围覆盖（仅带 org_id 的实体有效）；须为可见机构的子集，越权机构将被拒绝并记审计。 */

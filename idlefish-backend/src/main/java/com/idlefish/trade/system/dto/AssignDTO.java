@@ -1,5 +1,6 @@
 package com.idlefish.trade.system.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.util.List;
@@ -11,6 +12,9 @@ import java.util.List;
 @Data
 public class AssignDTO {
 
+    @NotNull(message = "主实体 ID 不能为空")
     private Long id;
+
+    @NotNull(message = "被关联实体 ID 集合不能为空")
     private List<Long> ids;
 }
