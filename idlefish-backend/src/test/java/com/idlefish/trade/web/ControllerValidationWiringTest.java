@@ -11,6 +11,9 @@ import com.idlefish.trade.inspection.service.InspectionService;
 import com.idlefish.trade.local.controller.AdminLocalController;
 import com.idlefish.trade.local.service.LocalDeliveryService;
 import com.idlefish.trade.local.service.RecycleService;
+import com.idlefish.trade.event.AdminEventController;
+import com.idlefish.trade.event.EventReplayService;
+import com.idlefish.trade.event.EventReplayTask;
 import com.idlefish.trade.trade.controller.BargainController;
 import com.idlefish.trade.trade.entity.Bargain;
 import com.idlefish.trade.trade.service.BargainService;
@@ -49,10 +52,19 @@ class ControllerValidationWiringTest {
     private RecycleService recycleService;
     @Mock
     private LocalDeliveryService localDeliveryService;
+    @Mock
+    private EventReplayService replayService;
 
     private MockMvc bargainMvc;
     private MockMvc inspectionMvc;
     private MockMvc localMvc;
+    private MockMvc eventMvc;
+
+    private AdminUser admin(long id) {
+        AdminUser a = new AdminUser();
+        a.setId(id);
+        return a;
+    }
 
     @BeforeEach
     void setUp() {
@@ -70,6 +82,11 @@ class ControllerValidationWiringTest {
                 .build();
 
         localMvc = MockMvcBuilders.standaloneSetup(new AdminLocalController(recycleService, localDeliveryService))
+                .setValidator(validator)
+                .setCustomArgumentResolvers(new CurrentAdminArgumentResolver())
+                .build();
+
+        eventMvc = MockMvcBuilders.standaloneSetup(new AdminEventController(replayService))
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new CurrentAdminArgumentResolver())
                 .build();
@@ -143,5 +160,30 @@ class ControllerValidationWiringTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(Code.SUCCESS.getCode()));
         verify(recycleService).quote(eq(1L), eq(100L), any(), any());
+    }
+
+    // ===== AdminEventController.replay：ReplayRequest @NotBlank(eventType) + @NotNull(fromTime/toTime) =====
+    @Test
+    void event_replay_invalidBody_rejected() throws Exception {
+        eventMvc.perform(post("/api/admin/event/replay")
+                        .requestAttr("adminUser", admin(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void event_replay_validBody_passes() throws Exception {
+        EventReplayTask task = new EventReplayTask();
+        task.setReplayNo("EVR1");
+        task.setStatus("PENDING");
+        when(replayService.createReplay(1L, "ORDER_PAID", java.time.LocalDateTime.parse("2026-01-01T00:00:00"),
+                java.time.LocalDateTime.parse("2026-01-02T00:00:00"))).thenReturn(task);
+        eventMvc.perform(post("/api/admin/event/replay")
+                        .requestAttr("adminUser", admin(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"eventType\":\"ORDER_PAID\",\"fromTime\":\"2026-01-01T00:00:00\",\"toTime\":\"2026-01-02T00:00:00\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(Code.SUCCESS.getCode()));
     }
 }
