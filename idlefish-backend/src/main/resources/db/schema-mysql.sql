@@ -1671,3 +1671,54 @@ SET @ddl := IF(@col_exists = 0,
 PREPARE mig_stmt FROM @ddl;
 EXECUTE mig_stmt;
 DEALLOCATE PREPARE mig_stmt;
+
+-- F-12 补完：t_work_order 追加「维权关联」与「时效 SLA」四列（沿用幂等迁移范式，重复执行安全）
+-- 1) dispute_no：维权单转人工的关联键（可空，通用咨询工单不绑定）
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_work_order' AND column_name = 'dispute_no');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_work_order ADD COLUMN dispute_no VARCHAR(64) DEFAULT NULL COMMENT ''关联维权工单号（F-12 纠纷联通，可空）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+-- 2) first_response_deadline：首响到期时间（建单时按优先级计算，见 WorkOrderSlaPolicy）
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_work_order' AND column_name = 'first_response_deadline');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_work_order ADD COLUMN first_response_deadline DATETIME DEFAULT NULL COMMENT ''首响到期时间（SLA，按优先级计算）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+-- 3) resolve_deadline：解决到期时间
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_work_order' AND column_name = 'resolve_deadline');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_work_order ADD COLUMN resolve_deadline DATETIME DEFAULT NULL COMMENT ''解决到期时间（SLA，按优先级计算）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+-- 4) sla_breached：是否超时（0 未超时 / 1 已超时），扫描任务与流转时回填
+SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE table_schema = DATABASE() AND table_name = 't_work_order' AND column_name = 'sla_breached');
+SET @ddl := IF(@col_exists = 0,
+    'ALTER TABLE t_work_order ADD COLUMN sla_breached TINYINT NOT NULL DEFAULT 0 COMMENT ''是否超时：0 未超时 / 1 已超时（SLA）''',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;
+
+-- 5) 维权关联索引：支撑「同一维权单未结工单」幂等查询与后台按维权号检索
+SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE table_schema = DATABASE() AND table_name = 't_work_order' AND index_name = 'idx_wo_dispute');
+SET @ddl := IF(@idx_exists = 0,
+    'ALTER TABLE t_work_order ADD INDEX idx_wo_dispute (dispute_no)',
+    'SELECT 1');
+PREPARE mig_stmt FROM @ddl;
+EXECUTE mig_stmt;
+DEALLOCATE PREPARE mig_stmt;

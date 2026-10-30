@@ -47,6 +47,7 @@ public enum NotificationType {
     WORKORDER_RESOLVED("workorder_resolved", "工单已解决"),
     WORKORDER_WAITING("workorder_waiting", "工单待补充"),
     WORKORDER_CLOSED("workorder_closed", "工单已关闭"),
+    WORKORDER_SLA_BREACHED("workorder_sla_breached", "工单时效超时"),
     SYSTEM_ALERT("system_alert", "系统告警");
 
     private final String code;

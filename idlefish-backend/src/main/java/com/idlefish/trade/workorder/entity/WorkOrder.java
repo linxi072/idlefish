@@ -10,8 +10,12 @@ import java.time.LocalDateTime;
 /**
  * 客服工单（F-12）：用户提交问题 → 客服分配 → 处理/待用户补充 → 解决 → 关闭（含满意度回访）。
  *
- * <p>与维权纠纷（{@code t_dispute}）解耦：本表是「通用客服流转」载体，不承载资金裁决。
- * 状态流转见 {@link com.idlefish.trade.workorder.WorkOrderStateMachine}。
+ * <p>与维权纠纷（{@code t_dispute}）通过 {@code disputeNo} 单向关联：工单可空（通用咨询），
+ * 也可由维权单转人工而来（见 {@link com.idlefish.trade.workorder.WorkOrderDisputeLink}）。
+ * 本表不承载资金裁决，状态流转见 {@link com.idlefish.trade.workorder.WorkOrderStateMachine}。
+ *
+ * <p>SLA 时效（{@link com.idlefish.trade.workorder.WorkOrderSlaPolicy}）：建单时按优先级落首响/解决到期时间，
+ * 扫描或流转时判定是否超时并回填 {@code slaBreached}。
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -27,10 +31,14 @@ public class WorkOrder extends BaseEntity {
     private String subject;         // 工单标题
     private String description;     // 问题描述
     private String orderNo;         // 关联订单号（可选）
+    private String disputeNo;       // 关联维权工单号（可选，维权转人工时回填）
     private Long assigneeId;        // 受理客服（admin 用户 ID，分配前为空）
     private String resolution;      // 解决方案/处理说明
     private Integer satisfaction;   // 满意度评分 1-5（用户关闭时回填）
     private LocalDateTime firstResponseAt; // 首次响应时间（SLA 度量）
+    private LocalDateTime firstResponseDeadline; // 首响到期时间（建单时按优先级计算）
+    private LocalDateTime resolveDeadline;      // 解决到期时间（建单时按优先级计算）
+    private Integer slaBreached;    // 是否超时：0 未超时 / 1 已超时（首响或解决任一超期）
     private LocalDateTime resolvedAt;      // 解决时间
     private LocalDateTime closedAt;       // 关闭时间
 }

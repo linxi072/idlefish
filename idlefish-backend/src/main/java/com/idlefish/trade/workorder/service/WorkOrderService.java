@@ -7,11 +7,17 @@ import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.observability.MetricsRegistry;
 import com.idlefish.trade.common.util.IdGenerator;
+import com.idlefish.trade.dispute.DisputeStateMachine;
+import com.idlefish.trade.dispute.entity.Dispute;
+import com.idlefish.trade.dispute.mapper.DisputeMapper;
 import com.idlefish.trade.event.DomainEventPublisher;
 import com.idlefish.trade.event.EventType;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
+import com.idlefish.trade.workorder.WorkOrderDisputeLink;
+import com.idlefish.trade.workorder.WorkOrderSlaPolicy;
 import com.idlefish.trade.workorder.WorkOrderStateMachine;
+import com.idlefish.trade.workorder.dto.WorkOrderLinkedDisputeVO;
 import com.idlefish.trade.workorder.entity.WorkOrder;
 import com.idlefish.trade.workorder.mapper.WorkOrderMapper;
 import org.springframework.stereotype.Service;
@@ -25,8 +31,10 @@ import java.util.Set;
 /**
  * 客服工单服务（F-12）：提交 / 分配 / 流转（处理/待补充/解决）/ 用户关闭（含满意度回访）/ 查询。
  *
- * <p>与维权纠纷（dispute）解耦：本服务只承载「通用客服流转」，不处理资金裁决；通知走 F-02 通知中心，
- * 均为 best-effort（内部 try/catch 不阻断主流程）。每次状态变更均发布领域事件供下游（风控/数据/通知）消费。
+ * <p>与维权纠纷（dispute）通过 {@code disputeNo} 单向联通：本服务只承载「通用客服流转」，不处理资金裁决；
+ * 维权单可「转人工」派生工单（{@link #createFromDispute}），映射规则见 {@link WorkOrderDisputeLink}。
+ * 通知走 F-02 通知中心，均为 best-effort（内部 try/catch 不阻断主流程）；每次状态变更均发布领域事件
+ * 供下游（风控/数据/通知）消费。时效 SLA 见 {@link WorkOrderSlaPolicy}，扫描与统计见 {@link WorkOrderSlaService}。
  */
 @Service
 public class WorkOrderService {
@@ -56,25 +64,40 @@ public class WorkOrderService {
             CHANNEL_APP, CHANNEL_WEB, CHANNEL_MINI, CHANNEL_PHONE));
 
     private final WorkOrderMapper workOrderMapper;
+    private final DisputeMapper disputeMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
     private final DomainEventPublisher eventPublisher;
 
-    public WorkOrderService(WorkOrderMapper workOrderMapper, NotificationService notificationService,
-                            MetricsRegistry metrics, DomainEventPublisher eventPublisher) {
+    public WorkOrderService(WorkOrderMapper workOrderMapper, DisputeMapper disputeMapper,
+                            NotificationService notificationService, MetricsRegistry metrics,
+                            DomainEventPublisher eventPublisher) {
         this.workOrderMapper = workOrderMapper;
+        this.disputeMapper = disputeMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
         this.eventPublisher = eventPublisher;
     }
 
     /**
-     * 用户提交客服工单。校验类型/优先级/渠道合法性，落库 OPEN 状态并发布 WORKORDER_OPENED 事件。
+     * 用户提交客服工单（无维权关联）。校验类型/优先级/渠道合法性，落库 OPEN 状态并发布 WORKORDER_OPENED 事件。
      *
      * @return 工单 ID
      */
     public Long create(Long userId, String type, String priority, String channel,
                        String subject, String description, String orderNo) {
+        return create(userId, type, priority, channel, subject, description, orderNo, null);
+    }
+
+    /**
+     * 用户提交客服工单，可携带维权单号（维权转人工时由 {@link #createFromDispute} 派生，也可直接调用）。
+     * 校验类型/优先级/渠道合法性，按优先级落 SLA 到期时间，落库 OPEN 状态并发布 WORKORDER_OPENED 事件。
+     *
+     * @param disputeNo 关联维权工单号（可空）
+     * @return 工单 ID
+     */
+    public Long create(Long userId, String type, String priority, String channel,
+                       String subject, String description, String orderNo, String disputeNo) {
         if (subject == null || subject.isBlank()) {
             throw new BizException(Code.PARAM_MISSING, "工单标题不能为空");
         }
@@ -91,6 +114,7 @@ public class WorkOrderService {
             throw new BizException(Code.WORKORDER_CHANNEL_INVALID, "工单来源渠道不合法");
         }
 
+        LocalDateTime now = LocalDateTime.now();
         WorkOrder wo = new WorkOrder();
         wo.setTicketNo(IdGenerator.workOrderNo());
         wo.setUserId(userId);
@@ -101,6 +125,11 @@ public class WorkOrderService {
         wo.setSubject(subject.trim());
         wo.setDescription(description.trim());
         wo.setOrderNo(orderNo == null || orderNo.isBlank() ? null : orderNo.trim());
+        wo.setDisputeNo(disputeNo == null || disputeNo.isBlank() ? null : disputeNo.trim());
+        // SLA：以建单时刻为起算点，按优先级落首响/解决到期时间（后续扫描与流转据此判定超时）
+        wo.setFirstResponseDeadline(WorkOrderSlaPolicy.firstResponseDeadline(now, priority));
+        wo.setResolveDeadline(WorkOrderSlaPolicy.resolveDeadline(now, priority));
+        wo.setSlaBreached(0);
         workOrderMapper.insert(wo);
         metrics.increment("workorder.created");
         // 工单创建即可见：发布 WORKORDER_OPENED（聚合根 = 工单号），供风控/数据/通知下游消费
@@ -110,8 +139,56 @@ public class WorkOrderService {
                         "ticketNo", wo.getTicketNo(),
                         "userId", userId,
                         "type", type,
-                        "priority", priority));
+                        "priority", priority,
+                        "disputeNo", wo.getDisputeNo()));
         return wo.getId();
+    }
+
+    /**
+     * 维权单转人工：校验维权单存在、归属当前用户、仍处于未结状态，并做同维权单未结工单幂等，
+     * 随后按 {@link WorkOrderDisputeLink} 映射的类型/优先级/标题派生客服工单。
+     *
+     * @param userId      发起用户（维权单的买家或卖家）
+     * @param disputeNo   维权工单号
+     * @param channel     来源渠道
+     * @param description 补充描述（可空，缺省由维权诉求生成）
+     * @return 工单 ID
+     */
+    public Long createFromDispute(Long userId, String disputeNo, String channel, String description) {
+        if (disputeNo == null || disputeNo.isBlank()) {
+            throw new BizException(Code.PARAM_MISSING, "维权工单号不能为空");
+        }
+        if (!VALID_CHANNELS.contains(channel)) {
+            throw new BizException(Code.WORKORDER_CHANNEL_INVALID, "工单来源渠道不合法");
+        }
+        Dispute d = disputeMapper.selectOne(new LambdaQueryWrapper<Dispute>()
+                .eq(Dispute::getDisputeNo, disputeNo.trim()));
+        if (d == null) {
+            throw new BizException(Code.DISPUTE_NOT_FOUND, "维权工单不存在");
+        }
+        // 归属：仅维权双方（买家/卖家）可就本维权单转人工，杜绝越权拉入无关工单
+        if (!Objects.equals(userId, d.getBuyerId()) && !Objects.equals(userId, d.getSellerId())) {
+            throw new BizException(Code.FORBIDDEN, "仅该维权单的买卖双方可转人工");
+        }
+        if (!WorkOrderDisputeLink.canConvert(d.getStatus())) {
+            throw new BizException(Code.DISPUTE_STATE_NOT_ALLOWED,
+                    DisputeStateMachine.isTerminal(d.getStatus()) ? "该维权工单已结案，无需转人工" : "当前维权状态不可转人工");
+        }
+        // 幂等：同一维权单仅允许存在一个未结客服工单
+        long openWorkOrders = workOrderMapper.selectCount(new LambdaQueryWrapper<WorkOrder>()
+                .eq(WorkOrder::getDisputeNo, d.getDisputeNo())
+                .in(WorkOrder::getStatus, WorkOrderStateMachine.OPEN,
+                        WorkOrderStateMachine.IN_PROGRESS, WorkOrderStateMachine.WAITING_USER));
+        if (openWorkOrders > 0) {
+            throw new BizException(Code.WORKORDER_DISPUTE_LINKED, "该维权工单已存在未结客服工单");
+        }
+        String type = WorkOrderDisputeLink.typeOf(d.getType());
+        String priority = WorkOrderDisputeLink.priorityOf(d.getAmount(), d.getStatus());
+        String subject = WorkOrderDisputeLink.subjectOf(d.getDisputeNo(), d.getType());
+        String detail = (description == null || description.isBlank())
+                ? WorkOrderDisputeLink.defaultDescription(d.getType(), d.getExpectation())
+                : description.trim();
+        return create(userId, type, priority, channel, subject, detail, d.getOrderNo(), d.getDisputeNo());
     }
 
     /**
@@ -123,12 +200,19 @@ public class WorkOrderService {
         if (!WorkOrderStateMachine.isOpen(wo.getStatus())) {
             throw new BizException(Code.WORKORDER_STATE_NOT_ALLOWED, "当前工单状态不可分配");
         }
+        LocalDateTime now = LocalDateTime.now();
         WorkOrder upd = new WorkOrder();
         upd.setId(id);
         upd.setAssigneeId(assigneeId);
         upd.setStatus(WorkOrderStateMachine.IN_PROGRESS);
+        LocalDateTime firstResponseAt = wo.getFirstResponseAt() == null ? now : wo.getFirstResponseAt();
         if (wo.getFirstResponseAt() == null) {
-            upd.setFirstResponseAt(LocalDateTime.now());
+            upd.setFirstResponseAt(firstResponseAt);
+        }
+        // SLA：首响是否超出到期时间（分配即视为首次响应）
+        if (WorkOrderSlaPolicy.firstResponseBreached(wo.getCreatedAt(), firstResponseAt, wo.getPriority(), now)) {
+            upd.setSlaBreached(1);
+            metrics.increment("workorder.sla.breached");
         }
         workOrderMapper.updateById(upd);
         metrics.increment("workorder.assigned");
@@ -149,12 +233,18 @@ public class WorkOrderService {
         if (toResolved && (resolution == null || resolution.isBlank())) {
             throw new BizException(Code.PARAM_MISSING, "流转到已解决必须填写解决方案");
         }
+        LocalDateTime now = LocalDateTime.now();
         WorkOrder upd = new WorkOrder();
         upd.setId(id);
         upd.setStatus(toStatus);
         if (toResolved) {
             upd.setResolution(resolution.trim());
-            upd.setResolvedAt(LocalDateTime.now());
+            upd.setResolvedAt(now);
+            // SLA：解决时间是否超出到期时间
+            if (WorkOrderSlaPolicy.resolveBreached(wo.getCreatedAt(), now, wo.getPriority(), now)) {
+                upd.setSlaBreached(1);
+                metrics.increment("workorder.sla.breached");
+            }
         }
         workOrderMapper.updateById(upd);
         metrics.increment("workorder.transition");
@@ -233,6 +323,20 @@ public class WorkOrderService {
         return requireWorkOrder(id);
     }
 
+    /** 工单关联的维权纠纷简要（校验发起人可见）；工单未关联维权单时返回空 VO。 */
+    public WorkOrderLinkedDisputeVO userLinkedDispute(Long userId, Long id) {
+        WorkOrder wo = requireWorkOrder(id);
+        if (!Objects.equals(userId, wo.getUserId())) {
+            throw new BizException(Code.FORBIDDEN, "无权查看该工单");
+        }
+        return toLinkedDisputeVO(wo.getDisputeNo());
+    }
+
+    /** 后台视角：工单关联的维权纠纷简要（运营视角，不做归属校验）。 */
+    public WorkOrderLinkedDisputeVO adminLinkedDispute(Long id) {
+        return toLinkedDisputeVO(requireWorkOrder(id).getDisputeNo());
+    }
+
     /** 后台工单分页（status/type/priority 可选；keyword 匹配工单号/订单号/标题）。 */
     public IPage<WorkOrder> adminPage(String status, String type, String priority, String keyword, int page, int size) {
         LambdaQueryWrapper<WorkOrder> w = new LambdaQueryWrapper<WorkOrder>();
@@ -259,6 +363,19 @@ public class WorkOrderService {
             notificationService.notify(wo.getUserId(), type, wo.getTicketNo(), title, content);
         } catch (Exception ignored) {
         }
+    }
+
+    private WorkOrderLinkedDisputeVO toLinkedDisputeVO(String disputeNo) {
+        if (disputeNo == null || disputeNo.isBlank()) {
+            return WorkOrderLinkedDisputeVO.empty();
+        }
+        Dispute d = disputeMapper.selectOne(new LambdaQueryWrapper<Dispute>()
+                .eq(Dispute::getDisputeNo, disputeNo));
+        if (d == null) {
+            return WorkOrderLinkedDisputeVO.empty();
+        }
+        return new WorkOrderLinkedDisputeVO(d.getDisputeNo(), d.getOrderNo(), d.getStatus(), d.getType(),
+                d.getExpectation(), d.getAmount(), d.getResult(), d.getRefundAmount(), d.getCreatedAt());
     }
 
     private WorkOrder requireWorkOrder(Long id) {

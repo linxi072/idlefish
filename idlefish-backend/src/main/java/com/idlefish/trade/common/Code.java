@@ -155,6 +155,8 @@ public enum Code {
     WORKORDER_CHANNEL_INVALID(30078, "工单来源渠道不合法"),
     /** 满意度评分不合法（F-12，应为 1-5）。 */
     WORKORDER_SATISFACTION_INVALID(30079, "满意度评分不合法（应为 1-5）"),
+    /** 该维权工单已存在未结客服工单（F-12 补完：维权转人工幂等）。 */
+    WORKORDER_DISPUTE_LINKED(30080, "该维权工单已存在未结客服工单"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),
