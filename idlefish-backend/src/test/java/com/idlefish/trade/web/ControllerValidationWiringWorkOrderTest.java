@@ -8,6 +8,7 @@ import com.idlefish.trade.common.web.LoginUser;
 import com.idlefish.trade.workorder.controller.AdminWorkOrderController;
 import com.idlefish.trade.workorder.controller.WorkOrderController;
 import com.idlefish.trade.workorder.service.WorkOrderService;
+import com.idlefish.trade.workorder.service.WorkOrderSlaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ControllerValidationWiringWorkOrderTest {
 
     @Mock private WorkOrderService workOrderService;
+    @Mock private WorkOrderSlaService workOrderSlaService;
 
     private final LoginUser user = user();
     private final AdminUser admin = admin();
@@ -63,7 +65,7 @@ class ControllerValidationWiringWorkOrderTest {
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new CurrentUserArgumentResolver())
                 .build();
-        adminMvc = MockMvcBuilders.standaloneSetup(new AdminWorkOrderController(workOrderService))
+        adminMvc = MockMvcBuilders.standaloneSetup(new AdminWorkOrderController(workOrderService, workOrderSlaService))
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new CurrentAdminArgumentResolver())
                 .build();
@@ -120,6 +122,47 @@ class ControllerValidationWiringWorkOrderTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"assigneeId\":null}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    // ===== from-dispute（维权转人工，F-12 补完）：disputeNo/channel 必填 =====
+    @Test
+    void fromDispute_invalid_rejected() throws Exception {
+        userMvc.perform(post("/api/workorders/from-dispute")
+                        .requestAttr("loginUser", user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"disputeNo\":\"\",\"channel\":null}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void fromDispute_valid_passes() throws Exception {
+        userMvc.perform(post("/api/workorders/from-dispute")
+                        .requestAttr("loginUser", user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"disputeNo\":\"DP202610280001\",\"channel\":\"MINI\",\"description\":\"希望平台尽快介入\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(Code.SUCCESS.getCode()));
+        verify(workOrderService).createFromDispute(eq(1L), eq("DP202610280001"), eq("MINI"), anyString());
+    }
+
+    // ===== admin SLA 端点（F-12 补完）：统计与手动扫描 =====
+    @Test
+    void admin_sla_stats_passes() throws Exception {
+        adminMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/admin/workorders/sla/stats")
+                        .requestAttr("adminUser", admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(Code.SUCCESS.getCode()));
+        verify(workOrderSlaService).stats(7);
+    }
+
+    @Test
+    void admin_sla_scan_passes() throws Exception {
+        adminMvc.perform(post("/api/admin/workorders/sla/scan?limit=50")
+                        .requestAttr("adminUser", admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(Code.SUCCESS.getCode()));
+        verify(workOrderSlaService).scanBreached(50);
     }
 
     @Test
