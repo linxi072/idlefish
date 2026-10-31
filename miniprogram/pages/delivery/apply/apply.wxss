@@ -1,0 +1,17 @@
+.dv-apply { padding: 20rpx 20rpx 160rpx; }
+.dv-apply .card { margin-bottom: 20rpx; }
+.sec-title { font-size: 30rpx; font-weight: 600; margin-bottom: 20rpx; }
+.seg { display: flex; gap: 16rpx; }
+.seg-item { flex: 1; text-align: center; padding: 16rpx 0; border-radius: 16rpx; font-size: 26rpx; background: var(--surface-subtle); color: var(--text-2); border: 2rpx solid transparent; }
+.seg-item.on { background: var(--primary-soft); color: var(--primary-ink); border-color: var(--primary); font-weight: 600; }
+.field { display: flex; align-items: center; padding: 18rpx 0; border-bottom: 2rpx solid var(--border-subtle); }
+.label { width: 160rpx; flex-shrink: 0; font-size: 26rpx; color: var(--text-2); }
+.input { flex: 1; font-size: 28rpx; color: var(--text-1); text-align: right; }
+.chk { text-align: center; }
+.chk-ok { font-size: 26rpx; color: var(--success); }
+.chk-amt { font-size: 26rpx; color: var(--text-2); margin-top: 8rpx; }
+.price { color: var(--price); font-weight: 700; }
+.chk-na { font-size: 26rpx; color: var(--danger-strong); }
+.actions { display: flex; justify-content: center; margin: 8rpx 0 16rpx; }
+.action-bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 16rpx 20rpx; background: #fff; box-shadow: 0 -4rpx 16rpx rgba(0,0,0,.05); }
+.btn-disabled { opacity: .5; }

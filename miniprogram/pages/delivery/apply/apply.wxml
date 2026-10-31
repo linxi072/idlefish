@@ -1,0 +1,40 @@
+<view class="page dv-apply">
+  <view class="card">
+    <view class="sec-title">配送类型</view>
+    <view class="seg">
+      <view class="seg-item {{bizType === 'ORDER' ? 'on' : ''}}" data-type="ORDER" bindtap="onBiz">订单配送</view>
+      <view class="seg-item {{bizType === 'RECYCLE' ? 'on' : ''}}" data-type="RECYCLE" bindtap="onBiz">回收取件</view>
+    </view>
+    <view class="field">
+      <text class="label">关联单号</text>
+      <input class="input" placeholder="选填，如订单号/回收单号" value="{{bizNo}}" data-field="bizNo" bindinput="onInput" />
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="sec-title">配送信息</view>
+    <view class="field"><text class="label">城市</text><input class="input" placeholder="如 深圳" value="{{city}}" data-field="city" bindinput="onInput" /></view>
+    <view class="field"><text class="label">起点</text><input class="input" placeholder="取件地址" value="{{fromAddress}}" data-field="fromAddress" bindinput="onInput" /></view>
+    <view class="field"><text class="label">终点</text><input class="input" placeholder="送达地址" value="{{toAddress}}" data-field="toAddress" bindinput="onInput" /></view>
+    <view class="field"><text class="label">距离(km)</text><input class="input" type="digit" placeholder="选填，不填按起步价" value="{{distanceKm}}" data-field="distanceKm" bindinput="onInput" /></view>
+    <view class="field"><text class="label">取件联系</text><input class="input" type="number" placeholder="取件联系人手机" value="{{pickupContact}}" data-field="pickupContact" bindinput="onInput" /></view>
+    <view class="field"><text class="label">收货联系</text><input class="input" type="number" placeholder="收货联系人手机" value="{{receiverContact}}" data-field="receiverContact" bindinput="onInput" /></view>
+    <view class="field"><text class="label">备注</text><input class="input" placeholder="选填" value="{{remark}}" data-field="remark" bindinput="onInput" /></view>
+  </view>
+
+  <view class="card chk" wx:if="{{check}}">
+    <block wx:if="{{check.available}}">
+      <view class="chk-ok">✓ 该城市已开通同城配送</view>
+      <view class="chk-amt">预计运费 <text class="price">¥{{check.freightText}}</text></view>
+    </block>
+    <view class="chk-na" wx:else>✕ {{check.reason}}</view>
+  </view>
+
+  <view class="actions">
+    <view class="btn btn-sm btn-ghost" bindtap="doCheck">预检可用性</view>
+  </view>
+
+  <view class="action-bar">
+    <view class="btn btn-block {{submitting ? 'btn-disabled' : ''}}" bindtap="submit">{{submitting ? '提交中…' : '提交配送订单'}}</view>
+  </view>
+</view>

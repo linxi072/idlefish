@@ -1,0 +1,30 @@
+<view class="page dv-list">
+  <view class="topbar">
+    <text class="title">我的同城配送</text>
+    <view class="add" bindtap="goApply">+ 发起配送</view>
+  </view>
+
+  <block wx:if="{{!loading && list.length}}">
+    <view class="card item" wx:for="{{list}}" wx:key="id" data-no="{{item.deliveryNo}}" bindtap="goDetail">
+      <view class="item-head">
+        <text class="no">{{item.deliveryNo}}</text>
+        <text class="tag tag-yellow">{{item.statusText}}</text>
+      </view>
+      <view class="item-row">
+        <text class="biz">{{item.bizText}}</text>
+        <text class="price">¥{{item.freightText}}</text>
+      </view>
+      <view class="item-sub ellipsis">{{item.fromAddress}} → {{item.toAddress}}</view>
+      <view class="item-foot muted">{{item.city}} · {{item.timeText}}</view>
+    </view>
+    <view class="more" wx:if="{{!finished}}" bindtap="loadMore">加载更多</view>
+    <view class="more end" wx:else>没有更多了</view>
+  </block>
+
+  <view wx:elif="{{loading}}" class="empty"><view class="icon">🛵</view><view class="tip">加载中…</view></view>
+  <view wx:else class="empty">
+    <view class="icon">🛵</view>
+    <view class="tip">暂无配送单，去发起同城配送吧</view>
+    <view class="btn btn-sm btn-ghost" bindtap="goApply">发起配送</view>
+  </view>
+</view>

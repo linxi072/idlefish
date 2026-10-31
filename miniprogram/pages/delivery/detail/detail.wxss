@@ -1,0 +1,27 @@
+.dv-detail { padding: 20rpx 20rpx 160rpx; }
+.hero { background: linear-gradient(135deg, var(--primary-400), var(--primary)); border-radius: var(--radius-md); padding: 36rpx 32rpx; color: var(--primary-ink); }
+.hero-status { font-size: 30rpx; font-weight: 700; }
+.hero-no { font-size: 22rpx; opacity: .7; margin: 8rpx 0; }
+.hero-biz { font-size: 26rpx; }
+.card { background: var(--surface); border-radius: var(--radius-md); padding: 24rpx; margin-top: 20rpx; box-shadow: var(--shadow-1); }
+.sec-title { font-size: 28rpx; font-weight: 600; margin-bottom: 16rpx; }
+.kv { display: flex; justify-content: space-between; padding: 12rpx 0; border-bottom: 2rpx solid var(--border-subtle); font-size: 26rpx; }
+.kv:last-child { border-bottom: none; }
+.kv .k { color: var(--text-3); }
+.kv .v { color: var(--text-1); text-align: right; max-width: 70%; }
+.timeline { padding: 8rpx 0; }
+.tl-item { position: relative; padding: 0 0 28rpx 36rpx; border-left: 4rpx solid var(--border); }
+.tl-item:last-child { border-left-color: transparent; padding-bottom: 0; }
+.tl-dot { position: absolute; left: -12rpx; top: 6rpx; width: 20rpx; height: 20rpx; border-radius: 50%; background: var(--info-fg); }
+.tl-item.t-sign .tl-dot { background: var(--success); }
+.tl-item.t-exception .tl-dot { background: var(--danger-strong); }
+.tl-item.t-sign { border-left-color: var(--success); }
+.tl-item.t-exception { border-left-color: var(--danger-strong); }
+.tl-desc { font-size: 26rpx; color: var(--text-1); }
+.tl-time { font-size: 22rpx; color: var(--text-3); margin-top: 4rpx; }
+.tl-empty { font-size: 24rpx; color: var(--text-3); padding: 20rpx 0; }
+.actions { margin-top: 24rpx; }
+.hint { text-align: center; color: var(--text-3); font-size: 24rpx; }
+.empty { padding: 120rpx 0; text-align: center; color: var(--text-3); }
+.empty .icon { font-size: 96rpx; }
+.empty .tip { margin-top: 16rpx; font-size: 26rpx; }

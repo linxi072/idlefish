@@ -22,6 +22,8 @@ Page({
       { icon: '⭐', name: '我的收藏', url: '/pages/favorite/favorite' },
       { icon: '🤝', name: '邀请有礼', url: '/pages/invite/invite' },
       { icon: '🔍', name: '搜索', url: '/pages/search/search' },
+      { icon: '♻️', name: '同城回收', url: '/pages/recycle/my/my' },
+      { icon: '🛵', name: '同城配送', url: '/pages/delivery/apply/apply' },
       { icon: '⚙️', name: '设置', url: '/pages/settings/settings' }
     ]
   },

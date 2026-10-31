@@ -1,0 +1,30 @@
+<view class="page rc-list">
+  <view class="topbar">
+    <text class="title">我的回收单</text>
+    <view class="add" bindtap="goApply">+ 发起回收</view>
+  </view>
+
+  <block wx:if="{{!loading && list.length}}">
+    <view class="card item" wx:for="{{list}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+      <view class="item-head">
+        <text class="no">{{item.recycleNo}}</text>
+        <text class="tag tag-yellow">{{item.statusText}}</text>
+      </view>
+      <view class="item-title ellipsis">{{item.title}}</view>
+      <view class="item-row">
+        <text class="muted">{{item.conditionText}} · {{item.pickupText}}</text>
+        <text class="price">¥{{item.estimateText}}</text>
+      </view>
+      <view class="item-foot muted">{{item.city}} · {{item.timeText}}</view>
+    </view>
+    <view class="more" wx:if="{{!finished}}" bindtap="loadMore">加载更多</view>
+    <view class="more end" wx:else>没有更多了</view>
+  </block>
+
+  <view wx:elif="{{loading}}" class="empty"><view class="icon">♻️</view><view class="tip">加载中…</view></view>
+  <view wx:else class="empty">
+    <view class="icon">♻️</view>
+    <view class="tip">暂无回收单，去发起一次回收吧</view>
+    <view class="btn btn-sm btn-ghost" bindtap="goApply">发起回收</view>
+  </view>
+</view>

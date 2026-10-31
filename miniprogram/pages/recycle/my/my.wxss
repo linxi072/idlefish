@@ -1,0 +1,16 @@
+.rc-list { padding: 20rpx; }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 8rpx 8rpx 20rpx; }
+.topbar .title { font-size: 34rpx; font-weight: 700; }
+.topbar .add { font-size: 26rpx; color: var(--primary-ink); background: var(--primary-soft); padding: 10rpx 24rpx; border-radius: 28rpx; }
+.card { background: var(--surface); border-radius: var(--radius-md); padding: 24rpx; margin-bottom: 20rpx; box-shadow: var(--shadow-1); }
+.item-head { display: flex; align-items: center; justify-content: space-between; }
+.item-head .no { font-size: 24rpx; color: var(--text-3); }
+.item-title { font-size: 30rpx; font-weight: 600; margin: 12rpx 0; }
+.item-row { display: flex; align-items: center; justify-content: space-between; }
+.muted { font-size: 24rpx; color: var(--text-3); }
+.item-foot { margin-top: 10rpx; font-size: 22rpx; color: var(--text-3); }
+.more { text-align: center; color: var(--text-3); font-size: 24rpx; padding: 24rpx 0; }
+.more.end { color: var(--text-3); }
+.empty { padding: 120rpx 0; text-align: center; color: var(--text-3); }
+.empty .icon { font-size: 96rpx; }
+.empty .tip { margin: 20rpx 0; font-size: 26rpx; }

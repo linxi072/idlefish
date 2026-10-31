@@ -1,0 +1,47 @@
+<view class="page rc-detail" wx:if="{{order}}">
+  <view class="hero">
+    <view class="hero-status">{{order.statusText}}</view>
+    <view class="hero-no">{{order.recycleNo}}</view>
+    <view class="hero-title">{{order.title}}</view>
+  </view>
+
+  <view class="card">
+    <view class="sec-title">回收详情</view>
+    <view class="kv"><text class="k">成色</text><text class="v">{{order.conditionText}}</text></view>
+    <view class="kv"><text class="k">取件方式</text><text class="v">{{order.pickupText}}</text></view>
+    <view class="kv"><text class="k">城市</text><text class="v">{{order.city}}{{order.district ? ' ' + order.district : ''}}</text></view>
+    <view class="kv"><text class="k">取件地址</text><text class="v">{{order.address}}</text></view>
+    <view class="kv"><text class="k">联系人</text><text class="v">{{order.contactName}} {{order.contactPhone}}</text></view>
+    <view class="kv"><text class="k">创建时间</text><text class="v">{{order.createdText}}</text></view>
+  </view>
+
+  <view class="card" wx:if="{{order.estimateAmount}}">
+    <view class="sec-title">金额</view>
+    <view class="kv"><text class="k">系统预估价</text><text class="v price">¥{{order.estimateText}}</text></view>
+    <view class="kv" wx:if="{{order.finalAmount != null}}"><text class="k">质检报价</text><text class="v price">¥{{order.finalText}}</text></view>
+    <view class="kv" wx:if="{{order.quoteRemark}}"><text class="k">调价说明</text><text class="v">{{order.quoteRemark}}</text></view>
+    <view class="kv" wx:if="{{order.paidText}}"><text class="k">放款时间</text><text class="v">{{order.paidText}}</text></view>
+  </view>
+
+  <view class="card quote" wx:if="{{canRespond}}">
+    <view class="q-amt">质检报价 ¥{{order.finalText}}</view>
+    <view class="q-tip">最终以您确认为准，拒绝不扣费</view>
+    <view class="q-actions">
+      <view class="btn btn-sm btn-ghost" bindtap="rejectQuote">拒绝</view>
+      <view class="btn btn-sm" bindtap="acceptQuote">接受报价</view>
+    </view>
+  </view>
+
+  <view class="actions">
+    <view class="btn btn-block btn-red" wx:if="{{canCancel}}" bindtap="cancelRecycle">取消回收（无费用）</view>
+  </view>
+
+  <view class="hint" wx:if="{{!canCancel && !canRespond}}">当前状态无需操作</view>
+</view>
+
+<view class="page" wx:elif="{{loading}}">
+  <view class="empty"><view class="icon">♻️</view><view class="tip">加载中…</view></view>
+</view>
+<view class="page" wx:else>
+  <view class="empty"><view class="icon">⚠️</view><view class="tip">{{errorTip || '加载失败'}}</view></view>
+</view>

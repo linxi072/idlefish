@@ -1,0 +1,86 @@
+<view class="page rc-apply">
+  <view class="card">
+    <view class="sec-title">回收信息</view>
+
+    <view class="field">
+      <text class="label">回收品类</text>
+      <picker class="picker" range="{{cats}}" range-key="name" value="{{catIndex}}" bindchange="onCat">
+        <view class="picker-val">{{cats[catIndex].name}} ›</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="label">回收标题</text>
+      <input class="input" placeholder="选填，如「iPhone 13 128G」" value="{{title}}" data-field="title" bindinput="onInput" />
+    </view>
+
+    <view class="field">
+      <text class="label">成色</text>
+      <picker class="picker" range="{{conditions}}" range-key="name" value="{{condIndex}}" bindchange="onCond">
+        <view class="picker-val">{{conditions[condIndex].name}} ›</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="label">参考价(元)</text>
+      <input class="input" type="digit" placeholder="选填，不填由系统估价" value="{{refPriceYuan}}" data-field="refPriceYuan" bindinput="onInput" />
+    </view>
+
+    <view class="field col">
+      <text class="label">取件方式</text>
+      <view class="seg">
+        <view class="seg-item {{pickupType === 'HOME' ? 'on' : ''}}" data-type="HOME" bindtap="onPickup">上门取件</view>
+        <view class="seg-item {{pickupType === 'SELF' ? 'on' : ''}}" data-type="SELF" bindtap="onPickup">自送到店</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="sec-title">取件地址</view>
+    <view class="field">
+      <text class="label">城市</text>
+      <input class="input" placeholder="如 深圳" value="{{city}}" data-field="city" bindinput="onInput" />
+    </view>
+    <view class="field row3">
+      <view class="f3"><text class="label">省</text><input class="input" placeholder="省" value="{{province}}" data-field="province" bindinput="onInput" /></view>
+      <view class="f3"><text class="label">市</text><input class="input" placeholder="市" value="{{city}}" disabled /></view>
+      <view class="f3"><text class="label">区</text><input class="input" placeholder="区" value="{{district}}" data-field="district" bindinput="onInput" /></view>
+    </view>
+    <view class="field">
+      <text class="label">详细地址</text>
+      <input class="input" placeholder="街道 / 小区 / 楼宇" value="{{address}}" data-field="address" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <text class="label">联系人</text>
+      <input class="input" placeholder="联系人姓名" value="{{contactName}}" data-field="contactName" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <text class="label">联系电话</text>
+      <input class="input" type="number" placeholder="联系电话" value="{{contactPhone}}" data-field="contactPhone" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <text class="label">预约时间</text>
+      <picker mode="date" value="{{appointmentAt}}" bindchange="onAppoint">
+        <view class="picker-val">{{appointmentAt || '选填，不约默认尽快'}} ›</view>
+      </picker>
+    </view>
+  </view>
+
+  <view class="card est" wx:if="{{estimate}}">
+    <block wx:if="{{estimate.hasData}}">
+      <view class="est-title">预估回收价</view>
+      <view class="est-amt">¥{{estimate.estimateText}}</view>
+      <view class="est-sub">参考价 ¥{{estimate.referenceText}} · {{estimate.conditionName}}</view>
+      <view class="est-tip">最终以质检报价为准，您可决定是否成交</view>
+    </block>
+    <view class="est-na" wx:else>{{estimate.unavailableReason}}</view>
+  </view>
+
+  <view class="actions">
+    <view class="btn btn-sm btn-ghost est-btn" bindtap="doEstimate">预估回收价</view>
+  </view>
+
+  <view class="action-bar">
+    <view class="btn btn-block {{submitting ? 'btn-disabled' : ''}}" bindtap="submit">{{submitting ? '提交中…' : '提交回收申请'}}</view>
+  </view>
+</view>

@@ -1,0 +1,44 @@
+<view class="page dv-detail" wx:if="{{delivery}}">
+  <view class="hero">
+    <view class="hero-status">{{delivery.statusText}}</view>
+    <view class="hero-no">{{delivery.deliveryNo}}</view>
+    <view class="hero-biz">{{delivery.bizText}} · 运费 ¥{{delivery.freightText}}</view>
+  </view>
+
+  <view class="card">
+    <view class="sec-title">配送信息</view>
+    <view class="kv"><text class="k">起点</text><text class="v">{{delivery.fromAddress}}</text></view>
+    <view class="kv"><text class="k">终点</text><text class="v">{{delivery.toAddress}}</text></view>
+    <view class="kv"><text class="k">城市</text><text class="v">{{delivery.city}}</text></view>
+    <view class="kv"><text class="k">距离</text><text class="v">{{delivery.distanceKm}} km</text></view>
+    <view class="kv"><text class="k">服务商</text><text class="v">{{delivery.providerName || '—'}}{{delivery.providerNo ? '（' + delivery.providerNo + '）' : ''}}</text></view>
+    <view class="kv" wx:if="{{delivery.courierName}}"><text class="k">骑手</text><text class="v">{{delivery.courierName}} {{delivery.courierPhone}}</text></view>
+    <view class="kv"><text class="k">创建时间</text><text class="v">{{delivery.createdText}}</text></view>
+  </view>
+
+  <view class="card">
+    <view class="sec-title">配送轨迹</view>
+    <view wx:if="{{tracks.length}}" class="timeline">
+      <view class="tl-item {{item.cls}}" wx:for="{{tracks}}" wx:key="time">
+        <view class="tl-dot"></view>
+        <view class="tl-body">
+          <view class="tl-desc">{{item.desc}}</view>
+          <view class="tl-time">{{item.time}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="tl-empty">暂无轨迹</view>
+  </view>
+
+  <view class="actions">
+    <view class="btn btn-block btn-red" wx:if="{{canCancel}}" bindtap="cancelDelivery">取消配送（未送达前）</view>
+    <view class="hint" wx:else>当前状态不可取消</view>
+  </view>
+</view>
+
+<view class="page" wx:elif="{{loading}}">
+  <view class="empty"><view class="icon">🛵</view><view class="tip">加载中…</view></view>
+</view>
+<view class="page" wx:else>
+  <view class="empty"><view class="icon">⚠️</view><view class="tip">{{errorTip || '加载失败'}}</view></view>
+</view>

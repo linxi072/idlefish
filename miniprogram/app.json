@@ -42,7 +42,13 @@
     "pages/mkt/bargain/bargain",
     "pages/mkt/lottery/lottery",
     "pages/mkt/seckill/seckill",
-    "pages/settings/settings"
+    "pages/settings/settings",
+    "pages/recycle/apply/apply",
+    "pages/recycle/my/my",
+    "pages/recycle/detail/detail",
+    "pages/delivery/apply/apply",
+    "pages/delivery/my/my",
+    "pages/delivery/detail/detail"
   ],
   "window": {
     "navigationBarBackgroundColor": "#FFCE3D",

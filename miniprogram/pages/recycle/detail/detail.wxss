@@ -1,0 +1,22 @@
+.rc-detail { padding: 20rpx 20rpx 160rpx; }
+.hero { background: linear-gradient(135deg, var(--primary-400), var(--primary)); border-radius: var(--radius-md); padding: 36rpx 32rpx; color: var(--primary-ink); }
+.hero-status { font-size: 30rpx; font-weight: 700; }
+.hero-no { font-size: 22rpx; opacity: .7; margin: 8rpx 0; }
+.hero-title { font-size: 32rpx; font-weight: 600; }
+.card { background: var(--surface); border-radius: var(--radius-md); padding: 24rpx; margin-top: 20rpx; box-shadow: var(--shadow-1); }
+.sec-title { font-size: 28rpx; font-weight: 600; margin-bottom: 16rpx; }
+.kv { display: flex; justify-content: space-between; padding: 12rpx 0; border-bottom: 2rpx solid var(--border-subtle); font-size: 26rpx; }
+.kv:last-child { border-bottom: none; }
+.kv .k { color: var(--text-3); }
+.kv .v { color: var(--text-1); text-align: right; max-width: 70%; }
+.price { color: var(--price); font-weight: 700; }
+.quote { background: var(--primary-soft); }
+.q-amt { font-size: 34rpx; font-weight: 700; color: var(--price); }
+.q-tip { font-size: 22rpx; color: var(--text-3); margin: 8rpx 0 20rpx; }
+.q-actions { display: flex; gap: 20rpx; }
+.q-actions .btn { flex: 1; }
+.actions { margin-top: 24rpx; }
+.hint { text-align: center; color: var(--text-3); font-size: 24rpx; margin-top: 24rpx; }
+.empty { padding: 120rpx 0; text-align: center; color: var(--text-3); }
+.empty .icon { font-size: 96rpx; }
+.empty .tip { margin-top: 16rpx; font-size: 26rpx; }
