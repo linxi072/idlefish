@@ -3,7 +3,6 @@ package com.idlefish.trade.marketing.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import org.springframework.dao.DuplicateKeyException;
@@ -22,18 +21,13 @@ import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 优惠券服务（F-10 营销）：领取 / 发放 / 核销 / 下单可用计算。
- * 金额单位：分。折扣计算 {@link #calculateDiscount} 为无副作用纯函数，便于单测。
+ * 纯函数（折扣计算 / 适用范围 / VO 映射）下沉至 {@link CouponViews}，
+ * 只读查询与批量加载下沉至 {@link CouponStore}，本类聚焦写操作与编排。
+ * 金额单位：分。公开 API 与构造签名保持向后兼容。
  */
 @Service
 public class CouponService {
@@ -58,6 +52,7 @@ public class CouponService {
     private final ItemMapper itemMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
+    private final CouponStore store;
 
     public CouponService(CouponMapper couponMapper, UserCouponMapper userCouponMapper,
                          ItemMapper itemMapper, NotificationService notificationService,
@@ -67,75 +62,19 @@ public class CouponService {
         this.itemMapper = itemMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.store = new CouponStore(couponMapper, userCouponMapper, itemMapper);
     }
 
     /**
-     * 纯函数：计算某券对商品金额（分）的可抵扣金额。
-     * - 满减：满足门槛返回减免，否则 0
-     * - 无门槛：直接返回减免（封顶不超过商品金额）
-     * - 折扣：商品金额 * (1-rate)，超封顶取封顶；折扣后不低于 0
-     * 返回 0 表示该券当前不可用（门槛未达 / 类型不匹配）。
+     * 纯函数：计算某券对商品金额（分）的可抵扣金额。委托 {@link CouponViews#calculateDiscount}。
      */
     public long calculateDiscount(Coupon c, long goodsAmount) {
-        if (c == null || goodsAmount <= 0) {
-            return 0L;
-        }
-        long discount;
-        switch (c.getType()) {
-            case TYPE_FULL_REDUCTION:
-                long threshold = c.getThresholdAmount() == null ? 0 : c.getThresholdAmount();
-                if (goodsAmount < threshold) {
-                    return 0L;
-                }
-                discount = c.getReduceAmount() == null ? 0 : c.getReduceAmount();
-                break;
-            case TYPE_NO_THRESHOLD:
-                discount = c.getReduceAmount() == null ? 0 : c.getReduceAmount();
-                break;
-            case TYPE_DISCOUNT:
-                double rate = c.getDiscountRate() == null ? 1.0 : c.getDiscountRate();
-                discount = Math.round(goodsAmount * (1.0 - rate));
-                long cap = c.getMaxDiscountAmount() == null ? 0 : c.getMaxDiscountAmount();
-                if (cap > 0 && discount > cap) {
-                    discount = cap;
-                }
-                break;
-            default:
-                return 0L;
-        }
-        if (discount < 0) {
-            discount = 0;
-        }
-        // 抵扣不得超过商品金额
-        return Math.min(discount, goodsAmount);
+        return CouponViews.calculateDiscount(c, goodsAmount);
     }
 
-    /**
-     * 领券中心：可领券分页（已抢光/已结束/未开始不展示）。
-     * 分页与「未抢光」过滤（claimed_count < total_count）均下沉至 DB，
-     * 避免全表加载到内存再做内存分页；列间比较经 apply 片段表达。
-     */
+    /** 领券中心：可领券分页（已抢光/已结束/未开始不展示）。 */
     public IPage<CouponVO> pageCenter(int page, int size, Long userId) {
-        LambdaQueryWrapper<Coupon> w = new LambdaQueryWrapper<Coupon>()
-                .eq(Coupon::getStatus, STATUS_ACTIVE)
-                .gt(Coupon::getEndAt, LocalDateTime.now())
-                .apply("claimed_count < total_count")
-                .orderByDesc(Coupon::getCreatedAt);
-        IPage<Coupon> pageResult = couponMapper.selectPage(new Page<>(page, size), w);
-        List<Coupon> slice = pageResult.getRecords();
-        // 批量查询当前用户已领券（一次 IN 查询替代逐券 selectCount 的 N+1）
-        Set<Long> claimedIds = new HashSet<>();
-        if (userId != null && !slice.isEmpty()) {
-            List<UserCoupon> owned = userCouponMapper.selectList(new LambdaQueryWrapper<UserCoupon>()
-                    .eq(UserCoupon::getUserId, userId)
-                    .in(UserCoupon::getCouponId, slice.stream().map(Coupon::getId).collect(Collectors.toSet())));
-            owned.forEach(uc -> claimedIds.add(uc.getCouponId()));
-        }
-        List<CouponVO> vos = slice.stream()
-                .map(c -> toCenterVO(c, userId, claimedIds)).collect(Collectors.toList());
-        IPage<CouponVO> result = new Page<>(page, size, pageResult.getTotal());
-        result.setRecords(vos);
-        return result;
+        return store.pageCenter(page, size, userId);
     }
 
     /** 领取优惠券（幂等 + 库存 + 限领 + 时效 + 活动状态）。 */
@@ -194,46 +133,12 @@ public class CouponService {
 
     /** 我的优惠券（status 可选：UNUSED/USED/EXPIRED/空=全部）。 */
     public List<UserCouponVO> myCoupons(Long userId, String status) {
-        LambdaQueryWrapper<UserCoupon> w = new LambdaQueryWrapper<UserCoupon>()
-                .eq(UserCoupon::getUserId, userId)
-                .orderByDesc(UserCoupon::getCreatedAt);
-        if (status != null && !status.isBlank()) {
-            w.eq(UserCoupon::getStatus, status);
-        }
-        List<UserCoupon> list = userCouponMapper.selectList(w);
-        // 批量加载券模板，避免逐张 selectById 的 N+1
-        Map<Long, Coupon> couponMap = batchCoupons(list.stream()
-                .map(UserCoupon::getCouponId).filter(Objects::nonNull).collect(Collectors.toSet()));
-        return list.stream().map(uc -> toUserVO(uc, couponMap)).collect(Collectors.toList());
+        return store.myCoupons(userId, status);
     }
 
     /** 下单可用券：未使用 + 未过期 + 适用该商品 + 满足门槛；附可抵扣金额。 */
     public List<UserCouponVO> availableCoupons(Long userId, Long itemId, long goodsAmount) {
-        List<UserCoupon> list = userCouponMapper.selectList(new LambdaQueryWrapper<UserCoupon>()
-                .eq(UserCoupon::getUserId, userId)
-                .eq(UserCoupon::getStatus, UC_UNUSED));
-        Item item = itemMapper.selectById(itemId);
-        LocalDateTime now = LocalDateTime.now();
-        // 批量加载券模板，避免逐张 selectById 的 N+1
-        Map<Long, Coupon> couponMap = batchCoupons(list.stream()
-                .map(UserCoupon::getCouponId).filter(Objects::nonNull).collect(Collectors.toSet()));
-        List<UserCouponVO> result = new ArrayList<>();
-        for (UserCoupon uc : list) {
-            if (uc.getExpireAt() != null && now.isAfter(uc.getExpireAt())) {
-                continue;
-            }
-            Coupon coupon = couponMap.get(uc.getCouponId());
-            if (coupon == null || !isScopeApplicable(coupon, item)) {
-                continue;
-            }
-            UserCouponVO vo = toUserVO(uc, couponMap);
-            vo.setDiscountAmount(calculateDiscount(coupon, goodsAmount));
-            result.add(vo);
-        }
-        // 按可抵扣金额降序，优先推荐更划算的券
-        result.sort((a, b) -> Long.compare(b.getDiscountAmount() == null ? 0 : b.getDiscountAmount(),
-                a.getDiscountAmount() == null ? 0 : a.getDiscountAmount()));
-        return result;
+        return store.availableCoupons(userId, itemId, goodsAmount);
     }
 
     /**
@@ -258,10 +163,10 @@ public class CouponService {
             throw new BizException(Code.BIZ_ERROR, "优惠券模板不存在");
         }
         Item item = itemMapper.selectById(itemId);
-        if (!isScopeApplicable(coupon, item)) {
+        if (!CouponViews.isScopeApplicable(coupon, item)) {
             throw new BizException(Code.BIZ_ERROR, "优惠券不适用于该商品");
         }
-        long discount = calculateDiscount(coupon, goodsAmount);
+        long discount = CouponViews.calculateDiscount(coupon, goodsAmount);
         if (discount <= 0) {
             throw new BizException(Code.BIZ_ERROR, "订单金额不满足优惠券使用门槛");
         }
@@ -276,17 +181,7 @@ public class CouponService {
 
     /** 订单取消/关单时释放优惠券（USED → UNUSED，解绑订单）。 */
     public void releaseByOrder(String orderNo) {
-        if (orderNo == null || orderNo.isBlank()) {
-            return;
-        }
-        List<UserCoupon> list = userCouponMapper.selectList(new LambdaQueryWrapper<UserCoupon>()
-                .eq(UserCoupon::getOrderNo, orderNo).eq(UserCoupon::getStatus, UC_USED));
-        for (UserCoupon uc : list) {
-            uc.setStatus(UC_UNUSED);
-            uc.setOrderNo(null);
-            uc.setUsedAt(null);
-            userCouponMapper.updateById(uc);
-        }
+        store.releaseByOrder(orderNo);
     }
 
     /** PC 运营后台：创建优惠券（默认 ACTIVE 发放中）。 */
@@ -335,76 +230,5 @@ public class CouponService {
         uc.setExpireAt(coupon.getEndAt());
         uc.setClaimedAt(LocalDateTime.now());
         userCouponMapper.insert(uc);
-    }
-
-    /** 适用范围校验：ALL 恒成立；CATEGORY 命中商品类目；ITEM 命中商品。 */
-    private boolean isScopeApplicable(Coupon coupon, Item item) {
-        if (SCOPE_ALL.equals(coupon.getScope())) {
-            return true;
-        }
-        if (item == null) {
-            return false;
-        }
-        if (SCOPE_CATEGORY.equals(coupon.getScope())) {
-            return coupon.getScopeId() != null && coupon.getScopeId().equals(item.getCategoryId());
-        }
-        if (SCOPE_ITEM.equals(coupon.getScope())) {
-            return coupon.getScopeId() != null && coupon.getScopeId().equals(item.getId());
-        }
-        return false;
-    }
-
-    private CouponVO toCenterVO(Coupon c, Long userId, Set<Long> claimedIds) {
-        CouponVO vo = new CouponVO();
-        vo.setId(c.getId());
-        vo.setName(c.getName());
-        vo.setType(c.getType());
-        vo.setThresholdAmount(c.getThresholdAmount());
-        vo.setReduceAmount(c.getReduceAmount());
-        vo.setDiscountRate(c.getDiscountRate());
-        vo.setMaxDiscountAmount(c.getMaxDiscountAmount());
-        vo.setScope(c.getScope());
-        vo.setScopeId(c.getScopeId());
-        vo.setTotalCount(c.getTotalCount());
-        vo.setClaimedCount(c.getClaimedCount());
-        vo.setPerUserLimit(c.getPerUserLimit());
-        vo.setStatus(c.getStatus());
-        vo.setStartAt(c.getStartAt());
-        vo.setEndAt(c.getEndAt());
-        vo.setClaimed(userId != null && claimedIds.contains(c.getId()));
-        vo.setClaimable(c.getStatus() != null && c.getStatus().equals(STATUS_ACTIVE)
-                && c.getEndAt() != null && LocalDateTime.now().isBefore(c.getEndAt())
-                && (c.getClaimedCount() == null ? 0 : c.getClaimedCount()) < (c.getTotalCount() == null ? 0 : c.getTotalCount()));
-        return vo;
-    }
-
-    private UserCouponVO toUserVO(UserCoupon uc, Map<Long, Coupon> couponMap) {
-        UserCouponVO vo = new UserCouponVO();
-        vo.setId(uc.getId());
-        vo.setCouponId(uc.getCouponId());
-        vo.setStatus(uc.getStatus());
-        vo.setOrderNo(uc.getOrderNo());
-        vo.setExpireAt(uc.getExpireAt());
-        Coupon c = couponMap.get(uc.getCouponId());
-        if (c != null) {
-            vo.setName(c.getName());
-            vo.setType(c.getType());
-            vo.setThresholdAmount(c.getThresholdAmount());
-            vo.setReduceAmount(c.getReduceAmount());
-            vo.setDiscountRate(c.getDiscountRate());
-            vo.setMaxDiscountAmount(c.getMaxDiscountAmount());
-            vo.setScope(c.getScope());
-            vo.setScopeId(c.getScopeId());
-        }
-        return vo;
-    }
-
-    /** 批量加载券模板（一次 IN 查询替代逐张 selectById 的 N+1）。 */
-    private Map<Long, Coupon> batchCoupons(Set<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        return couponMapper.selectBatchIds(ids).stream()
-                .collect(Collectors.toMap(Coupon::getId, c -> c, (a, b) -> a));
     }
 }
