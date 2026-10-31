@@ -18,4 +18,5 @@ export { mktActivityApi } from './modules/mkt-activity.api.js';
 export { inviteApi } from './modules/invite.api.js';
 export { recommendApi } from './modules/recommend.api.js';
 export { searchTermApi } from './modules/search-term.api.js';
+export { localApi } from './modules/local.api.js';
 export { toCsv, downloadCsv } from '@/utils/csv';

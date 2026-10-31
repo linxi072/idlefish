@@ -106,6 +106,10 @@ export default {
           { key: 'analytics', label: '运营 BI', icon: 'TrendCharts' }
         ] },
         { key: 'notify', label: '消息中心', icon: 'Bell' },
+        { group: '本地履约', icon: 'Van', children: [
+          { key: 'recycle-manage', label: '同城回收', icon: 'TakeawayBox' },
+          { key: 'delivery-manage', label: '同城配送', icon: 'Bicycle' }
+        ] },
         { group: '系统管理', icon: 'Setting', children: [
           { key: 'sysuser', label: '管理员', icon: 'UserFilled' },
           { key: 'role', label: '角色管理', icon: 'Key' },

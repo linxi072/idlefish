@@ -52,6 +52,52 @@ export const WORK_ORDER_STATUS = {
   CLOSED: { text: '已关闭', type: 'info' }
 };
 
+// ===== ITER-F05 同城回收与本地履约 =====
+// 回收单状态（与 RecycleStateMachine 一致）
+export const RECYCLE_STATUS = {
+  PENDING_PICKUP: { text: '待上门取件', type: 'warning' },
+  PICKED_UP: { text: '已揽收', type: 'primary' },
+  INSPECTING: { text: '质检中', type: 'primary' },
+  QUOTED: { text: '待确认报价', type: 'warning' },
+  CONFIRMED: { text: '已确认待放款', type: 'primary' },
+  PAID: { text: '已放款', type: 'success' },
+  CANCELED: { text: '已取消', type: 'info' },
+  REJECTED: { text: '已拒收退回', type: 'info' },
+  UNAVAILABLE: { text: '服务商不可用', type: 'danger' }
+};
+
+// 同城配送单状态（与 LocalDeliveryStateMachine 一致）
+export const DELIVERY_STATUS = {
+  CREATED: { text: '已下单', type: 'info' },
+  ACCEPTED: { text: '骑手已接单', type: 'primary' },
+  DELIVERING: { text: '配送中', type: 'warning' },
+  ARRIVED: { text: '已送达', type: 'primary' },
+  SIGNED: { text: '已签收', type: 'success' },
+  CANCELED: { text: '已取消', type: 'info' },
+  FAILED: { text: '配送失败', type: 'danger' }
+};
+
+// 回收取件方式
+export const RECYCLE_PICKUP_TYPE = {
+  HOME: { text: '上门取件', type: 'primary' },
+  SELF: { text: '到店自送', type: 'info' }
+};
+
+// 同城配送业务类型
+export const DELIVERY_BIZ_TYPE = {
+  ORDER: { text: '订单配送', type: 'primary' },
+  RECYCLE: { text: '回收取件', type: 'warning' }
+};
+
+// 成色档位（回收估价维度）
+export const CONDITION_LEVEL = {
+  1: { text: '全新' },
+  2: { text: '95新' },
+  3: { text: '9成新' },
+  4: { text: '8成新' },
+  5: { text: '功能完好' }
+};
+
 // 从字典安全取文案 / 类型（用于非组件场景，如导出或图表 label）
 export function statusText(map, value, fallback = '') {
   const e = map && value != null ? map[value] : null;

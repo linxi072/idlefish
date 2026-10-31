@@ -21,6 +21,8 @@ import Coupon from '@/views/marketing/Coupon.vue';
 import Activity from '@/views/marketing/Activity.vue';
 import MktActivity from '@/views/marketing/MktActivity.vue';
 import Wallet from '@/views/finance/Wallet.vue';
+import RecycleManage from '@/views/local/RecycleManage.vue';
+import DeliveryManage from '@/views/local/DeliveryManage.vue';
 import Notify from '@/views/notify/Notify.vue';
 import SysUser from '@/views/system/SysUser.vue';
 import Role from '@/views/system/Role.vue';
@@ -51,6 +53,8 @@ const routes = [
   { path: '/activity', name: 'activity', component: Activity },
   { path: '/mkt-activity', name: 'mkt-activity', component: MktActivity },
   { path: '/notify', name: 'notify', component: Notify },
+  { path: '/recycle-manage', name: 'recycle-manage', component: RecycleManage },
+  { path: '/delivery-manage', name: 'delivery-manage', component: DeliveryManage },
   { path: '/sysuser', name: 'sysuser', component: SysUser },
   { path: '/role', name: 'role', component: Role },
   { path: '/organization', name: 'organization', component: Organization },
