@@ -27,14 +27,20 @@ public class AdminItemAuditController {
         this.adminService = adminService;
     }
 
-    /** 审核列表（默认待审核），支持状态过滤与关键字（标题）搜索。 */
+    /**
+     * 审核列表（默认待审核），支持状态过滤与关键字（标题）搜索。
+     * 额外支持 {@code categoryId} / {@code conditionLevel} 维度过滤，供 PC 后台 BI 下钻（REQ-07）携带维度跳转明细。
+     * 维度参数均为可选，缺失时不施加维度约束。
+     */
     @GetMapping("/items")
     public Result<IPage<Item>> items(@CurrentAdmin AdminUser admin,
                                      @RequestParam(required = false) String status,
                                      @RequestParam(required = false) String keyword,
+                                     @RequestParam(required = false) Long categoryId,
+                                     @RequestParam(required = false) Integer conditionLevel,
                                      @RequestParam(defaultValue = "1") int page,
                                      @RequestParam(defaultValue = "20") int size) {
-        return Result.ok(adminService.auditList(status, keyword, page, size));
+        return Result.ok(adminService.auditList(status, keyword, categoryId, conditionLevel, page, size));
     }
 
     /** 通过审核。 */

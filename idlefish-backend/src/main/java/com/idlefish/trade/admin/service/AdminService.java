@@ -50,8 +50,12 @@ public class AdminService {
         this.creditService = creditService;
     }
 
-    /** 审核列表：按商品状态过滤（pending_review / on_sale / rejected），支持关键字（标题）模糊搜索。 */
-    public IPage<Item> auditList(String status, String keyword, int page, int size) {
+    /**
+     * 审核列表：按商品状态过滤（pending_review / on_sale / rejected），支持关键字（标题）模糊搜索。
+     * 可选维度过滤：categoryId（类目）/ conditionLevel（成色 1~5），供 BI 下钻（REQ-07）携带维度跳转明细。
+     */
+    public IPage<Item> auditList(String status, String keyword, Long categoryId,
+                                 Integer conditionLevel, int page, int size) {
         LambdaQueryWrapper<Item> w = new LambdaQueryWrapper<>();
         if (status != null && !status.isBlank()) {
             w.eq(Item::getStatus, status);
@@ -60,6 +64,12 @@ public class AdminService {
         }
         if (keyword != null && !keyword.isBlank()) {
             w.like(Item::getTitle, keyword);
+        }
+        if (categoryId != null) {
+            w.eq(Item::getCategoryId, categoryId);
+        }
+        if (conditionLevel != null) {
+            w.eq(Item::getConditionLevel, conditionLevel);
         }
         w.orderByDesc(Item::getCreatedAt);
         return itemMapper.selectPage(new Page<>(Math.max(page, 1), Math.max(size, 1)), w);
