@@ -422,6 +422,83 @@ const api = {
     return route(() => mock.searchTermRecord(userId, word), () => http.post('/api/search/term/record?userId=' + userId + '&word=' + encodeURIComponent(word || ''), null, false).catch(() => ({})));
   },
 
+  // ===== 同城回收（F-05，对齐 LocalRecycleController /api/local/recycle/*，金额单位：分）=====
+  // 预估回收价（不下单）：@RequestParam categoryId / conditionLevel / referencePriceFen / city
+  recycleEstimate(categoryId, conditionLevel, referencePriceFen, city) {
+    const q = 'categoryId=' + (categoryId || 0) +
+      (conditionLevel != null ? '&conditionLevel=' + conditionLevel : '') +
+      (referencePriceFen != null ? '&referencePriceFen=' + referencePriceFen : '') +
+      (city ? '&city=' + encodeURIComponent(city) : '');
+    return route(
+      () => mock.recycleEstimate(categoryId, conditionLevel, referencePriceFen, city),
+      () => http.post('/api/local/recycle/estimate?' + q, null)
+    );
+  },
+  // 提交回收申请：@RequestBody RecycleApplyRequest
+  recycleApply(dto) { return route(() => mock.recycleApply(dto), () => http.post('/api/local/recycle/apply', dto)); },
+  // 取消回收单（仅待上门阶段，无费用）：@RequestParam id / reason
+  recycleCancel(id, reason) {
+    return route(
+      () => mock.recycleCancel(id, reason),
+      () => http.post('/api/local/recycle/cancel?id=' + id + (reason ? '&reason=' + encodeURIComponent(reason) : ''), null)
+    );
+  },
+  // 接受/拒绝质检报价：@RequestParam id / accept(boolean)
+  recycleRespond(id, accept) {
+    return route(
+      () => mock.recycleRespond(id, accept),
+      () => http.post('/api/local/recycle/respond?id=' + id + '&accept=' + (accept ? 'true' : 'false'), null)
+    );
+  },
+  // 我的回收单（分页）：IPage<RecycleOrder> → {records,total}
+  recycleMy(page, size) {
+    return route(
+      () => mock.recycleMy(page, size),
+      () => http.get('/api/local/recycle/my?page=' + (page || 1) + '&size=' + (size || 20))
+        .then((p) => ({ records: (p && p.records) || [], total: (p && p.total) || 0 }))
+    );
+  },
+  // 回收单详情：@RequestParam id
+  recycleDetail(id) { return route(() => mock.recycleDetail(id), () => http.get('/api/local/recycle/detail?id=' + id)); },
+
+  // ===== 同城配送（F-05，对齐 LocalDeliveryController /api/local/delivery/*，金额单位：分）=====
+  // 可用性预检：@RequestParam city / distanceKm
+  deliveryCheck(city, distanceKm) {
+    const q = 'city=' + encodeURIComponent(city || '') + (distanceKm != null ? '&distanceKm=' + distanceKm : '');
+    return route(
+      () => mock.deliveryCheck(city, distanceKm),
+      () => http.post('/api/local/delivery/check?' + q, null)
+    );
+  },
+  // 运费预估：@RequestParam distanceKm（空=起步价）
+  deliveryFreight(distanceKm) {
+    return route(
+      () => mock.deliveryFreight(distanceKm),
+      () => http.post('/api/local/delivery/freight?' + (distanceKm != null ? 'distanceKm=' + distanceKm : ''), null)
+    );
+  },
+  // 创建同城配送单：@RequestBody LocalDeliveryApplyRequest
+  deliveryApply(dto) { return route(() => mock.deliveryApply(dto), () => http.post('/api/local/delivery/apply', dto)); },
+  // 取消配送单：@RequestParam deliveryNo
+  deliveryCancel(deliveryNo) {
+    return route(
+      () => mock.deliveryCancel(deliveryNo),
+      () => http.post('/api/local/delivery/cancel?deliveryNo=' + encodeURIComponent(deliveryNo), null)
+    );
+  },
+  // 配送轨迹：@RequestParam deliveryNo
+  deliveryTrack(deliveryNo) { return route(() => mock.deliveryTrack(deliveryNo), () => http.get('/api/local/delivery/track?deliveryNo=' + encodeURIComponent(deliveryNo))); },
+  // 配送单详情：@RequestParam deliveryNo
+  deliveryDetail(deliveryNo) { return route(() => mock.deliveryDetail(deliveryNo), () => http.get('/api/local/delivery/detail?deliveryNo=' + encodeURIComponent(deliveryNo))); },
+  // 我的配送单（分页）：IPage<LocalDelivery> → {records,total}
+  deliveryMy(page, size) {
+    return route(
+      () => mock.deliveryMy(page, size),
+      () => http.get('/api/local/delivery/my?page=' + (page || 1) + '&size=' + (size || 20))
+        .then((p) => ({ records: (p && p.records) || [], total: (p && p.total) || 0 }))
+    );
+  },
+
   // ===== 埋点 =====
   track(event, extra) {
     const app = getApp();

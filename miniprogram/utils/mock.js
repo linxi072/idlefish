@@ -249,9 +249,80 @@ function delay(data, ms) {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms || 200));
 }
 
+// ===== 同城回收 mock 数据（F-05，对齐 RecycleOrder / RecycleStateMachine，金额单位：分）=====
+const recycleOrders = [
+  {
+    id: 900001, recycleNo: 'RC202610010001', userId: 2001, itemId: 9007, categoryId: 11, title: 'iPhone 13 mini 128G 星光色',
+    conditionLevel: 3, pickupType: 'HOME', estimateAmount: 320000, finalAmount: 300000, status: 'QUOTED',
+    province: '广东', city: '深圳', district: '南山区', address: '深圳湾科技生态园（某小区）',
+    contactName: '我', contactPhone: '138****6027', appointmentAt: null,
+    quoteRemark: '屏幕细微划痕，已按 8 成折算', serialNo: null, cancelReason: null, operator: null,
+    paidAt: null, pickedUpAt: null, quotedAt: Date.now() - 3600 * 1000, finishedAt: null, createdAt: Date.now() - 86400 * 1000 * 2
+  },
+  {
+    id: 900002, recycleNo: 'RC202609250002', userId: 2001, itemId: 9008, categoryId: 12, title: 'Kindle Paperwhite 阅读器',
+    conditionLevel: 4, pickupType: 'SELF', estimateAmount: 38000, finalAmount: null, status: 'PENDING_PICKUP',
+    province: '广东', city: '深圳', district: '福田区', address: '华强北某写字楼',
+    contactName: '我', contactPhone: '138****6027', appointmentAt: Date.now() + 86400 * 1000,
+    quoteRemark: null, serialNo: null, cancelReason: null, operator: null,
+    paidAt: null, pickedUpAt: null, quotedAt: null, finishedAt: null, createdAt: Date.now() - 86400 * 1000
+  },
+  {
+    id: 900003, recycleNo: 'RC202609200003', userId: 2001, itemId: 9001, categoryId: 11, title: '小米蓝牙耳机',
+    conditionLevel: 5, pickupType: 'HOME', estimateAmount: 4500, finalAmount: 4500, status: 'PAID',
+    province: '广东', city: '深圳', district: '宝安区', address: '西乡某小区',
+    contactName: '我', contactPhone: '138****6027', appointmentAt: null,
+    quoteRemark: '功能完好', serialNo: 'SF-REC-887766', cancelReason: null, operator: 'op01',
+    paidAt: Date.now() - 86400 * 1000 * 3, pickedUpAt: Date.now() - 86400 * 1000 * 4, quotedAt: Date.now() - 86400 * 1000 * 4 + 3600 * 1000, finishedAt: Date.now() - 86400 * 1000 * 3, createdAt: Date.now() - 86400 * 1000 * 6
+  },
+  {
+    id: 900004, recycleNo: 'RC202609100004', userId: 2001, itemId: null, categoryId: 13, title: '旧笔记本电脑',
+    conditionLevel: 4, pickupType: 'HOME', estimateAmount: 80000, finalAmount: null, status: 'CANCELED',
+    province: '广东', city: '深圳', district: '龙岗区', address: '坂田某小区',
+    contactName: '我', contactPhone: '138****6027', appointmentAt: null,
+    quoteRemark: null, serialNo: null, cancelReason: '用户主动取消', operator: null,
+    paidAt: null, pickedUpAt: null, quotedAt: null, finishedAt: Date.now() - 86400 * 1000 * 8, createdAt: Date.now() - 86400 * 1000 * 9
+  }
+];
+
+// ===== 同城配送 mock 数据（F-05，对齐 LocalDelivery / LocalDeliveryStateMachine，金额单位：分）=====
+const localDeliveries = [
+  {
+    id: 800001, deliveryNo: 'LD202610010001', bizType: 'ORDER', bizNo: 'NO20261001001', userId: 2001, city: '深圳',
+    fromAddress: '深圳湾科技生态园（起点）', toAddress: '南山区某小区（终点）', distanceKm: 5.2, freight: 1200, paid: 1,
+    status: 'DELIVERING', providerName: '闪送', providerNo: 'SS123456', courierName: '王师傅', courierPhone: '139****8888',
+    failReason: null, acceptedAt: Date.now() - 3600 * 1000 * 2, deliveredAt: null, finishedAt: null, createdAt: Date.now() - 3600 * 1000 * 3
+  },
+  {
+    id: 800002, deliveryNo: 'LD202609280002', bizType: 'RECYCLE', bizNo: 'RC20260928001', userId: 2001, city: '深圳',
+    fromAddress: '福田区某写字楼', toAddress: '华强北回收点', distanceKm: 3.1, freight: 900, paid: 1,
+    status: 'SIGNED', providerName: '达达', providerNo: 'DADA789', courierName: '李师傅', courierPhone: '137****6666',
+    failReason: null, acceptedAt: Date.now() - 86400 * 1000 * 2, deliveredAt: Date.now() - 86400 * 1000 * 2 + 3600 * 1000, finishedAt: Date.now() - 86400 * 1000 * 2 + 3600 * 1000, createdAt: Date.now() - 86400 * 1000 * 2 - 3600 * 1000
+  },
+  {
+    id: 800003, deliveryNo: 'LD202609250003', bizType: 'ORDER', bizNo: 'NO20260925001', userId: 2001, city: '深圳',
+    fromAddress: '宝安区某小区', toAddress: '宝安区某商场', distanceKm: 8.5, freight: 1600, paid: 0,
+    status: 'CREATED', providerName: '闪送', providerNo: null, courierName: null, courierPhone: null,
+    failReason: null, acceptedAt: null, deliveredAt: null, finishedAt: null, createdAt: Date.now() - 3600 * 1000
+  }
+];
+
+// 由配送单生成归一化轨迹时间轴（最新在前，对齐 LogisticsTrack{time,desc,type}）
+function buildDeliveryTracks(o) {
+  const list = [];
+  list.push({ time: fmtTs(o.createdAt || Date.now()), desc: '同城配送单已创建，正在调度骑手', type: 'transit' });
+  if (o.acceptedAt) list.push({ time: fmtTs(o.acceptedAt), desc: '骑手已接单：' + (o.courierName || '骑手') + ' ' + (o.courierPhone || ''), type: 'transit' });
+  if (o.status === 'DELIVERING') list.push({ time: fmtTs(Date.now()), desc: '骑手已取件，正在配送途中', type: 'transit' });
+  if ((o.status === 'ARRIVED' || o.status === 'SIGNED') && o.deliveredAt) list.push({ time: fmtTs(o.deliveredAt), desc: '快件已送达目的地', type: 'transit' });
+  if (o.status === 'SIGNED' && o.deliveredAt) list.push({ time: fmtTs(o.deliveredAt), desc: '收件人已签收', type: 'sign' });
+  if (o.status === 'CANCELED') list.push({ time: fmtTs(o.finishedAt || Date.now()), desc: '配送单已取消', type: 'exception' });
+  if (o.status === 'FAILED') list.push({ time: fmtTs(o.finishedAt || Date.now()), desc: '配送失败：' + (o.failReason || '服务商异常'), type: 'exception' });
+  return list.reverse();
+}
+
 module.exports = {
   IMG, categories, items, me, addresses, orders, conversations, messages, riskEvents, sellerA, sellerB,
-  delay,
+  delay, recycleOrders, localDeliveries, buildDeliveryTracks,
   // —— 以下为可直接调用的 mock 业务方法 ——
   login() { return delay({ token: 'mock-token-123', refreshToken: 'mock-refresh-123', user: me }); },
   bindPhone() { return delay({ ok: true }); },
@@ -905,5 +976,95 @@ module.exports = {
   adminCategories() { return delay(categories); },
   adminSaveCategory() { return delay({ ok: true }); },
   adminRisk() { return delay(riskEvents); },
-  adminAuditLog() { return delay([{ opId: 'A1', operator: 'admin', target: 'item:9001', action: '通过审核', ts: Date.now() - 3600 * 1000 }]); }
+  adminAuditLog() { return delay([{ opId: 'A1', operator: 'admin', target: 'item:9001', action: '通过审核', ts: Date.now() - 3600 * 1000 }]); },
+
+  // ===== 同城回收（F-05，对齐 LocalRecycleController / RecycleService，金额单位：分）=====
+  recycleEstimate(categoryId, conditionLevel, referencePriceFen, city) {
+    const cl = conditionLevel || 3;
+    const ref = referencePriceFen || 0;
+    const availableCities = ['深圳', '北京', '上海', '广州', '杭州'];
+    const recyclable = !!categoryId && availableCities.indexOf(city || '') >= 0;
+    if (!recyclable) {
+      const reason = !categoryId ? '请选择回收品类' : '该城市暂未开通上门回收，敬请期待';
+      return delay({ hasData: false, recyclable: false, source: null, referenceFen: 0, estimateFen: 0, conditionLevel: cl, unavailableReason: reason });
+    }
+    const coef = { 1: 0.95, 2: 0.88, 3: 0.8, 4: 0.7, 5: 0.6 }[cl] || 0.8;
+    const estimateFen = Math.max(0, Math.round(ref * coef));
+    return delay({ hasData: true, recyclable: true, source: ref ? 'input' : 'pricing', referenceFen: ref, estimateFen, conditionLevel: cl, unavailableReason: null });
+  },
+  recycleApply(dto) {
+    const id = (recycleOrders[0] && recycleOrders[0].id ? recycleOrders[0].id + 1 : 1);
+    const o = Object.assign({ id, recycleNo: 'RC' + Date.now(), userId: me.id, status: 'PENDING_PICKUP', estimateAmount: Number(dto.referencePriceFen) || 0, finalAmount: null, createdAt: Date.now() }, dto);
+    recycleOrders.unshift(o);
+    return delay({ id });
+  },
+  recycleCancel(id, reason) {
+    const o = recycleOrders.find(r => r.id === Number(id) || r.recycleNo === String(id));
+    if (!o) return failMock('回收单不存在');
+    if (o.status !== 'PENDING_PICKUP') return failMock('仅待上门阶段可取消');
+    o.status = 'CANCELED'; o.cancelReason = reason || '用户主动取消'; o.finishedAt = Date.now();
+    return delay({ ok: true });
+  },
+  recycleRespond(id, accept) {
+    const o = recycleOrders.find(r => r.id === Number(id) || r.recycleNo === String(id));
+    if (!o) return failMock('回收单不存在');
+    if (o.status !== 'QUOTED') return failMock('当前状态不可确认报价');
+    if (accept) { o.status = 'CONFIRMED'; }
+    else { o.status = 'REJECTED'; o.cancelReason = '用户拒绝报价'; }
+    o.finishedAt = Date.now();
+    return delay({ ok: true });
+  },
+  recycleMy(page, size) {
+    const p = Number(page || 1), s = Number(size || 20);
+    return delay({ records: recycleOrders.slice((p - 1) * s, p * s), total: recycleOrders.length });
+  },
+  recycleDetail(id) {
+    const o = recycleOrders.find(r => r.id === Number(id) || r.recycleNo === String(id));
+    return delay(o || null);
+  },
+
+  // ===== 同城配送（F-05，对齐 LocalDeliveryController / LocalDeliveryService，金额单位：分）=====
+  deliveryCheck(city, distanceKm) {
+    const availableCities = ['深圳', '北京', '上海', '广州', '杭州'];
+    const inCity = availableCities.indexOf(city || '') >= 0;
+    const distOk = (distanceKm == null) || (distanceKm <= 30);
+    const freightFen = (!inCity || !distOk) ? 0 : Math.round(1000 + (distanceKm || 3) * 200);
+    if (!inCity) return delay({ available: false, recycleAvailable: false, distanceOk: false, providerReady: false, freightFen: 0, reason: '该城市暂未开通同城配送' });
+    if (!distOk) return delay({ available: false, recycleAvailable: false, distanceOk: false, providerReady: true, freightFen: 0, reason: '超出可配送范围（≤30km）' });
+    return delay({ available: true, recycleAvailable: true, distanceOk: true, providerReady: true, freightFen: freightFen, reason: null });
+  },
+  deliveryFreight(distanceKm) {
+    return delay(Math.round(1000 + (distanceKm || 3) * 200));
+  },
+  deliveryApply(dto) {
+    const o = Object.assign({
+      id: (localDeliveries[0] && localDeliveries[0].id ? localDeliveries[0].id + 1 : 1),
+      deliveryNo: 'LD' + Date.now(), userId: me.id, status: 'CREATED',
+      freight: Math.round(1000 + (dto.distanceKm || 3) * 200), paid: 0,
+      providerName: '闪送', providerNo: null, courierName: null, courierPhone: null, createdAt: Date.now()
+    }, dto);
+    localDeliveries.unshift(o);
+    return delay(o);
+  },
+  deliveryCancel(deliveryNo) {
+    const o = localDeliveries.find(d => d.deliveryNo === String(deliveryNo));
+    if (!o) return failMock('配送单不存在');
+    if (!(o.status === 'CREATED' || o.status === 'ACCEPTED' || o.status === 'DELIVERING')) return failMock('当前状态不可取消');
+    o.status = 'CANCELED'; o.finishedAt = Date.now();
+    return delay({ ok: true });
+  },
+  deliveryTrack(deliveryNo) {
+    const o = localDeliveries.find(d => d.deliveryNo === String(deliveryNo));
+    if (!o) return failMock('配送单不存在');
+    return delay({ delivery: o, tracks: buildDeliveryTracks(o) });
+  },
+  deliveryDetail(deliveryNo) {
+    const o = localDeliveries.find(d => d.deliveryNo === String(deliveryNo));
+    if (!o) return failMock('配送单不存在');
+    return delay({ delivery: o, tracks: buildDeliveryTracks(o) });
+  },
+  deliveryMy(page, size) {
+    const p = Number(page || 1), s = Number(size || 20);
+    return delay({ records: localDeliveries.slice((p - 1) * s, p * s), total: localDeliveries.length });
+  }
 };

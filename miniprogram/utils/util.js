@@ -179,6 +179,46 @@ function disputeResultText(r) { return DISPUTE_RESULT[r] || r; }
 const DISPUTE_TERMINAL = { RESOLVED: true, CANCELED: true, CLOSED: true };
 function isDisputeTerminal(code) { return !!DISPUTE_TERMINAL[code]; }
 
+// ===== 同城回收（F-05 recycle，对齐 RecycleStateMachine / RecycleOrder，金额单位：分）=====
+// 回收单状态中文（与后端 RecycleStateMachine 常量一一对应）
+const RECYCLE_STATUS = {
+  PENDING_PICKUP: '待上门取件',
+  PICKED_UP: '已揽收',
+  INSPECTING: '质检中',
+  QUOTED: '待确认报价',
+  CONFIRMED: '已确认待放款',
+  PAID: '已放款',
+  CANCELED: '已取消',
+  REJECTED: '已拒绝退回',
+  UNAVAILABLE: '服务不可用'
+};
+function recycleStatusText(s) { return RECYCLE_STATUS[s] || s; }
+
+// 取件方式中文（HOME 上门 / SELF 自送到店）
+const RECYCLE_PICKUP = { HOME: '上门取件', SELF: '自送到店' };
+function recyclePickupText(t) { return RECYCLE_PICKUP[t] || t; }
+
+// 成色档位（1 全新 / 2 95新 / 3 9成新 / 4 8成新 / 5 功能完好）
+const CONDITION_LEVEL = { 1: '全新', 2: '95新', 3: '9成新', 4: '8成新', 5: '功能完好' };
+function conditionText(l) { return CONDITION_LEVEL[Number(l)] || ('成色' + l); }
+
+// ===== 同城配送（F-05 delivery，对齐 LocalDeliveryStateMachine / LocalDelivery，金额单位：分）=====
+// 配送单状态中文
+const DELIVERY_STATUS = {
+  CREATED: '已下单待接单',
+  ACCEPTED: '骑手已接单',
+  DELIVERING: '配送中',
+  ARRIVED: '已送达',
+  SIGNED: '已签收',
+  CANCELED: '已取消',
+  FAILED: '配送失败'
+};
+function deliveryStatusText(s) { return DELIVERY_STATUS[s] || s; }
+
+// 业务类型中文（ORDER 订单配送 / RECYCLE 回收取件）
+const DELIVERY_BIZ = { ORDER: '订单配送', RECYCLE: '回收取件' };
+function deliveryBizText(t) { return DELIVERY_BIZ[t] || t; }
+
 module.exports = {
   formatPrice, formatTime, fromNow, statusText,
   ITEM_STATUS, ORDER_STATUS, REFUND_STATUS,
@@ -187,5 +227,7 @@ module.exports = {
   NOTIFY_TYPE, notifyTypeText, notifyIcon,
   COUPON_TYPE, couponTypeText, couponDesc, couponScopeText, couponStatusText,
   DISPUTE_STATUS, DISPUTE_TYPE, DISPUTE_EXPECT, DISPUTE_RESULT,
-  disputeStatusText, disputeTypeText, disputeExpectText, disputeResultText, isDisputeTerminal
+  disputeStatusText, disputeTypeText, disputeExpectText, disputeResultText, isDisputeTerminal,
+  RECYCLE_STATUS, recycleStatusText, recyclePickupText, CONDITION_LEVEL, conditionText,
+  DELIVERY_STATUS, deliveryStatusText, DELIVERY_BIZ, deliveryBizText
 };
