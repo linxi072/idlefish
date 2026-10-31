@@ -13,7 +13,17 @@
             <el-option label="已驳回" value="rejected"></el-option>
           </el-select>
         </el-form-item>
+        <template #extra>
+          <FilterTemplates page-key="items" :get-filters="getFilters" :on-apply="applyFilters" />
+        </template>
       </FilterBar>
+
+      <div v-if="drillCategoryId || drillConditionLevel" class="drill-bar">
+        <span class="drill-tag">下钻筛选</span>
+        <el-tag v-if="drillCategoryId" size="small" type="info">类目 #{{ drillCategoryId }}</el-tag>
+        <el-tag v-if="drillConditionLevel" size="small" type="info">成色 Lv.{{ drillConditionLevel }}</el-tag>
+        <el-button size="small" text @click="clearDrill">清除下钻</el-button>
+      </div>
 
       <BatchActionBar :count="selection.length" @clear="clearSelection">
         <el-button size="small" :disabled="!selection.length" @click="previewBatch">影响面预览</el-button>
@@ -119,6 +129,8 @@ export default {
   data() {
     return {
       list: [], total: 0, loading: false, keyword: '', statusFilter: '', page: 1, size: 20,
+      // ITER-U03 REQ-07 BI 下钻携带的维度（来自路由 query，非表单输入）
+      drillCategoryId: '', drillConditionLevel: '',
       rejectVisible: false, auditRow: null, reason: '',
       detailRow: null, detailVisible: false, detailLoading: false,
       // ITER-U03 批量操作状态
@@ -127,9 +139,35 @@ export default {
       AUDIT_STATUS
     };
   },
-  mounted() { this.load(); },
+  mounted() { this.syncFromQuery(); this.load(); },
+  watch: {
+    // REQ-07 路由维度变化（如从 BI 不同切片连续下钻）时重新回填并加载
+    '$route'() { this.syncFromQuery(); this.load(); }
+  },
   methods: {
     reset() { this.keyword = ''; this.statusFilter = ''; this.page = 1; this.load(); },
+    // ITER-U03 REQ-07 读取路由 query 回填筛选（status / categoryId / conditionLevel）
+    syncFromQuery() {
+      const q = (this.$route && this.$route.query) || {};
+      this.statusFilter = q.status || '';
+      this.drillCategoryId = q.categoryId ? Number(q.categoryId) : '';
+      this.drillConditionLevel = q.conditionLevel ? Number(q.conditionLevel) : '';
+      this.page = 1;
+    },
+    clearDrill() {
+      this.drillCategoryId = '';
+      this.drillConditionLevel = '';
+      this.load();
+    },
+    // ITER-U03 REQ-06 筛选模板：取当前筛选快照 / 回灌模板条件
+    getFilters() { return { keyword: this.keyword, statusFilter: this.statusFilter }; },
+    applyFilters(f) {
+      f = f || {};
+      this.keyword = f.keyword || '';
+      this.statusFilter = f.statusFilter || '';
+      this.page = 1;
+      this.load();
+    },
     // PageBar 统一事件：切页/改每页条数后重新拉取
     onPageChange({ page, size }) { this.page = page; this.size = size; this.load(); },
 
@@ -177,7 +215,11 @@ export default {
     async load() {
       this.loading = true;
       try {
-        const r = await adminApi.items({ keyword: this.keyword, status: this.statusFilter, page: this.page, size: this.size });
+        const opts = { keyword: this.keyword, status: this.statusFilter, page: this.page, size: this.size };
+        // REQ-07 下钻维度：携带 categoryId / conditionLevel 至后端维度过滤
+        if (this.drillCategoryId) opts.categoryId = this.drillCategoryId;
+        if (this.drillConditionLevel) opts.conditionLevel = this.drillConditionLevel;
+        const r = await adminApi.items(opts);
         // 真实后端返回 status（pending_review/onsale/rejected），统一规整为审计态供展示
         this.list = (r.list || []).map(it => ({
           ...it,

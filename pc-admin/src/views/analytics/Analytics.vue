@@ -14,11 +14,21 @@
 
     <div class="stat-grid" v-if="overview">
       <div class="stat-card"><div class="stat-num">{{ yuan(overview.gmv) }}</div><div class="stat-label">GMV（元）</div></div>
-      <div class="stat-card"><div class="stat-num">{{ fmt(overview.paidOrderCount) }}</div><div class="stat-label">支付订单</div></div>
-      <div class="stat-card warn"><div class="stat-num">{{ pct(overview.refundRate) }}</div><div class="stat-label">退款率</div></div>
-      <div class="stat-card"><div class="stat-num">{{ yuan(overview.avgOrderValue) }}</div><div class="stat-label">客单价（元）</div></div>
-      <div class="stat-card"><div class="stat-num">{{ fmt(overview.userCount) }}</div><div class="stat-label">注册用户</div></div>
-      <div class="stat-card"><div class="stat-num">{{ fmt(overview.itemOnsaleCount) }}</div><div class="stat-label">在售商品</div></div>
+      <div class="stat-card" style="cursor:pointer" @click="drill('/orders')">
+        <div class="stat-num">{{ fmt(overview.paidOrderCount) }}</div><div class="stat-label">支付订单</div>
+      </div>
+      <div class="stat-card warn" style="cursor:pointer" @click="drill('/orders', { status: 'refunding' })">
+        <div class="stat-num">{{ pct(overview.refundRate) }}</div><div class="stat-label">退款率</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" @click="drill('/orders')">
+        <div class="stat-num">{{ yuan(overview.avgOrderValue) }}</div><div class="stat-label">客单价（元）</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" @click="drill('/users')">
+        <div class="stat-num">{{ fmt(overview.userCount) }}</div><div class="stat-label">注册用户</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" @click="drill('/items', { status: 'onsale' })">
+        <div class="stat-num">{{ fmt(overview.itemOnsaleCount) }}</div><div class="stat-label">在售商品</div>
+      </div>
     </div>
 
     <el-row :gutter="20" style="margin-top:20px">
@@ -45,7 +55,7 @@
             <el-button size="small" style="float:right" @click="exportCategory">导出</el-button>
           </template>
           <div ref="categoryChart" style="height:300px" v-if="hasEcharts"></div>
-          <el-table :data="category" size="small" max-height="300" v-else>
+          <el-table :data="category" size="small" max-height="300" v-else @row-click="onCategoryRow">
             <el-table-column prop="categoryName" label="类目"></el-table-column>
             <el-table-column prop="orderCount" label="订单数"></el-table-column>
             <el-table-column label="GMV(元)"><template #default="{row}">{{ yuan(row.gmv) }}</template></el-table-column>
@@ -62,7 +72,7 @@
             <el-button size="small" style="float:right" @click="exportCondition">导出</el-button>
           </template>
           <div ref="conditionChart" style="height:280px" v-if="hasEcharts"></div>
-          <el-table :data="condition" size="small" max-height="280" v-else>
+          <el-table :data="condition" size="small" max-height="280" v-else @row-click="onConditionRow">
             <el-table-column label="成色"><template #default="{row}">{{ COND_LABEL[row.conditionLevel] || row.conditionLevel }}</template></el-table-column>
             <el-table-column prop="count" label="商品数"></el-table-column>
           </el-table>
@@ -163,8 +173,12 @@ export default {
         legend: { type: 'scroll', bottom: 0 },
         series: [{
           type: 'pie', radius: ['40%', '70%'],
-          data: this.category.map(r => ({ name: r.categoryName, value: r.gmv }))
+          data: this.category.map(r => ({ name: r.categoryName, value: r.gmv, categoryId: r.categoryId }))
         }]
+      });
+      // REQ-07 BI 下钻：点击类目切片 → 携带 categoryId 跳商品明细
+      c.on('click', (p) => {
+        if (p && p.data && p.data.categoryId) this.drill('/items', { categoryId: String(p.data.categoryId) });
       });
       this.charts.category = c;
     },
@@ -177,10 +191,24 @@ export default {
         tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
         series: [{
           type: 'pie', radius: ['40%', '70%'],
-          data: this.condition.map(r => ({ name: COND_LABEL[r.conditionLevel] || r.conditionLevel, value: r.count }))
+          data: this.condition.map(r => ({ name: COND_LABEL[r.conditionLevel] || r.conditionLevel, value: r.count, conditionLevel: r.conditionLevel }))
         }]
       });
+      // REQ-07 BI 下钻：点击成色切片 → 携带 conditionLevel 跳商品明细
+      c.on('click', (p) => {
+        if (p && p.data && p.data.conditionLevel) this.drill('/items', { conditionLevel: String(p.data.conditionLevel) });
+      });
       this.charts.condition = c;
+    },
+    // REQ-07 下钻统一入口：带维度 query 跳转明细列表
+    drill(path, query) {
+      this.$router.push({ path, query: query || {} });
+    },
+    onCategoryRow(row) {
+      if (row && row.categoryId) this.drill('/items', { categoryId: String(row.categoryId) });
+    },
+    onConditionRow(row) {
+      if (row && row.conditionLevel) this.drill('/items', { conditionLevel: String(row.conditionLevel) });
     },
     pct(v) { return ((v || 0) * 100).toFixed(2) + '%'; },
     // ===== 导出 =====

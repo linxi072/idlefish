@@ -4,11 +4,21 @@
     <page-header title="数据概览" />
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-num">{{ fmt(s.gmv) }}</div><div class="stat-label">累计 GMV（元）</div></div>
-      <div class="stat-card"><div class="stat-num">{{ s.orderCnt }}</div><div class="stat-label">订单总数</div></div>
-      <div class="stat-card"><div class="stat-num">{{ s.userCnt }}</div><div class="stat-label">注册用户</div></div>
-      <div class="stat-card"><div class="stat-num">{{ s.itemCnt }}</div><div class="stat-label">在售商品</div></div>
-      <div class="stat-card warn"><div class="stat-num">{{ s.pendingReview }}</div><div class="stat-label">待审核商品</div></div>
-      <div class="stat-card danger"><div class="stat-num">{{ s.refunding }}</div><div class="stat-label">退款处理中</div></div>
+      <div class="stat-card" style="cursor:pointer" @click="drill('/orders')">
+        <div class="stat-num">{{ s.orderCnt }}</div><div class="stat-label">订单总数</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" @click="drill('/users')">
+        <div class="stat-num">{{ s.userCnt }}</div><div class="stat-label">注册用户</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" @click="drill('/items', { status: 'onsale' })">
+        <div class="stat-num">{{ s.itemCnt }}</div><div class="stat-label">在售商品</div>
+      </div>
+      <div class="stat-card warn" style="cursor:pointer" @click="drill('/items', { status: 'pending_review' })">
+        <div class="stat-num">{{ s.pendingReview }}</div><div class="stat-label">待审核商品</div>
+      </div>
+      <div class="stat-card danger" style="cursor:pointer" @click="drill('/orders', { status: 'refunding' })">
+        <div class="stat-num">{{ s.refunding }}</div><div class="stat-label">退款处理中</div>
+      </div>
     </div>
 
     <el-row :gutter="20" style="margin-top:20px">
@@ -29,9 +39,15 @@
         <el-card shadow="never">
           <template #header><span>待办事项</span></template>
           <ul class="todo">
-            <li><el-tag type="warning">审核</el-tag> {{ s.pendingReview }} 个商品等待人工审核</li>
-            <li><el-tag type="danger">退款</el-tag> {{ s.refunding }} 笔退款需处理</li>
-            <li><el-tag>新增</el-tag> 今日新增注册 {{ s.todayRegister }} 人</li>
+            <li style="cursor:pointer" @click="drill('/items', { status: 'pending_review' })">
+              <el-tag type="warning">审核</el-tag> {{ s.pendingReview }} 个商品等待人工审核
+            </li>
+            <li style="cursor:pointer" @click="drill('/orders', { status: 'refunding' })">
+              <el-tag type="danger">退款</el-tag> {{ s.refunding }} 笔退款需处理
+            </li>
+            <li style="cursor:pointer" @click="drill('/users')">
+              <el-tag>新增</el-tag> 今日新增注册 {{ s.todayRegister }} 人
+            </li>
           </ul>
         </el-card>
       </el-col>
@@ -84,7 +100,9 @@ export default {
           areaStyle: { color: p.series[0], opacity: 0.15 }
         }]
       });
-    }
+    },
+    // REQ-07 BI 下钻统一入口：带维度 query 跳转明细列表
+    drill(path, query) { this.$router.push({ path, query: query || {} }); }
   },
   created() { this.fmt = fmt; },
   mounted() {

@@ -12,6 +12,9 @@
             <el-option label="已封禁" value="1"></el-option>
           </el-select>
         </el-form-item>
+        <template #extra>
+          <FilterTemplates page-key="users" :get-filters="getFilters" :on-apply="applyFilters" />
+        </template>
       </FilterBar>
 
       <BatchActionBar :count="selection.length" @clear="clearSelection">
@@ -75,9 +78,29 @@ export default {
   computed: {
     filtered() { return this.list; }
   },
-  mounted() { this.load(); },
+  mounted() { this.syncFromQuery(); this.load(); },
+  watch: {
+    // ITER-U03 REQ-07 路由维度（status/keyword）变化重新回填并加载
+    '$route'() { this.syncFromQuery(); this.load(); }
+  },
   methods: {
     reset() { this.keyword = ''; this.statusFilter = ''; this.page = 1; this.load(); },
+    // 读取路由 query 回填筛选（status / keyword）
+    syncFromQuery() {
+      const q = (this.$route && this.$route.query) || {};
+      this.statusFilter = q.status || '';
+      this.keyword = q.keyword || '';
+      this.page = 1;
+    },
+    // ITER-U03 REQ-06 筛选模板：取当前筛选快照 / 回灌模板条件
+    getFilters() { return { keyword: this.keyword, statusFilter: this.statusFilter }; },
+    applyFilters(f) {
+      f = f || {};
+      this.keyword = f.keyword || '';
+      this.statusFilter = f.statusFilter || '';
+      this.page = 1;
+      this.load();
+    },
     // PageBar 统一事件：切页/改每页条数后重新拉取
     onPageChange({ page, size }) { this.page = page; this.size = size; this.load(); },
 

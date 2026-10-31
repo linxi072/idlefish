@@ -1,6 +1,8 @@
 <template>
   <el-form inline class="filter-bar" @submit.prevent>
     <slot />
+    <!-- ITER-U03 REQ-06 筛选模板入口（默认紧贴筛选字段、位于操作按钮之前） -->
+    <slot name="extra" />
     <el-form-item v-if="showActions" class="filter-bar__actions">
       <slot name="actions">
         <el-button type="primary" :loading="loading" @click="$emit('search')">{{ searchText }}</el-button>

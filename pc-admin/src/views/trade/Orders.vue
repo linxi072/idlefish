@@ -11,6 +11,9 @@
             <el-option v-for="(v,k) in ORDER_STATUS" :key="k" :label="v.text" :value="k"></el-option>
           </el-select>
         </el-form-item>
+        <template #extra>
+          <FilterTemplates page-key="orders" :get-filters="getFilters" :on-apply="applyFilters" />
+        </template>
       </FilterBar>
 
       <el-table :data="list" v-loading="loading" border stripe :max-height="560">
@@ -101,9 +104,28 @@ export default {
       set(v) { if (!v) this.detailRow = null; }
     }
   },
-  mounted() { this.load(); },
+  mounted() { this.syncFromQuery(); this.load(); },
+  watch: {
+    // ITER-U03 REQ-07 路由维度（如状态）变化重新回填并加载
+    '$route'() { this.syncFromQuery(); this.load(); }
+  },
   methods: {
     reset() { this.keyword = ''; this.statusFilter = ''; this.page = 1; this.load(); },
+    // 读取路由 query 回填筛选（status）
+    syncFromQuery() {
+      const q = (this.$route && this.$route.query) || {};
+      this.statusFilter = q.status || '';
+      this.page = 1;
+    },
+    // ITER-U03 REQ-06 筛选模板：取当前筛选快照 / 回灌模板条件
+    getFilters() { return { keyword: this.keyword, statusFilter: this.statusFilter }; },
+    applyFilters(f) {
+      f = f || {};
+      this.keyword = f.keyword || '';
+      this.statusFilter = f.statusFilter || '';
+      this.page = 1;
+      this.load();
+    },
     // PageBar 统一事件：切页/改每页条数后重新拉取
     onPageChange({ page, size }) { this.page = page; this.size = size; this.load(); },
     async load() {

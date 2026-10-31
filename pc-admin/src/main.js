@@ -16,6 +16,7 @@ import EmptyState from './components/EmptyState.vue';
 import StatusTag from './components/StatusTag.vue';
 import BatchActionBar from './components/BatchActionBar.vue';
 import BatchResultDialog from './components/BatchResultDialog.vue';
+import FilterTemplates from './components/FilterTemplates.vue';
 import './styles/global.css';
 import { applyTheme, resolveInitialTheme } from './utils/theme';
 
@@ -44,6 +45,8 @@ app.component('StatusTag', StatusTag);
 // ITER-U03 批量操作：批量栏 + 结果弹窗
 app.component('BatchActionBar', BatchActionBar);
 app.component('BatchResultDialog', BatchResultDialog);
+// ITER-U03 REQ-06 筛选模板：本地持久化的命名模板（保存/应用/默认/删除/导入导出）
+app.component('FilterTemplates', FilterTemplates);
 // 渲染期错误（如视图方法缺失/模板表达式抛错）直达页面顶部诊断条，避免静默白屏
 app.config.errorHandler = (err, vm, info) => {
   const msg = (err && (err.stack || err.message)) || String(err);

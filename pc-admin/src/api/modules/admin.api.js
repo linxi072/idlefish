@@ -38,17 +38,24 @@ export const adminApi = {
       todayRegister: 0, trend: [12, 18, 9, 22, 15, 27, 19, 24, 13, 21, 17, 25]
     };
   })(),
-  // 列表类接口支持分页/关键字/状态筛选（R-16）：options = { status, keyword, page, size }
+  // 列表类接口支持分页/关键字/状态筛选（R-16）：options = { status, keyword, page, size, categoryId, conditionLevel }
+  // ITER-U03 REQ-07 支撑：转发 categoryId / conditionLevel 维度，供 BI 下钻携带维度跳转明细
   items: (options) => {
     options = options || {};
     if (USE_MOCK) {
       let list = mock.items.slice();
       if (options.status) list = list.filter(i => i.status === options.status);
       if (options.keyword) list = list.filter(i => (i.title || '').includes(options.keyword));
+      if (options.categoryId) list = list.filter(i => String(i.categoryId) === String(options.categoryId));
+      if (options.conditionLevel) list = list.filter(i => String(i.conditionLevel) === String(options.conditionLevel));
       return Promise.resolve({ list, total: list.length });
     }
     return req('GET', '/api/admin/items', null,
-      { status: options.status, keyword: options.keyword, page: options.page || 1, size: options.size || 20 }).then(pageTo);
+      {
+        status: options.status, keyword: options.keyword,
+        categoryId: options.categoryId, conditionLevel: options.conditionLevel,
+        page: options.page || 1, size: options.size || 20
+      }).then(pageTo);
   },
   approve: (id) => USE_MOCK ? Promise.resolve({ ok: true }) : req('POST', `/api/admin/items/${id}/approve`),
   reject: (id, reason) => USE_MOCK ? Promise.resolve({ ok: true })

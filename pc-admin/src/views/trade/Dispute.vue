@@ -16,6 +16,9 @@
           <el-button type="primary" @click="search">查询</el-button>
           <el-button @click="reset">重置</el-button>
         </el-form-item>
+        <el-form-item>
+          <FilterTemplates page-key="dispute" :get-filters="getFilters" :on-apply="applyFilters" />
+        </el-form-item>
       </el-form>
 
       <el-table :data="list" v-loading="loading" border stripe :max-height="560">
@@ -126,8 +129,19 @@ export default {
       resultOptions: RESULT_OPTS
     };
   },
-  mounted() { this.load(); },
+  mounted() { this.syncFromQuery(); this.load(); },
+  watch: {
+    // ITER-U03 REQ-07 路由维度（status/keyword）变化重新回填并加载
+    '$route'() { this.syncFromQuery(); this.load(); }
+  },
   methods: {
+    // 读取路由 query 回填筛选（status / keyword）
+    syncFromQuery() {
+      const q = (this.$route && this.$route.query) || {};
+      this.statusFilter = q.status || '';
+      this.keyword = q.keyword || '';
+      this.page = 1;
+    },
     async load() {
       this.loading = true;
       try {
@@ -139,6 +153,15 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    // ITER-U03 REQ-06 筛选模板：取当前筛选快照 / 回灌模板条件
+    getFilters() { return { keyword: this.keyword, statusFilter: this.statusFilter }; },
+    applyFilters(f) {
+      f = f || {};
+      this.keyword = f.keyword || '';
+      this.statusFilter = f.statusFilter || '';
+      this.page = 1;
+      this.load();
     },
     statusText(s) {
       return { PENDING: '待卖家处理', SELLER_REPLIED: '卖家已举证', PLATFORM: '平台介入中',
