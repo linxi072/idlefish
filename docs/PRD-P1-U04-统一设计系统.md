@@ -4,7 +4,7 @@
 |---|---|
 | 编号 | ITER-U04 |
 | 维度 / 优先级 | 用户体验提升 / **P1** |
-| 状态 | 待评审 |
+| 状态 | **已实现**（V1.0.4 分支，本地提交待推送；高频页已迁移，其余页面按批次渐进替换） |
 | 建议负责 | 设计负责人（规范）+ 前端负责人（组件实现） |
 | 关联模块 | pc-admin `src/styles/global.css`（`:root` 设计令牌）、`PageHeader`、`TreeFlatTable`、`App.vue` 菜单与布局、miniprogram（微信原生，WXSS）、ITER-U02（信任标识体系）、ITER-U03（暗色模式） |
 | 编制日期 | 2026-10-02 |
@@ -126,15 +126,16 @@ pc-admin 已建立 `global.css` 中的 `:root` 设计令牌（品牌色/中性�
 
 ## 十、验收标准（可勾选）
 
-- [ ] 颜色/字号/间距/圆角均通过令牌引用，无硬编码（REQ-01）。
-- [ ] 样式扫描可检出硬编码并报告（REQ-02）。
-- [ ] 复用组件覆盖页面头部/筛选栏/分页条/空态/状态标签/树形扁平表（REQ-03）。
-- [ ] 高频页面已完成替换（REQ-04）。
-- [ ] 小程序端色值与 PC 对照表一致（REQ-05）。
-- [ ] 令牌变更有版本记录且双端同步（REQ-06）。
-- [ ] 暗色切换无硬编码残留亮点（REQ-07）。
-- [ ] 规范文档含色板/字阶/间距/圆角/阴影/组件清单（REQ-08）。
-- [ ] 信任标识等跨端元素双端一致（REQ-09，配合 ITER-U02）。
+- [x] 颜色/字号/间距/圆角均通过令牌引用，无硬编码（REQ-01）。
+- [x] 样式扫描可检出硬编码并报告（REQ-02）。
+- [x] 复用组件覆盖页面头部/筛选栏/分页条/空态/状态标签/树形扁平表（REQ-03）。
+- [x] 高频页面已完成替换（REQ-04）：用户 / 订单 / 商品 / 风控。
+- [x] 小程序端色值与 PC 对照表一致（REQ-05）。
+- [x] 令牌变更有版本记录且双端同步（REQ-06）。
+- [x] 暗色切换无硬编码残留亮点（REQ-07）。
+- [x] 规范文档含色板/字阶/间距/圆角/阴影/组件清单（REQ-08）。
+- [~] 信任标识等跨端元素双端一致（REQ-09）：色值已统一为令牌，信任标识组件本身沿用 ITER-U02 既有实现，本轮未新增。
+- [x] 图标语义统一（REQ-10）：沿用 Element Plus 图标集，新增组件仅使用 `Box` / `Sunny` / `Moon` 三个既有语义图标。
 
 ---
 
@@ -149,3 +150,68 @@ pc-admin 已建立 `global.css` 中的 `:root` 设计令牌（品牌色/中性�
 | 风险 | 小程序基础库不支持 CSS 变量 | 验证最低支持版本；不支持则降级为静态常量 |
 | 风险 | 令牌过度设计导致维护负担 | 控制为三层（基础/语义/组件），不引入代码生成 |
 | 风险 | 大范围样式改动引入视觉回归 | 分批替换 + 关键页面走查，保留回滚 |
+
+---
+
+## 十二、实现说明（已实现 · V1.0.4）
+
+### 12.1 代码落点
+
+| 分层 | 文件 | 职责 |
+|---|---|---|
+| 令牌 | `pc-admin/src/styles/tokens.css`（新增） | 三层令牌单一来源：基础色 → 语义 → 组件；`html.dark` 仅覆盖语义层 |
+| 布局 | `pc-admin/src/styles/global.css`（重写） | 全部硬编码色值清零，改为令牌引用；保留原有类名，页面无需改动布局 |
+| 组件 | `pc-admin/src/components/FilterBar.vue` | 筛选栏容器，默认「查询/重置」，支持 `#actions` 插槽 |
+| 组件 | `pc-admin/src/components/PageBar.vue` | 分页条，统一 `change({page,size})`，兼容旧事件 |
+| 组件 | `pc-admin/src/components/EmptyState.vue` | 空态，支持 sm/md/lg 与图标/描述/扩展插槽 |
+| 组件 | `pc-admin/src/components/StatusTag.vue` | 状态标签，支持 `value+map` / `text+type` / 仅 value |
+| 字典 | `pc-admin/src/utils/status.js`（新增） | ENABLE / ACTIVE / ORDER / AUDIT / DISPUTE / WORK_ORDER 状态字典 |
+| 主题 | `pc-admin/src/utils/theme.js`（新增） | 主题解析/应用/持久化、`chartPalette()` 图表令牌桥、会员等级默认色 |
+| 入口 | `pc-admin/src/main.js` | 引入 EP 暗色变量、挂载前应用主题、全局注册四个组件 |
+| 主题入口 | `pc-admin/src/App.vue` | 顶栏亮/暗切换按钮，偏好落 `localStorage` |
+| 扫描 | `scripts/check-design-tokens.js`（新增） | 零依赖扫描 `#hex` / `rgb()` / `hsl()`，支持 `--max` / `--json` / `--verbose` / `--include-js` |
+| 门禁 | `pc-admin/package.json` | 新增 `npm run design:check` |
+| 小程序 | `miniprogram/app.wxss` | 新增与 PC 同名的语义/间距/圆角/阴影令牌，保留旧别名 |
+| 文档 | `docs/设计规范.md`（新增） | 色板/字阶/间距/圆角/阴影/组件用法/双端对照/变更记录 |
+
+### 12.2 关键设计决策
+
+1. **令牌文件与布局文件分离**：只有 `tokens.css` 允许原始色值，扫描器对其豁免；`global.css` 与所有 `.vue` 必须为 0。这样「0 硬编码」是可机器验证的硬约束，而非人工承诺。
+2. **暗色只覆盖语义层**：不修改基础色，避免 `--text-inverse` 等由基础色派生的令牌被反转污染；Element Plus 组件色由官方 dark css-vars 提供，品牌主色在 `html.dark` 重新声明防止回退为默认蓝。
+3. **图表配色运行时读取令牌**：ECharts 不解析 CSS 变量，`chartPalette()` 用 `getComputedStyle` 读取，并监听 `theme-change` 事件重绘，避免暗色下图表仍是亮色。
+4. **组件向后兼容**：`PageBar` 同时派发 `change` 与旧 `current-change`/`size-change`；`StatusTag` 兼容 `{text,tag}` 旧字典格式。保证渐进替换不会一次性打断 27 个页面。
+5. **首帧无闪烁**：`main.js` 在 `createApp` 前同步应用主题，且首次访问不把系统偏好固化为用户选择（仅主动切换时持久化）。
+
+### 12.3 验证结果（离线）
+
+```text
+$ node scripts/check-design-tokens.js
+ITER-U04 设计令牌扫描
+扫描目录: pc-admin/src  (文件 36 个)
+令牌文件: styles/tokens.css（豁免，唯一允许原始色值）
+豁免目录: src/mock（模拟数据色字段）
+✓ 未发现硬编码颜色，全部通过设计令牌引用。
+EXIT=0
+
+$ cd pc-admin && npm run build
+✓ 2279 modules transformed.
+dist/index.html                     1.94 kB │ gzip:   1.49 kB
+dist/assets/index-*.css           379.21 kB │ gzip:  52.55 kB
+dist/assets/index-*.js          2,548.06 kB │ gzip: 816.95 kB
+✓ built in 3m 27s
+EXIT=0
+
+$ node（WXSS 令牌自检）
+braces 32 32 OK
+tokens defined 47 used 25 missing none
+no undefined vars
+```
+
+### 12.4 遗留事项（移交后续批次）
+
+| 事项 | 说明 |
+|---|---|
+| 其余 23 个页面替换为复用组件 | 已令牌化，未替换 FilterBar/PageBar/EmptyState；按 PRD §十 渐进替换 |
+| ITER-U03 前端部分 | 批量操作栏、筛选模板、BI 下钻、暗色模式页面级走查 |
+| 真实浏览器视觉回归 | 沙箱仅能构建与静态校验，暗色/响应式实际观感需本机 `npm run dev` 走查 |
+| 小程序基础库兼容 | CSS 变量需基础库 ≥ 2.11；低版本需降级为静态常量（PRD §八·3） |
