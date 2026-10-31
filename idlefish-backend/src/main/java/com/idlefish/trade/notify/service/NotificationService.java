@@ -40,20 +40,31 @@ public class NotificationService {
     private final List<NotifyChannel> channels;
     private final UserOpenidResolver openidResolver;
     private final IdlefishProperties.Notify notifyConfig;
+    /** ITER-U05：合规偏好（营销通知开关）；未注入场景（如纯单测）按「允许」处理。 */
+    private final com.idlefish.trade.compliance.service.ComplianceService complianceService;
 
     public NotificationService(NotificationMapper notificationMapper, List<NotifyChannel> channels,
-                              UserOpenidResolver openidResolver, IdlefishProperties idlefishProperties) {
+                              UserOpenidResolver openidResolver, IdlefishProperties idlefishProperties,
+                              com.idlefish.trade.compliance.service.ComplianceService complianceService) {
         this.notificationMapper = notificationMapper;
         this.channels = channels;
         this.openidResolver = openidResolver;
         this.notifyConfig = idlefishProperties == null ? null : idlefishProperties.getNotify();
+        this.complianceService = complianceService;
     }
 
     /**
      * 发送通知（best-effort）：按 type 路由到多个渠道分发；任一渠道异常仅记录日志，绝不向调用方抛出。
+     *
+     * <p>ITER-U05 REQ-09/REQ-10：营销类通知受用户开关约束，关闭后直接终止下发（含站内信与订阅消息），
+     * 交易必需类通知不受影响。
      */
     public void notify(Long userId, NotificationType type, String bizId, String title, String content) {
         if (userId == null) {
+            return;
+        }
+        if (suppressedByPreference(userId, type)) {
+            log.debug("[notify] 营销类通知已被用户关闭，终止下发 userId={} type={}", userId, type);
             return;
         }
         NotifyMessage msg = NotifyMessage.builder()
@@ -70,6 +81,18 @@ public class NotificationService {
                 }
             }
         }
+    }
+
+    /**
+     * ITER-U05 REQ-09/REQ-10：营销类通知且用户已关闭营销开关 → 拦截。
+     * 仅作用于 {@link com.idlefish.trade.compliance.NotificationCategory#MARKETING} 类型；
+     * 合规服务未注入或查询异常时由 ComplianceService 侧 fail-closed（返回 false 即拦截）。
+     */
+    private boolean suppressedByPreference(Long userId, NotificationType type) {
+        if (complianceService == null || !com.idlefish.trade.compliance.NotificationCategory.isMarketing(type)) {
+            return false;
+        }
+        return !complianceService.marketingNotifyEnabled(userId);
     }
 
     /** F-14.4：条件追加微信订阅消息渠道（仅在配置启用 + openid 可解析 + 事件已配模板时）。 */

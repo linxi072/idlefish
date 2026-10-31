@@ -157,6 +157,12 @@ public enum Code {
     WORKORDER_SATISFACTION_INVALID(30079, "满意度评分不合法（应为 1-5）"),
     /** 该维权工单已存在未结客服工单（F-12 补完：维权转人工幂等）。 */
     WORKORDER_DISPUTE_LINKED(30080, "该维权工单已存在未结客服工单"),
+    /** 未成年人保护限制（ITER-U05 REQ-04/05：交易/支付/提现/线下见面受限）。 */
+    MINOR_RESTRICTED(30081, "未成年人保护限制"),
+    /** 已撤回该项个人信息授权（ITER-U05 REQ-08：相关功能停止，非静默继续使用）。 */
+    CONSENT_REVOKED(30082, "已撤回授权，相关功能暂不可用"),
+    /** 高风险批量操作未二次确认（ITER-U03 REQ-03：封禁/删除/改价须确认后执行）。 */
+    BATCH_CONFIRM_REQUIRED(30083, "高风险批量操作需二次确认"),
 
     // 4xxxx 资源不存在
     USER_NOT_FOUND(40001, "用户不存在"),

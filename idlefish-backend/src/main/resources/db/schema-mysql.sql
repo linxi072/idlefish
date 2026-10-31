@@ -1722,3 +1722,37 @@ SET @ddl := IF(@idx_exists = 0,
 PREPARE mig_stmt FROM @ddl;
 EXECUTE mig_stmt;
 DEALLOCATE PREPARE mig_stmt;
+
+-- ============================================================
+-- ITER-U05 合规与无障碍：用户合规档案 + 个人信息授权记录（幂等建表）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS t_user_compliance (
+    id BIGINT NOT NULL COMMENT '主键',
+    user_id BIGINT NOT NULL COMMENT '用户 ID',
+    minor_flag TINYINT NOT NULL DEFAULT 0 COMMENT '是否未成年：0 否 / 1 是',
+    age_band VARCHAR(16) DEFAULT 'UNKNOWN' COMMENT '年龄段：CHILD/TEEN/ADULT/UNKNOWN',
+    marketing_notify TINYINT NOT NULL DEFAULT 1 COMMENT '营销类通知开关：0 关闭 / 1 开启（默认开启）',
+    care_mode TINYINT NOT NULL DEFAULT 0 COMMENT '关怀模式（适老化）：0 关闭 / 1 开启',
+    daily_limit_minutes INT NOT NULL DEFAULT 40 COMMENT '未成年人每日时长上限（分钟）',
+    used_minutes INT NOT NULL DEFAULT 0 COMMENT '当日已用时长（分钟），跨日归零',
+    active_date DATE DEFAULT NULL COMMENT '时长计量归属日期',
+    created_at DATETIME DEFAULT NULL COMMENT '创建时间',
+    updated_at DATETIME DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_uc_user (user_id),
+    KEY idx_uc_minor (minor_flag)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户合规档案（未成年人/营销通知/关怀模式）';
+
+CREATE TABLE IF NOT EXISTS t_user_consent (
+    id BIGINT NOT NULL COMMENT '主键',
+    user_id BIGINT NOT NULL COMMENT '用户 ID',
+    consent_code VARCHAR(32) NOT NULL COMMENT '授权项：phone/address/real_name/location/marketing_push',
+    granted TINYINT NOT NULL DEFAULT 1 COMMENT '是否已授权：0 已撤回 / 1 已授权',
+    granted_at DATETIME DEFAULT NULL COMMENT '授权时间',
+    revoked_at DATETIME DEFAULT NULL COMMENT '撤回时间',
+    created_at DATETIME DEFAULT NULL COMMENT '创建时间',
+    updated_at DATETIME DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_consent_user_code (user_id, consent_code),
+    KEY idx_consent_code (consent_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='个人信息收集授权记录（撤回留痕可追溯）';

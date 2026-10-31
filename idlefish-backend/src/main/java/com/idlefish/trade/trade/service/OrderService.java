@@ -89,6 +89,9 @@ public class OrderService {
     /** 领域事件发布（ITER-T06）：订单状态变更 best-effort 发布，Outbox 同事务保证不丢。 */
     private final com.idlefish.trade.event.DomainEventPublisher eventPublisher;
 
+    /** 合规守卫（ITER-U05）：未成年人保护 + 个人信息授权，下单前生效。 */
+    private final com.idlefish.trade.compliance.service.ComplianceService complianceService;
+
     /** 事务模板：显式事务边界，保证"锁包住事务"。 */
     private final TransactionTemplate txTemplate;
 
@@ -116,7 +119,8 @@ public class OrderService {
                         IdempotentService idempotentService, DistributedLock distributedLock,
                         InspectionService inspectionService, PlatformTransactionManager txManager,
                         com.idlefish.trade.common.IdlefishProperties props,
-                        com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
+                        com.idlefish.trade.event.DomainEventPublisher eventPublisher,
+                        com.idlefish.trade.compliance.service.ComplianceService complianceService) {
         this.orderMapper = orderMapper;
         this.payOrderMapper = payOrderMapper;
         this.logisticsMapper = logisticsMapper;
@@ -139,6 +143,7 @@ public class OrderService {
         this.txTemplate = new TransactionTemplate(txManager);
         this.props = props;
         this.eventPublisher = eventPublisher;
+        this.complianceService = complianceService;
     }
 
     /**
@@ -153,6 +158,11 @@ public class OrderService {
      * </ol>
      */
     public OrderCreateVO createOrder(Long buyerId, OrderCreateDTO dto) {
+        // ITER-U05：未成年人保护 + 个人信息授权守卫（下单入口，拒绝原因明确透出，不静默拒绝）
+        complianceService.assertActionAllowed(buyerId,
+                com.idlefish.trade.compliance.MinorGuard.RestrictedAction.TRADE);
+        complianceService.requireConsent(buyerId, com.idlefish.trade.compliance.ConsentItem.PHONE);
+        complianceService.requireConsent(buyerId, com.idlefish.trade.compliance.ConsentItem.ADDRESS);
         String bizKey = buyerId + ":" + dto.getItemId();
         return idempotentService.execute(BIZ_ORDER_CREATE, bizKey, IDEMPOTENT_TTL_SECONDS,
                 OrderCreateVO.class, () -> doCreateOrder(buyerId, dto));

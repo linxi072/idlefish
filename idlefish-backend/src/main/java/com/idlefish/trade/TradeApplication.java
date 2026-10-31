@@ -36,7 +36,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.idlefish.trade.datascope.mapper",
         "com.idlefish.trade.export.mapper",
         "com.idlefish.trade.event.mapper",
-        "com.idlefish.trade.workorder.mapper"
+        "com.idlefish.trade.workorder.mapper",
+        "com.idlefish.trade.compliance.mapper"
 })
 @EnableScheduling
 public class TradeApplication {
