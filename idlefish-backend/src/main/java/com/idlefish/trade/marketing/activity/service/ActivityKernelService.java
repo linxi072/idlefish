@@ -1,19 +1,17 @@
 package com.idlefish.trade.marketing.activity.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.observability.MetricsRegistry;
+import com.idlefish.trade.common.util.IdGenerator;
+import com.idlefish.trade.marketing.activity.ActivityCore;
+import com.idlefish.trade.marketing.activity.ActivityRiskGate;
 import com.idlefish.trade.marketing.activity.entity.ActivityRecord;
 import com.idlefish.trade.marketing.activity.entity.ActivityReconciliation;
 import com.idlefish.trade.marketing.activity.entity.MarketingActivity;
 import com.idlefish.trade.marketing.activity.mapper.ActivityRecordMapper;
 import com.idlefish.trade.marketing.activity.mapper.ActivityReconciliationMapper;
 import com.idlefish.trade.marketing.activity.mapper.MarketingActivityMapper;
-import com.idlefish.trade.marketing.activity.ActivityCore;
-import com.idlefish.trade.marketing.activity.ActivityRiskGate;
 import com.idlefish.trade.marketing.activity.vo.ActivityReconcileVO;
 import com.idlefish.trade.marketing.activity.vo.MarketingActivityVO;
 import com.idlefish.trade.user.entity.User;
@@ -34,45 +32,38 @@ import java.util.List;
  * 所有玩法（砍价 / 抽奖 / 直播秒杀）必须经由本服务完成：库存原子扣减、限领校验、时间窗校验、
  * 风控钩子、幂等落库、补贴预算控制与对账流水。新玩法不得自行实现上述逻辑（REQ-01）。
  * <p>
- * 防超卖：库存经 {@code UPDATE ... SET stock = stock - n, sold_count = sold_count + n WHERE stock >= n}
- * 原子扣减（affected 行网关）；并发/重放经唯一索引 {@code (activity_id, idempotency_key)} + 幂等查询兜底（REQ-06）。
+ * 防超卖：库存经 {@code UPDATE ... SET stock = stock - n WHERE stock >= n} 原子扣减（affected 行网关）；
+ * 并发/重放经唯一索引 {@code (activity_id, idempotency_key)} + 幂等查询兜底（REQ-06）。
+ * <p>
+ * 数据访问已下沉至 {@link ActivityStore}，VO 映射与对账聚合已下沉至 {@link ActivityViews}；
+ * 本类仅保留编排、风控、指标与事务边界。
  */
 @Service
 public class ActivityKernelService {
 
-    private static final String STOCK_KEY_PREFIX = "act:stock:";
-
-    private final MarketingActivityMapper activityMapper;
-    private final ActivityRecordMapper recordMapper;
-    private final ActivityReconciliationMapper reconMapper;
-    private final UserMapper userMapper;
+    private final ActivityStore store;
     private final ActivityRiskGate riskGate;
-    private final RedisTemplate<String, Object> redisTemplate;
     private final MetricsRegistry metrics;
 
     public ActivityKernelService(MarketingActivityMapper activityMapper, ActivityRecordMapper recordMapper,
                                  ActivityReconciliationMapper reconMapper, UserMapper userMapper,
                                  ActivityRiskGate riskGate, RedisTemplate<String, Object> redisTemplate,
                                  MetricsRegistry metrics) {
-        this.activityMapper = activityMapper;
-        this.recordMapper = recordMapper;
-        this.reconMapper = reconMapper;
-        this.userMapper = userMapper;
+        this.store = new ActivityStore(activityMapper, recordMapper, reconMapper, userMapper, redisTemplate);
         this.riskGate = riskGate;
-        this.redisTemplate = redisTemplate;
         this.metrics = metrics;
     }
 
     /** 加载活动并断言进行中（REQ-03）。 */
     public MarketingActivity loadActive(Long id, LocalDateTime now) {
-        MarketingActivity a = activityMapper.selectById(id);
+        MarketingActivity a = store.selectActivityById(id);
         ActivityCore.assertOngoing(a, now);
         return a;
     }
 
     /** 加载活动（不校验状态）。 */
     public MarketingActivity load(Long id) {
-        MarketingActivity a = activityMapper.selectById(id);
+        MarketingActivity a = store.selectActivityById(id);
         if (a == null) {
             throw new BizException(Code.ACTIVITY_NOT_FOUND);
         }
@@ -81,11 +72,7 @@ public class ActivityKernelService {
 
     /** 统计用户已参与次数（未取消）。 */
     public int countUserJoined(Long activityId, Long userId) {
-        Long c = recordMapper.selectCount(new LambdaQueryWrapper<ActivityRecord>()
-                .eq(ActivityRecord::getActivityId, activityId)
-                .eq(ActivityRecord::getUserId, userId)
-                .ne(ActivityRecord::getStatus, "CANCELLED"));
-        return c == null ? 0 : c.intValue();
+        return store.countUserJoined(activityId, userId);
     }
 
     /** 是否参与过（用于前端按钮置灰）。 */
@@ -103,7 +90,7 @@ public class ActivityKernelService {
                                       String bizId, int qty, long amountFen, long subsidyFen,
                                       Long couponId, String status, String extra) {
         MarketingActivity activity = load(activityId);
-        User user = userId == null ? null : userMapper.selectById(userId);
+        User user = userId == null ? null : store.selectUserById(userId);
 
         // REQ-05 风控钩子
         if (!riskGate.allow(userId, deviceId, activityId, activity.getKind())) {
@@ -119,18 +106,13 @@ public class ActivityKernelService {
                 activity.getLimitPerUser() == null ? 0 : activity.getLimitPerUser());
 
         // REQ-06 幂等查重
-        ActivityRecord existing = recordMapper.selectOne(new LambdaQueryWrapper<ActivityRecord>()
-                .eq(ActivityRecord::getActivityId, activityId)
-                .eq(ActivityRecord::getIdempotencyKey, idempotencyKey));
+        ActivityRecord existing = store.selectByIdempotencyKey(activityId, idempotencyKey);
         if (existing != null) {
             return existing;
         }
 
         // REQ-03 库存原子扣减（防超卖网关）
-        int rows = activityMapper.update(null, new LambdaUpdateWrapper<MarketingActivity>()
-                .eq(MarketingActivity::getId, activityId)
-                .ge(MarketingActivity::getStock, qty)
-                .setSql("stock = stock - " + qty + ", sold_count = sold_count + " + qty));
+        int rows = store.decrementStock(activityId, qty);
         if (rows == 0) {
             metrics.increment("activity.stock.preempted");
             throw new BizException(Code.STOCK_NOT_ENOUGH, "活动库存不足");
@@ -138,7 +120,7 @@ public class ActivityKernelService {
 
         // REQ-06 幂等落库（唯一索引兜底并发重放）
         ActivityRecord rec = new ActivityRecord();
-        rec.setRecordNo(com.idlefish.trade.common.util.IdGenerator.activityRecordNo());
+        rec.setRecordNo(IdGenerator.activityRecordNo());
         rec.setActivityId(activityId);
         rec.setUserId(userId);
         rec.setKind(activity.getKind());
@@ -151,15 +133,11 @@ public class ActivityKernelService {
         rec.setDeviceId(deviceId);
         rec.setExtra(extra);
         try {
-            recordMapper.insert(rec);
+            store.insertRecord(rec);
         } catch (DuplicateKeyException e) {
             // 并发重放：回滚本次库存扣减（事务内回滚），返回既有记录
-            activityMapper.update(null, new LambdaUpdateWrapper<MarketingActivity>()
-                    .eq(MarketingActivity::getId, activityId)
-                    .setSql("stock = stock + " + qty + ", sold_count = GREATEST(0, sold_count - " + qty + ")"));
-            ActivityRecord dup = recordMapper.selectOne(new LambdaQueryWrapper<ActivityRecord>()
-                    .eq(ActivityRecord::getActivityId, activityId)
-                    .eq(ActivityRecord::getIdempotencyKey, idempotencyKey));
+            store.rollbackStock(activityId, qty);
+            ActivityRecord dup = store.selectByIdempotencyKey(activityId, idempotencyKey);
             return dup == null ? rec : dup;
         }
 
@@ -174,15 +152,10 @@ public class ActivityKernelService {
     /** 补贴预算原子累加（REQ-15）：预算为 null 表示不限；否则必须 <= 预算，否则抛 SUBSIDY_BUDGET_EXCEEDED。 */
     private void addSubsidy(MarketingActivity activity, long subsidyFen) {
         if (activity.getSubsidyBudgetFen() == null) {
-            activityMapper.update(null, new LambdaUpdateWrapper<MarketingActivity>()
-                    .eq(MarketingActivity::getId, activity.getId())
-                    .setSql("subsidy_used_fen = subsidy_used_fen + " + subsidyFen));
+            store.addSubsidyUnbounded(activity.getId(), subsidyFen);
             return;
         }
-        int rows = activityMapper.update(null, new LambdaUpdateWrapper<MarketingActivity>()
-                .eq(MarketingActivity::getId, activity.getId())
-                .apply("subsidy_used_fen + " + subsidyFen + " <= subsidy_budget_fen")
-                .setSql("subsidy_used_fen = subsidy_used_fen + " + subsidyFen));
+        int rows = store.addSubsidyBounded(activity.getId(), subsidyFen);
         if (rows == 0) {
             metrics.increment("activity.subsidy.budget_exceeded");
             throw new BizException(Code.SUBSIDY_BUDGET_EXCEEDED);
@@ -191,25 +164,16 @@ public class ActivityKernelService {
 
     /** 活动库存预热至缓存（REQ-02）；best-effort，缓存不可用不影响 DB 强一致。 */
     public void preheat(Long activityId) {
-        MarketingActivity a = activityMapper.selectById(activityId);
-        if (a == null || a.getStock() == null) {
-            return;
-        }
-        try {
-            redisTemplate.opsForValue().set(STOCK_KEY_PREFIX + activityId, a.getStock());
-        } catch (RuntimeException ignored) {
-            // 降级：依赖 DB 强一致
-        }
+        store.preheatCache(activityId);
     }
 
     /** 定时预热所有进行中活动库存（REQ-02）。 */
     @Scheduled(fixedDelay = 60_000)
     public void preheatAll() {
         try {
-            List<MarketingActivity> ongoing = activityMapper.selectList(new LambdaQueryWrapper<MarketingActivity>()
-                    .eq(MarketingActivity::getStatus, "ONGOING"));
+            List<MarketingActivity> ongoing = store.selectOngoingActivities(null);
             for (MarketingActivity a : ongoing) {
-                preheat(a.getId());
+                store.preheatCache(a.getId());
             }
         } catch (Exception ignored) {
             // 调度容错
@@ -223,69 +187,26 @@ public class ActivityKernelService {
     @Transactional
     public ActivityReconciliation reconcile(Long activityId) {
         MarketingActivity a = load(activityId);
-        List<ActivityRecord> records = recordMapper.selectList(new LambdaQueryWrapper<ActivityRecord>()
-                .eq(ActivityRecord::getActivityId, activityId));
-        int stockSold = 0;
-        long subsidyTotal = 0L;
-        int participant = records.size();
-        int drawCount = 0;
-        int winCount = 0;
-        long revenue = 0L;
-        for (ActivityRecord r : records) {
-            if ("CANCELLED".equals(r.getStatus()) || "LOST".equals(r.getStatus())) {
-                continue;
-            }
-            stockSold++;
-            if (r.getSubsidyFen() != null) {
-                subsidyTotal += r.getSubsidyFen();
-            }
-            if ("LOTTERY".equals(a.getKind())) {
-                drawCount++;
-                if ("WON".equals(r.getStatus())) {
-                    winCount++;
-                }
-            } else {
-                drawCount = Math.max(drawCount, participant);
-            }
-            if ("WON".equals(r.getStatus()) || "QUALIFIED".equals(r.getStatus())
-                    || "SETTLED".equals(r.getStatus())) {
-                if (r.getAmountFen() != null) {
-                    revenue += r.getAmountFen();
-                }
-            }
-        }
-        // 回收未使用库存：活动结束时剩余配额（未售出部分）记为回收量；活动置 ENDED 不再接受参与。
-        int recycled = a.getStock() == null ? 0 : Math.max(0, a.getStock());
-        long costTotal = (a.getLossFloorFen() == null ? 0 : a.getLossFloorFen()) * stockSold;
-        long lossFen = subsidyTotal + Math.max(0L, costTotal - revenue);
+        List<ActivityRecord> records = store.selectByActivityId(activityId);
+        ActivityReconciliation recon = ActivityViews.computeReconciliation(a, records);
 
         // 标记活动结束（库存不再变更；recycled 仅作对账展示，不影响后续核销）。
-        activityMapper.update(null, Wrappers.<MarketingActivity>lambdaUpdate()
-                .eq(MarketingActivity::getId, activityId)
-                .set(MarketingActivity::getStatus, "ENDED"));
+        store.markEnded(activityId);
 
-        ActivityReconciliation recon = reconMapper.selectOne(new LambdaQueryWrapper<ActivityReconciliation>()
-                .eq(ActivityReconciliation::getActivityId, activityId));
-        boolean insert = recon == null;
+        ActivityReconciliation existing = store.selectReconByActivityId(activityId);
+        boolean insert = existing == null;
         if (insert) {
-            recon = new ActivityReconciliation();
+            recon.setActivityId(activityId);
+        } else {
+            recon.setId(existing.getId());
             recon.setActivityId(activityId);
         }
-        recon.setKind(a.getKind());
-        recon.setStockTotal(a.getStock() == null ? 0 : a.getStock());
-        recon.setStockSold(stockSold);
-        recon.setStockRecycled(recycled);
-        recon.setSubsidyTotalFen(subsidyTotal);
-        recon.setParticipantCount(participant);
-        recon.setDrawCount(drawCount);
-        recon.setWinCount(winCount);
-        recon.setLossFen(lossFen);
         recon.setStatus("SETTLED");
         recon.setSettledAt(LocalDateTime.now());
         if (insert) {
-            reconMapper.insert(recon);
+            store.insertRecon(recon);
         } else {
-            reconMapper.updateById(recon);
+            store.updateReconById(recon);
         }
         return recon;
     }
@@ -293,37 +214,14 @@ public class ActivityKernelService {
     /** 对账 → VO。 */
     public ActivityReconcileVO toReconcileVO(Long activityId) {
         MarketingActivity a = load(activityId);
-        ActivityReconciliation recon = reconMapper.selectOne(new LambdaQueryWrapper<ActivityReconciliation>()
-                .eq(ActivityReconciliation::getActivityId, activityId));
-        ActivityReconcileVO vo = new ActivityReconcileVO();
-        vo.setActivityId(activityId);
-        vo.setKind(a.getKind());
-        vo.setTitle(a.getTitle());
-        if (recon != null) {
-            vo.setStockTotal(recon.getStockTotal());
-            vo.setStockSold(recon.getStockSold());
-            vo.setStockRecycled(recon.getStockRecycled());
-            vo.setSubsidyTotalFen(recon.getSubsidyTotalFen());
-            vo.setParticipantCount(recon.getParticipantCount());
-            vo.setDrawCount(recon.getDrawCount());
-            vo.setWinCount(recon.getWinCount());
-            vo.setLossFen(recon.getLossFen());
-            vo.setStatus(recon.getStatus());
-            vo.setSettledAt(recon.getSettledAt());
-        }
-        return vo;
+        ActivityReconciliation recon = store.selectReconByActivityId(activityId);
+        return ActivityViews.toReconcileVO(a, recon);
     }
 
     /** 用户端活动列表（仅进行中 + 人群定向可见，REQ-13）。 */
     public List<MarketingActivityVO> listActivities(String kind, Long userId) {
-        User user = userId == null ? null : userMapper.selectById(userId);
-        LambdaQueryWrapper<MarketingActivity> w = new LambdaQueryWrapper<MarketingActivity>()
-                .eq(MarketingActivity::getStatus, "ONGOING")
-                .orderByDesc(MarketingActivity::getCreatedAt);
-        if (kind != null && !kind.isBlank()) {
-            w.eq(MarketingActivity::getKind, kind);
-        }
-        List<MarketingActivity> all = activityMapper.selectList(w);
+        User user = userId == null ? null : store.selectUserById(userId);
+        List<MarketingActivity> all = store.selectOngoingActivities(kind);
         List<MarketingActivityVO> out = new ArrayList<>();
         for (MarketingActivity a : all) {
             try {
@@ -344,45 +242,23 @@ public class ActivityKernelService {
 
     /** 我的参与记录。 */
     public List<ActivityRecord> myRecords(Long userId) {
-        return recordMapper.selectList(new LambdaQueryWrapper<ActivityRecord>()
-                .eq(ActivityRecord::getUserId, userId)
-                .orderByDesc(ActivityRecord::getCreatedAt));
+        return store.selectByUser(userId);
     }
 
     /** 指定时间以来的参与记录数（监控用）。 */
     public long myRecordsCountSince(LocalDateTime since) {
-        Long c = recordMapper.selectCount(new LambdaQueryWrapper<ActivityRecord>()
-                .ge(ActivityRecord::getCreatedAt, since));
-        return c == null ? 0 : c;
+        return store.countByUserSince(since);
     }
 
     /** 实体 → VO（携带 joined 标志）。 */
     public MarketingActivityVO toVO(MarketingActivity a, Long userId) {
-        MarketingActivityVO vo = new MarketingActivityVO();
-        vo.setId(a.getId());
-        vo.setKind(a.getKind());
-        vo.setTitle(a.getTitle());
-        vo.setItemId(a.getItemId());
-        vo.setActivityPrice(a.getActivityPrice());
-        vo.setStock(a.getStock());
-        vo.setSoldCount(a.getSoldCount());
-        vo.setLimitPerUser(a.getLimitPerUser());
-        vo.setStatus(a.getStatus());
-        vo.setStartAt(a.getStartAt());
-        vo.setEndAt(a.getEndAt());
-        vo.setAudienceType(a.getAudienceType());
-        vo.setRiskLevel(a.getRiskLevel());
-        vo.setSubsidyBudgetFen(a.getSubsidyBudgetFen());
-        vo.setSubsidyUsedFen(a.getSubsidyUsedFen());
-        vo.setPlayConfig(a.getPlayConfig());
-        vo.setJoined(userId != null && hasJoined(a.getId(), userId));
-        return vo;
+        boolean joined = userId != null && hasJoined(a.getId(), userId);
+        return ActivityViews.toVO(a, joined);
     }
 
     /** 运营后台：全部活动（含草稿/已结束）。 */
     public List<MarketingActivity> listAll() {
-        return activityMapper.selectList(new LambdaQueryWrapper<MarketingActivity>()
-                .orderByDesc(MarketingActivity::getCreatedAt));
+        return store.selectAll();
     }
 
     /** 发布活动（DRAFT → ONGOING）并预热缓存（REQ-02）。 */
@@ -392,11 +268,8 @@ public class ActivityKernelService {
         if (!"DRAFT".equals(a.getStatus())) {
             throw new BizException(Code.STATE_NOT_ALLOWED, "仅草稿态活动可发布");
         }
-        MarketingActivity upd = new MarketingActivity();
-        upd.setId(id);
-        upd.setStatus("ONGOING");
-        activityMapper.updateById(upd);
-        preheat(id);
+        store.updateActivityStatus(id, "ONGOING");
+        store.preheatCache(id);
         metrics.increment("activity.publish");
         return load(id);
     }
