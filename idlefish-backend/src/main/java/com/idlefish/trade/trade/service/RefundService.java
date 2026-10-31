@@ -1,6 +1,5 @@
 package com.idlefish.trade.trade.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
 import com.idlefish.trade.common.enums.OrderStatus;
@@ -24,21 +23,22 @@ import com.idlefish.trade.notify.service.NotificationService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
  * 退款服务（PRD §4.4）：仅退款 / 退货退款、48h 自动同意、5 天平台介入、退款流水与库存恢复。
+ * <p>
+ * 数据访问下沉至 {@link RefundStore}，实体→VO 映射下沉至 {@link RefundViews}；本类仅保留
+ * 业务编排、资金安全（CAS 出款）、领域事件发布与 best-effort 副作用（通知 / 成长值冲正 / 库存释放）。
  */
 @Service
 public class RefundService {
 
-    private final RefundMapper refundMapper;
-    private final OrderMapper orderMapper;
+    private final RefundStore store;
+    /** 历史遗留：声明但从未使用，仅为维持 11 参构造签名兼容既有装配与测试。 */
     private final PayOrderMapper payOrderMapper;
     private final PayService payService;
     private final ItemService itemService;
-    private final FundFlowMapper fundFlowMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
     /** ITER-F07：退款冲正成长值（交易成长值随退款扣回，负向流水，幂等）。 */
@@ -56,8 +56,6 @@ public class RefundService {
     /** 幂等 PROCESSING 过期秒数。 */
     private static final long IDEMPOTENT_TTL_SECONDS = 30L;
 
-    private static final DateTimeFormatter FMT = com.idlefish.trade.common.util.DateTimeUtil.FMT;
-
     public RefundService(RefundMapper refundMapper, OrderMapper orderMapper,
                          PayOrderMapper payOrderMapper, PayService payService,
                          ItemService itemService, FundFlowMapper fundFlowMapper,
@@ -65,12 +63,10 @@ public class RefundService {
                          GrowthValueService growthValueService,
                          IdempotentService idempotentService,
                          com.idlefish.trade.event.DomainEventPublisher eventPublisher) {
-        this.refundMapper = refundMapper;
-        this.orderMapper = orderMapper;
+        this.store = new RefundStore(refundMapper, orderMapper, fundFlowMapper);
         this.payOrderMapper = payOrderMapper;
         this.payService = payService;
         this.itemService = itemService;
-        this.fundFlowMapper = fundFlowMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
         this.growthValueService = growthValueService;
@@ -92,7 +88,7 @@ public class RefundService {
 
     /** 实际退款申请逻辑。 */
     private String doApply(Long buyerId, RefundApplyDTO dto) {
-        Order o = orderMapper.selectOne(new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, dto.getOrderNo()));
+        Order o = store.selectOrderByOrderNo(dto.getOrderNo());
         if (o == null) {
             throw new BizException(Code.ORDER_NOT_FOUND);
         }
@@ -103,27 +99,17 @@ public class RefundService {
                 && !OrderStatus.SHIPPING.getCode().equals(o.getStatus())) {
             throw new BizException(Code.STATE_NOT_ALLOWED, "仅已支付/运输中订单可申请退款");
         }
-        Refund exist = findActiveRefund(dto.getOrderNo());
+        Refund exist = store.selectActiveByOrderNo(dto.getOrderNo());
         if (exist != null) {
             return exist.getRefundNo();
         }
         Refund r = buildRefund(buyerId, dto, o);
-        refundMapper.insert(r);
+        store.insertRefund(r);
         // F-02 通知中心：退款申请触达卖家（best-effort）
         notificationService.notify(r.getSellerId(), NotificationType.REFUND_APPLY, r.getRefundNo(), "退款申请",
                 "买家对订单 " + dto.getOrderNo() + " 发起退款申请");
         metrics.increment("refund.apply");
         return r.getRefundNo();
-    }
-
-    /** 查询订单进行中的退款单（待卖家/平台/退款中任一），用于幂等去重。 */
-    private Refund findActiveRefund(String orderNo) {
-        return refundMapper.selectOne(new LambdaQueryWrapper<Refund>()
-                .eq(Refund::getOrderNo, orderNo)
-                .in(Refund::getStatus, List.of(
-                        RefundStatus.WAIT_SELLER.getCode(),
-                        RefundStatus.PLATFORM.getCode(),
-                        RefundStatus.REFUNDING.getCode())));
     }
 
     /** 组装退款单实体（含 48h 自动同意 / 5 天平台介入时间，未落库）。 */
@@ -163,7 +149,7 @@ public class RefundService {
         upd.setId(r.getId());
         upd.setStatus(RefundStatus.REJECTED.getCode());
         upd.setReason(reason);
-        refundMapper.updateById(upd);
+        store.updateById(upd);
         // F-02 通知中心：拒绝退款触达买家（best-effort）
         notificationService.notify(r.getBuyerId(), NotificationType.REFUND_REJECTED, refundNo, "退款被拒绝",
                 "卖家拒绝了您的退款申请" + (reason != null ? ("：" + reason) : ""));
@@ -178,7 +164,7 @@ public class RefundService {
         Refund upd = new Refund();
         upd.setId(r.getId());
         upd.setLogisticsNo(logisticsNo);
-        refundMapper.updateById(upd);
+        store.updateById(upd);
     }
 
     /** 卖家确认收货并退款（退货退款）。 */
@@ -201,17 +187,17 @@ public class RefundService {
         Refund upd = new Refund();
         upd.setId(r.getId());
         upd.setStatus(RefundStatus.PLATFORM.getCode());
-        refundMapper.updateById(upd);
+        store.updateById(upd);
         // F-02 通知中心：平台介入触达买卖双方（best-effort）
         notificationService.notify(r.getBuyerId(), NotificationType.REFUND_PLATFORM, refundNo, "平台介入",
                 "您的退款单 " + refundNo + " 已由平台介入处理");
         notificationService.notify(r.getSellerId(), NotificationType.REFUND_PLATFORM, refundNo, "平台介入",
                 "退款单 " + refundNo + " 已由平台介入处理");
     }
+
+    /** 后台强制同意最新一笔退款单。 */
     public void adminAgree(String orderNo) {
-        Refund r = refundMapper.selectOne(new LambdaQueryWrapper<Refund>()
-                .eq(Refund::getOrderNo, orderNo)
-                .orderByDesc(Refund::getCreatedAt).last("LIMIT 1"));
+        Refund r = store.selectLatestByOrderNo(orderNo);
         if (r == null) {
             throw new BizException(Code.ORDER_NOT_FOUND, "未找到该订单的退款单");
         }
@@ -232,51 +218,23 @@ public class RefundService {
         Refund upd = new Refund();
         upd.setId(r.getId());
         upd.setStatus(RefundStatus.CANCELED.getCode());
-        refundMapper.updateById(upd);
+        store.updateById(upd);
         // F-02 通知中心：撤销退款触达卖家（best-effort）
         notificationService.notify(r.getSellerId(), NotificationType.REFUND_CANCELED, refundNo, "退款撤销",
                 "买家撤销了对订单 " + r.getOrderNo() + " 的退款申请");
     }
 
     public RefundVO detail(String refundNo) {
-        Refund r = get(refundNo);
-        RefundVO vo = new RefundVO();
-        vo.setRefundNo(r.getRefundNo());
-        vo.setOrderNo(r.getOrderNo());
-        vo.setBuyerId(r.getBuyerId());
-        vo.setSellerId(r.getSellerId());
-        vo.setType(r.getType());
-        vo.setAmount(r.getAmount());
-        vo.setReason(r.getReason());
-        vo.setStatus(r.getStatus());
-        vo.setLogisticsNo(r.getLogisticsNo());
-        vo.setCreatedAt(r.getCreatedAt() == null ? null : r.getCreatedAt().format(FMT));
-        return vo;
+        return RefundViews.toVO(get(refundNo));
     }
 
     public List<RefundVO> listByOrder(String orderNo) {
-        return refundMapper.selectList(new LambdaQueryWrapper<Refund>().eq(Refund::getOrderNo, orderNo))
-                .stream().map(r -> {
-                    RefundVO vo = new RefundVO();
-                    vo.setRefundNo(r.getRefundNo());
-                    vo.setOrderNo(r.getOrderNo());
-                    vo.setBuyerId(r.getBuyerId());
-                    vo.setSellerId(r.getSellerId());
-                    vo.setType(r.getType());
-                    vo.setAmount(r.getAmount());
-                    vo.setReason(r.getReason());
-                    vo.setStatus(r.getStatus());
-                    vo.setLogisticsNo(r.getLogisticsNo());
-                    vo.setCreatedAt(r.getCreatedAt() == null ? null : r.getCreatedAt().format(FMT));
-                    return vo;
-                }).toList();
+        return RefundViews.toVOList(store.selectByOrderNo(orderNo));
     }
 
     /** 定时：48h 卖家未处理自动同意退款。 */
     public void autoAgree() {
-        List<Refund> list = refundMapper.selectList(new LambdaQueryWrapper<Refund>()
-                .eq(Refund::getStatus, RefundStatus.WAIT_SELLER.getCode())
-                .le(Refund::getAutoAgreeAt, LocalDateTime.now()));
+        List<Refund> list = store.selectAutoAgreeDue(LocalDateTime.now());
         for (Refund r : list) {
             doRefund(r);
         }
@@ -284,14 +242,12 @@ public class RefundService {
 
     /** 定时：5 天未解决平台介入。 */
     public void autoPlatform() {
-        List<Refund> list = refundMapper.selectList(new LambdaQueryWrapper<Refund>()
-                .eq(Refund::getStatus, RefundStatus.WAIT_SELLER.getCode())
-                .le(Refund::getPlatformAt, LocalDateTime.now()));
+        List<Refund> list = store.selectAutoPlatformDue(LocalDateTime.now());
         for (Refund r : list) {
             Refund upd = new Refund();
             upd.setId(r.getId());
             upd.setStatus(RefundStatus.PLATFORM.getCode());
-            refundMapper.updateById(upd);
+            store.updateById(upd);
             // F-02 通知中心：超时平台介入触达买卖双方（best-effort）
             notificationService.notify(r.getBuyerId(), NotificationType.REFUND_PLATFORM, r.getRefundNo(), "平台介入",
                     "退款单 " + r.getRefundNo() + " 超时未处理，已由平台介入");
@@ -312,11 +268,7 @@ public class RefundService {
         // P0-2 并发安全：以 CAS 将状态由 wait_seller 推进到 refunding，
         // 仅当 affected==1 才执行真实出款，杜绝并发/集群下重复退款
         // （如「手动同意」与「48h 自动同意」定时任务竞态、双节点同时触发）。
-        Refund refunding = new Refund();
-        refunding.setStatus(RefundStatus.REFUNDING.getCode());
-        int affected = refundMapper.update(refunding, new LambdaQueryWrapper<Refund>()
-                .eq(Refund::getId, r.getId())
-                .eq(Refund::getStatus, RefundStatus.WAIT_SELLER.getCode()));
+        int affected = store.casToRefunding(r.getId());
         if (affected == 0) {
             // 状态已被其它线程/节点推进（本节点为竞态失败方），放弃执行真实出款，避免双退。
             // REQ-07：记一次被 CAS 拦截的重复退款尝试，供资损级重复流水告警。
@@ -327,13 +279,7 @@ public class RefundService {
 
         payService.refund(r.getPayNo(), r.getAmount());
 
-        Refund done = new Refund();
-        done.setId(r.getId());
-        done.setStatus(RefundStatus.REFUNDED.getCode());
-        done.setRefundAt(LocalDateTime.now());
-        refundMapper.update(done, new LambdaQueryWrapper<Refund>()
-                .eq(Refund::getId, r.getId())
-                .eq(Refund::getStatus, RefundStatus.REFUNDING.getCode()));
+        store.casToRefunded(r.getId(), LocalDateTime.now());
         metrics.increment("refund.success");
 
         // ITER-T06：REFUND_EXECUTED + ORDER_REFUNDED 事件（退款闭环，REQ-04）
@@ -364,7 +310,7 @@ public class RefundService {
 
     /** 记录退款资金流入流水（原路退回，不计入钱包余额口径）。 */
     private void recordRefundFlow(Refund r) {
-        fundFlowMapper.insert(FundFlowBuilder.of(r.getRefundNo(), r.getBuyerId(), "IN", "REFUND", r.getAmount())
+        store.insertFundFlow(FundFlowBuilder.of(r.getRefundNo(), r.getBuyerId(), "IN", "REFUND", r.getAmount())
                 .balanceAfter(0L).build());
     }
 
@@ -376,17 +322,14 @@ public class RefundService {
 
     /** 退款完成后关闭关联订单（若存在）。 */
     private void closeOrderIfPresent(String orderNo) {
-        Order o = orderMapper.selectOne(new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, orderNo));
+        Order o = store.selectOrderByOrderNo(orderNo);
         if (o != null) {
-            Order ou = new Order();
-            ou.setId(o.getId());
-            ou.setStatus(OrderStatus.CLOSED.getCode());
-            orderMapper.updateById(ou);
+            store.closeOrder(o.getId());
         }
     }
 
     private Refund get(String refundNo) {
-        Refund r = refundMapper.selectOne(new LambdaQueryWrapper<Refund>().eq(Refund::getRefundNo, refundNo));
+        Refund r = store.selectOneByRefundNo(refundNo);
         if (r == null) {
             throw new BizException(Code.ORDER_NOT_FOUND);
         }
