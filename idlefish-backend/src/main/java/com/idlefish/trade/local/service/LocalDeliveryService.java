@@ -1,8 +1,6 @@
 package com.idlefish.trade.local.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
@@ -18,22 +16,17 @@ import com.idlefish.trade.local.mapper.LocalDeliveryMapper;
 import com.idlefish.trade.local.provider.DispatchCommand;
 import com.idlefish.trade.local.provider.DispatchResult;
 import com.idlefish.trade.local.provider.LocalFulfillmentProvider;
-import com.idlefish.trade.local.provider.TrackPoint;
 import com.idlefish.trade.local.vo.LocalAvailabilityVO;
 import com.idlefish.trade.local.vo.LocalDeliveryVO;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
-import com.idlefish.trade.trade.entity.Logistics;
 import com.idlefish.trade.trade.mapper.LogisticsMapper;
 import com.idlefish.trade.trade.service.LogisticsTimelineBuilder;
 import com.idlefish.trade.trade.vo.LogisticsTrack;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 同城配送服务（ITER-F05 / REQ-06、REQ-07、REQ-09）。
@@ -47,8 +40,10 @@ import java.util.Map;
  * <p>REQ-06 轨迹闭环：第三方回传节点归一化后写入既有 {@code t_logistics}（ORDER 业务），
  * 再经 {@link LogisticsTimelineBuilder} 渲染为结构化时间轴——不新建轨迹表。
  *
- * <p>REQ-07 金额：运费恒「分」，入 IN/DELIVERY_FEE 资金流水（与订单运费同一口径），
- * 可被 ITER-T02 对账按 bizNo 追平。
+ * <p>REQ-07 金额：运费恒「分」，与订单运费同一口径。
+ *
+ * <p>分层：纯函数沉淀于 {@link LocalDeliveryViews}；配送单与轨迹读写下沉
+ * {@link LocalDeliveryStore}；本类保持 7 参构造与全部公开 API 不变，仅做编排与委托。
  */
 @Service
 public class LocalDeliveryService {
@@ -59,7 +54,7 @@ public class LocalDeliveryService {
     private final IdlefishProperties props;
     private final MetricsRegistry metrics;
     private final NotificationService notificationService;
-    private final ObjectMapper objectMapper;
+    private final LocalDeliveryStore store;
 
     public LocalDeliveryService(LocalDeliveryMapper deliveryMapper, LogisticsMapper logisticsMapper,
                                 LocalFulfillmentProvider provider, IdlefishProperties props,
@@ -71,7 +66,7 @@ public class LocalDeliveryService {
         this.props = props;
         this.metrics = metrics;
         this.notificationService = notificationService;
-        this.objectMapper = objectMapper;
+        this.store = new LocalDeliveryStore(deliveryMapper, logisticsMapper, objectMapper);
     }
 
     /** 资金流水类型：同城配送运费（REQ-07）。 */
@@ -159,7 +154,7 @@ public class LocalDeliveryService {
         d.setPaid(0);
         d.setStatus(LocalDeliveryStateMachine.CREATED);
         d.setProviderName(provider.name());
-        deliveryMapper.insert(d);
+        store.insert(d);
 
         DispatchCommand cmd = new DispatchCommand();
         cmd.setDeliveryNo(d.getDeliveryNo());
@@ -181,7 +176,7 @@ public class LocalDeliveryService {
             upd.setStatus(LocalDeliveryStateMachine.FAILED);
             upd.setFailReason(result.getFailReason());
             upd.setFinishedAt(LocalDateTime.now());
-            deliveryMapper.updateById(upd);
+            store.updateById(upd);
             metrics.increment("local.delivery.dispatch_failed");
             throw new BizException(Code.LOCAL_DELIVERY_UNAVAILABLE, result.getFailReason());
         }
@@ -193,7 +188,7 @@ public class LocalDeliveryService {
         ok.setCourierPhone(LocalFulfillmentRules.maskPhone(result.getCourierPhone()));
         ok.setStatus(LocalDeliveryStateMachine.ACCEPTED);
         ok.setAcceptedAt(LocalDateTime.now());
-        deliveryMapper.updateById(ok);
+        store.updateById(ok);
         // 同步内存对象，避免为回读再多一次 DB 往返
         d.setProviderNo(ok.getProviderNo());
         d.setCourierName(ok.getCourierName());
@@ -202,8 +197,9 @@ public class LocalDeliveryService {
         d.setAcceptedAt(ok.getAcceptedAt());
 
         // REQ-06：订单同城配送写入既有 t_logistics 初始节点（前端沿用物流时间轴）
-        if (isOrderBiz(req.getBizType())) {
-            persistOrderTrack(req.getBizNo(), d.getDeliveryNo(), provider.name(), LocalDeliveryStateMachine.ACCEPTED);
+        if (LocalDeliveryViews.isOrderBiz(req.getBizType())) {
+            store.persistOrderTrack(req.getBizNo(), d.getDeliveryNo(), provider.name(),
+                    LocalDeliveryStateMachine.ACCEPTED);
         }
 
         metrics.increment("local.delivery.created");
@@ -217,7 +213,7 @@ public class LocalDeliveryService {
 
     /** 骑手接单（CREATED → ACCEPTED，用于异步回调补录）。 */
     public void onAccepted(String deliveryNo, String providerNo, String courierName, String courierPhone) {
-        LocalDelivery d = mustGetByNo(deliveryNo);
+        LocalDelivery d = store.selectByDeliveryNo(deliveryNo);
         if (!LocalDeliveryStateMachine.canTransition(d.getStatus(), LocalDeliveryStateMachine.ACCEPTED)) {
             throw new BizException(Code.LOCAL_DELIVERY_STATE_NOT_ALLOWED);
         }
@@ -234,7 +230,7 @@ public class LocalDeliveryService {
         if (courierPhone != null && !courierPhone.isBlank()) {
             upd.setCourierPhone(LocalFulfillmentRules.maskPhone(courierPhone));
         }
-        deliveryMapper.updateById(upd);
+        store.updateById(upd);
         notifyBestEffort(d.getUserId(), NotificationType.LOCAL_DELIVERY_ACCEPTED, deliveryNo,
                 "骑手已接单", "配送单 " + deliveryNo + " 骑手已接单，正在赶往取货点");
     }
@@ -253,7 +249,7 @@ public class LocalDeliveryService {
 
     /** 签收（→ SIGNED，终态）：可触发运费入账。 */
     public void sign(String deliveryNo) {
-        LocalDelivery d = mustGetByNo(deliveryNo);
+        LocalDelivery d = store.selectByDeliveryNo(deliveryNo);
         if (!LocalDeliveryStateMachine.canTransition(d.getStatus(), LocalDeliveryStateMachine.SIGNED)) {
             throw new BizException(Code.LOCAL_DELIVERY_STATE_NOT_ALLOWED);
         }
@@ -262,16 +258,16 @@ public class LocalDeliveryService {
         upd.setStatus(LocalDeliveryStateMachine.SIGNED);
         upd.setDeliveredAt(LocalDateTime.now());
         upd.setFinishedAt(LocalDateTime.now());
-        deliveryMapper.updateById(upd);
-        if (isOrderBiz(d.getBizType())) {
-            persistOrderTrack(d.getBizNo(), deliveryNo, d.getProviderName(), "signed");
+        store.updateById(upd);
+        if (LocalDeliveryViews.isOrderBiz(d.getBizType())) {
+            store.persistOrderTrack(d.getBizNo(), deliveryNo, d.getProviderName(), "signed");
         }
         metrics.increment("local.delivery.signed");
     }
 
     /** 取消（未送达前可取消）。 */
     public void cancel(Long userId, String deliveryNo) {
-        LocalDelivery d = mustGetByNo(deliveryNo);
+        LocalDelivery d = store.selectByDeliveryNo(deliveryNo);
         if (userId != null && !userId.equals(d.getUserId())) {
             throw new BizException(Code.FORBIDDEN, "无权操作该配送单");
         }
@@ -282,7 +278,7 @@ public class LocalDeliveryService {
         upd.setId(d.getId());
         upd.setStatus(LocalDeliveryStateMachine.CANCELED);
         upd.setFinishedAt(LocalDateTime.now());
-        deliveryMapper.updateById(upd);
+        store.updateById(upd);
         if (d.getProviderNo() != null) {
             provider.cancel(d.getProviderNo()); // best-effort，第三方失败仍以本地取消为准
         }
@@ -297,29 +293,24 @@ public class LocalDeliveryService {
      * 明确告知「暂无轨迹」，不返回空数组假装成功。
      */
     public LocalDeliveryVO track(String deliveryNo) {
-        LocalDelivery d = mustGetByNo(deliveryNo);
+        LocalDelivery d = store.selectByDeliveryNo(deliveryNo);
         if (!provider.configured()) {
             throw new BizException(Code.LOCAL_DELIVERY_UNAVAILABLE, "同城配送服务商暂未接入，无法查询轨迹");
         }
         if (d.getProviderNo() == null || d.getProviderNo().isBlank()) {
             throw new BizException(Code.LOCAL_DELIVERY_UNAVAILABLE, "该配送单尚未产生运单号，暂无轨迹");
         }
-        List<TrackPoint> points = provider.fetchTrack(d.getProviderNo());
+        List<com.idlefish.trade.local.provider.TrackPoint> points = provider.fetchTrack(d.getProviderNo());
         if (points == null || points.isEmpty()) {
             throw new BizException(Code.LOCAL_DELIVERY_UNAVAILABLE, "暂未获取到配送轨迹，请稍后重试");
         }
-        List<Map<String, String>> nodes = new ArrayList<>();
-        for (TrackPoint p : points) {
-            Map<String, String> m = new LinkedHashMap<>();
-            m.put("time", p.getTime());
-            m.put("desc", p.getDesc());
-            nodes.add(m);
-        }
-        if (isOrderBiz(d.getBizType())) {
-            persistOrderTrack(d.getBizNo(), deliveryNo, d.getProviderName(), toLogisticsStatus(d.getStatus()), nodes);
+        List<java.util.Map<String, String>> nodes = LocalDeliveryViews.toNodes(points);
+        if (LocalDeliveryViews.isOrderBiz(d.getBizType())) {
+            store.persistOrderTrack(d.getBizNo(), deliveryNo, d.getProviderName(),
+                    LocalDeliveryViews.toLogisticsStatus(d.getStatus()), nodes);
         }
         List<LogisticsTrack> tracks = LogisticsTimelineBuilder.build(nodes, d.getProviderName(),
-                toLogisticsStatus(d.getStatus())).getTracks();
+                LocalDeliveryViews.toLogisticsStatus(d.getStatus())).getTracks();
         return LocalDeliveryVO.of(d, tracks);
     }
 
@@ -327,136 +318,42 @@ public class LocalDeliveryService {
 
     /** 我的配送单分页。 */
     public IPage<LocalDelivery> myList(Long userId, int page, int size) {
-        return deliveryMapper.selectPage(new Page<>(page, size), new LambdaQueryWrapper<LocalDelivery>()
-                .eq(LocalDelivery::getUserId, userId)
-                .orderByDesc(LocalDelivery::getCreatedAt));
+        return store.selectPageByUser(userId, page, size);
     }
 
     /** 配送单详情（本人）。 */
     public LocalDeliveryVO detail(Long userId, String deliveryNo) {
-        LocalDelivery d = mustGetByNo(deliveryNo);
+        LocalDelivery d = store.selectByDeliveryNo(deliveryNo);
         if (userId != null && !userId.equals(d.getUserId())) {
             throw new BizException(Code.FORBIDDEN, "无权查看该配送单");
         }
-        return LocalDeliveryVO.of(d, readOrderTracks(d.getBizNo(), d.getProviderName()));
+        return LocalDeliveryVO.of(d, store.readOrderTracks(d.getBizNo(), d.getProviderName()));
     }
 
     /** 后台列表（REQ-08 机构范围由调用方收敛，orgId 为空即超管视角）。 */
     public IPage<LocalDelivery> adminList(int page, int size, String status, String bizNo, String city) {
-        LambdaQueryWrapper<LocalDelivery> q = new LambdaQueryWrapper<LocalDelivery>()
-                .eq(status != null && !status.isBlank(), LocalDelivery::getStatus, status)
-                .eq(bizNo != null && !bizNo.isBlank(), LocalDelivery::getBizNo, bizNo)
-                .eq(city != null && !city.isBlank(), LocalDelivery::getCity, city)
-                .orderByDesc(LocalDelivery::getCreatedAt);
-        return deliveryMapper.selectPage(new Page<>(page, size), q);
+        return store.adminSelectPage(page, size, status, bizNo, city);
     }
 
     /** 后台详情。 */
     public LocalDeliveryVO adminDetail(String deliveryNo) {
-        LocalDelivery d = mustGetByNo(deliveryNo);
-        return LocalDeliveryVO.of(d, readOrderTracks(d.getBizNo(), d.getProviderName()));
+        LocalDelivery d = store.selectByDeliveryNo(deliveryNo);
+        return LocalDeliveryVO.of(d, store.readOrderTracks(d.getBizNo(), d.getProviderName()));
     }
 
     // ===== 内部工具 =====
 
     private LocalDelivery advance(String deliveryNo, String to, String operator) {
-        LocalDelivery d = mustGetByNo(deliveryNo);
+        LocalDelivery d = store.selectByDeliveryNo(deliveryNo);
         if (!LocalDeliveryStateMachine.canTransition(d.getStatus(), to)) {
             throw new BizException(Code.LOCAL_DELIVERY_STATE_NOT_ALLOWED);
         }
         LocalDelivery upd = new LocalDelivery();
         upd.setId(d.getId());
         upd.setStatus(to);
-        deliveryMapper.updateById(upd);
+        store.updateById(upd);
         metrics.increment("local.delivery." + to.toLowerCase());
         return d;
-    }
-
-    private LocalDelivery mustGetByNo(String deliveryNo) {
-        LocalDelivery d = deliveryMapper.selectOne(new LambdaQueryWrapper<LocalDelivery>()
-                .eq(LocalDelivery::getDeliveryNo, deliveryNo).last("LIMIT 1"));
-        if (d == null) {
-            throw new BizException(Code.LOCAL_DELIVERY_NOT_FOUND);
-        }
-        return d;
-    }
-
-    private static boolean isOrderBiz(String bizType) {
-        return "ORDER".equalsIgnoreCase(bizType);
-    }
-
-    private static String toLogisticsStatus(String status) {
-        if (status == null) {
-            return "transport";
-        }
-        return switch (status) {
-            case "SIGNED" -> "signed";
-            case "FAILED", "CANCELED" -> "exception";
-            default -> "transport";
-        };
-    }
-
-    /**
-     * 写入/更新既有 {@code t_logistics}（复用 D5 物流表，不新建轨迹表）。
-     * nodes 为空表示仅初始化一条「已创建」节点。
-     */
-    private void persistOrderTrack(String bizNo, String deliveryNo, String company, String status) {
-        persistOrderTrack(bizNo, deliveryNo, company, status, List.of());
-    }
-
-    private void persistOrderTrack(String bizNo, String deliveryNo, String company, String status,
-                                   List<Map<String, String>> nodes) {
-        List<Map<String, String>> detail = nodes;
-        if (detail == null || detail.isEmpty()) {
-            detail = List.of(node(java.time.LocalDateTime.now(),
-                    "【" + deliveryNo + "】同城配送已创建（" + company + "）"));
-        }
-        Logistics l = logisticsMapper.selectOne(new LambdaQueryWrapper<Logistics>()
-                .eq(Logistics::getOrderNo, bizNo).last("LIMIT 1"));
-        String json;
-        try {
-            json = objectMapper.writeValueAsString(detail);
-        } catch (Exception e) {
-            json = "[]";
-        }
-        if (l == null) {
-            l = new Logistics();
-            l.setOrderNo(bizNo);
-            l.setLogisticsNo(deliveryNo);
-            l.setCompany(company);
-            l.setStatus(toLogisticsStatus(status));
-            l.setDetailJson(json);
-            logisticsMapper.insert(l);
-        } else {
-            l.setLogisticsNo(deliveryNo);
-            l.setCompany(company);
-            l.setStatus(toLogisticsStatus(status));
-            l.setDetailJson(json);
-            logisticsMapper.updateById(l);
-        }
-    }
-
-    private List<LogisticsTrack> readOrderTracks(String bizNo, String company) {
-        Logistics l = logisticsMapper.selectOne(new LambdaQueryWrapper<Logistics>()
-                .eq(Logistics::getOrderNo, bizNo).last("LIMIT 1"));
-        if (l == null || l.getDetailJson() == null || l.getDetailJson().isBlank()) {
-            return List.of();
-        }
-        try {
-            List<Map<String, String>> nodes = objectMapper.readValue(l.getDetailJson(),
-                    objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
-            return LogisticsTimelineBuilder.build(nodes, l.getCompany() == null ? company : l.getCompany(),
-                    l.getStatus()).getTracks();
-        } catch (Exception e) {
-            return List.of();
-        }
-    }
-
-    private static Map<String, String> node(java.time.LocalDateTime t, String desc) {
-        Map<String, String> m = new LinkedHashMap<>();
-        m.put("time", t.format(com.idlefish.trade.common.util.DateTimeUtil.FMT));
-        m.put("desc", desc);
-        return m;
     }
 
     private void notifyBestEffort(Long userId, NotificationType type, String bizId, String title, String content) {
