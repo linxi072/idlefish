@@ -1,6 +1,5 @@
 package com.idlefish.trade.pricing.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.idlefish.trade.common.BizException;
 import com.idlefish.trade.common.Code;
@@ -11,8 +10,6 @@ import com.idlefish.trade.item.mapper.ItemMapper;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
 import com.idlefish.trade.pricing.PriceEstimator;
-import com.idlefish.trade.pricing.dto.PriceConfigRequest;
-import com.idlefish.trade.pricing.dto.PriceOverrideRequest;
 import com.idlefish.trade.pricing.entity.PriceEstimateAudit;
 import com.idlefish.trade.pricing.entity.PriceEstimateConfig;
 import com.idlefish.trade.pricing.entity.PriceSample;
@@ -28,12 +25,9 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * 估价服务（ITER-F03）：数据驱动估价引擎，并实现 {@link ReferencePriceProvider} 作为 U01 规则兜底数据源。
@@ -49,6 +43,7 @@ import java.util.Set;
  * </ul>
  *
  * <p>金额恒「分」整型（REQ-01）；纯计算下沉到 {@link PriceEstimator}（REQ-07）。
+ * 数据访问下沉 {@link PricingStore}，纯函数映射下沉 {@link PricingViews}；本类只做编排与副作用（指标/告警/留痕）。
  */
 @Service
 public class PricingService implements ReferencePriceProvider {
@@ -59,14 +54,11 @@ public class PricingService implements ReferencePriceProvider {
     public static final String BIZ_ABNORMAL_LOW = "ABNORMAL_LOW";
     public static final String BIZ_RECALC = "RECALC";
 
-    private final PriceSampleMapper sampleMapper;
-    private final PriceEstimateConfigMapper configMapper;
-    private final PriceEstimateAuditMapper auditMapper;
-    private final ItemMapper itemMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
     private final ObjectMapper objectMapper;
     private final IdlefishProperties idlefishProperties;
+    private final PricingStore store;
 
     public PricingService(PriceSampleMapper sampleMapper,
                           PriceEstimateConfigMapper configMapper,
@@ -76,14 +68,11 @@ public class PricingService implements ReferencePriceProvider {
                           MetricsRegistry metrics,
                           ObjectMapper objectMapper,
                           IdlefishProperties idlefishProperties) {
-        this.sampleMapper = sampleMapper;
-        this.configMapper = configMapper;
-        this.auditMapper = auditMapper;
-        this.itemMapper = itemMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
         this.objectMapper = objectMapper;
         this.idlefishProperties = idlefishProperties;
+        this.store = new PricingStore(sampleMapper, configMapper, auditMapper, itemMapper);
     }
 
     // ===================== U01 规则兜底数据源（ReferencePriceProvider） =====================
@@ -97,19 +86,19 @@ public class PricingService implements ReferencePriceProvider {
         if (categoryId == null) {
             return Optional.empty();
         }
-        PriceEstimateConfig cfg = config(categoryId);
+        PriceEstimateConfig cfg = store.config(categoryId);
         Long raw;
         if (cfg != null && STATUS_ENABLED.equals(cfg.getStatus())
                 && cfg.getBasePriceFen() != null && cfg.getBasePriceFen() > 0) {
             raw = cfg.getBasePriceFen();
         } else {
-            raw = categoryMedian(categoryId);
+            raw = store.categoryMedian(categoryId);
         }
         if (raw == null || raw <= 0) {
             return Optional.empty();
         }
         if (cfg != null && cfg.getMultiplier() != null) {
-            raw = Math.round(raw * cfg.getMultiplier().doubleValue());
+            raw = PricingViews.applyMultiplier(raw, cfg.getMultiplier());
         }
         return Optional.of(raw);
     }
@@ -123,7 +112,7 @@ public class PricingService implements ReferencePriceProvider {
         PriceEstimateVO vo = new PriceEstimateVO();
         int level = conditionLevel == null ? 3 : conditionLevel;
 
-        List<Long> samples = sameConditionSamples(categoryId, level);
+        List<Long> samples = store.sameConditionSamples(categoryId, level);
         long[] range = PriceEstimator.sampleRange(samples);
         if (range != null) {
             vo.setHasData(true);
@@ -138,8 +127,8 @@ public class PricingService implements ReferencePriceProvider {
         }
 
         // REQ-03 样本不足 → 规则兜底（基准价 × 系数 × 成色系数 ±10%）
-        PriceEstimateConfig cfg = config(categoryId);
-        Long base = rawBaseline(categoryId, cfg);
+        PriceEstimateConfig cfg = store.config(categoryId);
+        Long base = store.rawBaseline(categoryId, cfg);
         if (base != null && base > 0) {
             double mult = (cfg != null && cfg.getMultiplier() != null)
                     ? cfg.getMultiplier().doubleValue() : 1.0;
@@ -192,7 +181,7 @@ public class PricingService implements ReferencePriceProvider {
         if (itemId == null) {
             return;
         }
-        Item item = itemMapper.selectById(itemId);
+        Item item = store.selectItemById(itemId);
         if (item == null) {
             return;
         }
@@ -203,7 +192,7 @@ public class PricingService implements ReferencePriceProvider {
         s.setDealPriceFen(po.getAmount());
         s.setDealAt(LocalDateTime.now());
         s.setSource("deal");
-        sampleMapper.insert(s);
+        store.insertSample(s);
         metrics.increment("pricing.sample.recorded");
     }
 
@@ -228,14 +217,15 @@ public class PricingService implements ReferencePriceProvider {
                 a.setCategoryId(item.getCategoryId());
                 a.setBizType(BIZ_ABNORMAL_LOW);
                 a.setBizId(item.getId());
-                a.setBeforeJson(json(Map.of(
+                a.setBeforeJson(PricingViews.safeJson(objectMapper, Map.of(
                         "listedPriceFen", item.getPrice(),
                         "minFen", vo.getMinFen(),
                         "maxFen", vo.getMaxFen())));
                 a.setReason("异常低价：挂牌价低于估价区间下限 50%，转人工送审（不阻断发布）");
                 a.setOperatorId(0L);
-                auditMapper.insert(a);
-                notifySafely(abnormalAlertAdmin(), NotificationType.SYSTEM_ALERT,
+                store.writeAudit(item.getCategoryId(), BIZ_ABNORMAL_LOW, item.getId(),
+                        a.getBeforeJson(), null, 0L, a.getReason());
+                notifySafely(PricingViews.resolveAlertAdmin(idlefishProperties), NotificationType.SYSTEM_ALERT,
                         String.valueOf(item.getId()), "异常低价待审",
                         "商品 " + item.getId() + " 挂牌价 " + item.getPrice()
                                 + " 分，低于估价下限，请人工送审");
@@ -250,7 +240,7 @@ public class PricingService implements ReferencePriceProvider {
 
     /** 读取品类估价配置（无则 null）。 */
     public PriceEstimateConfig getConfig(Long categoryId) {
-        return config(categoryId);
+        return store.config(categoryId);
     }
 
     /** REQ-08 保存/更新品类估价配置（基准价/系数/状态），并留痕。 */
@@ -259,34 +249,11 @@ public class PricingService implements ReferencePriceProvider {
         if (categoryId == null) {
             throw new BizException(Code.PARAM_MISSING, "类目 ID 必填");
         }
-        PriceEstimateConfig cfg = config(categoryId);
-        String before = cfg == null ? null : json(cfg);
-        if (cfg == null) {
-            cfg = new PriceEstimateConfig();
-            cfg.setCategoryId(categoryId);
-            cfg.setBasePriceFen(basePriceFen);
-            cfg.setMultiplier(multiplier == null ? BigDecimal.ONE : multiplier);
-            cfg.setStatus(status == null || status.isBlank() ? STATUS_ENABLED : status);
-            cfg.setOperatorId(operatorId);
-            configMapper.insert(cfg);
-        } else {
-            PriceEstimateConfig upd = new PriceEstimateConfig();
-            upd.setId(cfg.getId());
-            if (basePriceFen != null) {
-                upd.setBasePriceFen(basePriceFen);
-            }
-            if (multiplier != null) {
-                upd.setMultiplier(multiplier);
-            }
-            if (status != null && !status.isBlank()) {
-                upd.setStatus(status);
-            }
-            upd.setOperatorId(operatorId);
-            configMapper.updateById(upd);
-        }
-        PriceEstimateConfig after = config(categoryId);
-        writeAudit(categoryId, BIZ_CONFIG_OVERRIDE, after.getId(), before, json(after),
-                operatorId, "运营配置基准价/系数/状态");
+        PriceEstimateConfig cfg = store.config(categoryId);
+        String before = cfg == null ? null : PricingViews.safeJson(objectMapper, cfg);
+        PriceEstimateConfig after = store.saveConfigUpsert(categoryId, basePriceFen, multiplier, status, operatorId);
+        store.writeAudit(categoryId, BIZ_CONFIG_OVERRIDE, after.getId(), before,
+                PricingViews.safeJson(objectMapper, after), operatorId, "运营配置基准价/系数/状态");
         metrics.increment("pricing.config.saved");
     }
 
@@ -298,19 +265,15 @@ public class PricingService implements ReferencePriceProvider {
         if (multiplier == null || multiplier.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BizException(Code.PARAM_INVALID, "系数须为正数");
         }
-        PriceEstimateConfig cfg = config(categoryId);
+        PriceEstimateConfig cfg = store.config(categoryId);
         if (cfg == null) {
             throw new BizException(Code.PRICING_CONFIG_NOT_FOUND, "估价配置不存在，请先配置基准价");
         }
-        String before = json(cfg);
-        PriceEstimateConfig upd = new PriceEstimateConfig();
-        upd.setId(cfg.getId());
-        upd.setMultiplier(multiplier);
-        upd.setOperatorId(operatorId);
-        configMapper.updateById(upd);
-        PriceEstimateConfig after = config(categoryId);
-        writeAudit(categoryId, BIZ_CONFIG_OVERRIDE, after.getId(), before, json(after),
-                operatorId, "运营系数覆盖" + (reason == null ? "" : "：" + reason));
+        String before = PricingViews.safeJson(objectMapper, cfg);
+        PriceEstimateConfig after = store.overrideConfig(categoryId, multiplier, operatorId);
+        store.writeAudit(categoryId, BIZ_CONFIG_OVERRIDE, after.getId(), before,
+                PricingViews.safeJson(objectMapper, after), operatorId,
+                "运营系数覆盖" + (reason == null ? "" : "：" + reason));
         metrics.increment("pricing.config.override");
     }
 
@@ -320,147 +283,27 @@ public class PricingService implements ReferencePriceProvider {
             recalcOne(categoryId);
             return;
         }
-        Set<Long> ids = new HashSet<>();
-        sampleMapper.selectList(new LambdaQueryWrapper<PriceSample>()
-                        .select(PriceSample::getCategoryId))
-                .forEach(s -> { if (s.getCategoryId() != null) ids.add(s.getCategoryId()); });
-        configMapper.selectList(new LambdaQueryWrapper<PriceEstimateConfig>()
-                        .select(PriceEstimateConfig::getCategoryId))
-                .forEach(c -> { if (c.getCategoryId() != null) ids.add(c.getCategoryId()); });
-        ids.forEach(this::recalcOne);
+        store.allCategoryIds().forEach(this::recalcOne);
     }
 
     /** 异常低价送审列表（风控关注，REQ-10）。 */
     public List<PriceEstimateAudit> abnormalList() {
-        return auditMapper.selectList(new LambdaQueryWrapper<PriceEstimateAudit>()
-                .eq(PriceEstimateAudit::getBizType, BIZ_ABNORMAL_LOW)
-                .orderByDesc(PriceEstimateAudit::getCreatedAt));
+        return store.abnormalList();
     }
 
     /** 估价操作审计日志（REQ-08 留痕查询）。 */
     public List<PriceEstimateAudit> auditLog() {
-        return auditMapper.selectList(new LambdaQueryWrapper<PriceEstimateAudit>()
-                .orderByDesc(PriceEstimateAudit::getCreatedAt));
+        return store.auditLog();
     }
 
     // ===================== 内部工具 =====================
 
     private void recalcOne(Long categoryId) {
-        Long median = categoryMedian(categoryId);
-        PriceEstimateConfig cfg = config(categoryId);
-        if (cfg == null) {
-            cfg = new PriceEstimateConfig();
-            cfg.setCategoryId(categoryId);
-            cfg.setBasePriceFen(median);
-            cfg.setMultiplier(BigDecimal.ONE);
-            cfg.setStatus(STATUS_ENABLED);
-            cfg.setOperatorId(0L);
-            configMapper.insert(cfg);
-        } else {
-            PriceEstimateConfig upd = new PriceEstimateConfig();
-            upd.setId(cfg.getId());
-            upd.setBasePriceFen(median);
-            upd.setOperatorId(0L);
-            configMapper.updateById(upd);
-        }
-        PriceEstimateConfig after = config(categoryId);
-        writeAudit(categoryId, BIZ_RECALC, after.getId(), null,
+        Long median = store.categoryMedian(categoryId);
+        PriceEstimateConfig after = store.recalcUpsert(categoryId, median, 0L);
+        store.writeAudit(categoryId, BIZ_RECALC, after.getId(), null,
                 "{\"basePriceFen\":" + median + "}", 0L, "自动重算基准价（品类成交中位数）");
         metrics.increment("pricing.recalibrate");
-    }
-
-    private PriceEstimateConfig config(Long categoryId) {
-        if (categoryId == null) {
-            return null;
-        }
-        return configMapper.selectOne(new LambdaQueryWrapper<PriceEstimateConfig>()
-                .eq(PriceEstimateConfig::getCategoryId, categoryId));
-    }
-
-    private Long rawBaseline(Long categoryId, PriceEstimateConfig cfg) {
-        if (cfg != null && STATUS_ENABLED.equals(cfg.getStatus())
-                && cfg.getBasePriceFen() != null && cfg.getBasePriceFen() > 0) {
-            return cfg.getBasePriceFen();
-        }
-        return categoryMedian(categoryId);
-    }
-
-    /** 品类成交中位数（任意成色，作为「全新」参考基线）；无样本返回 null。 */
-    private Long categoryMedian(Long categoryId) {
-        if (categoryId == null) {
-            return null;
-        }
-        List<PriceSample> list = sampleMapper.selectList(new LambdaQueryWrapper<PriceSample>()
-                .eq(PriceSample::getCategoryId, categoryId)
-                .select(PriceSample::getDealPriceFen));
-        if (list.isEmpty()) {
-            return null;
-        }
-        List<Long> prices = new ArrayList<>();
-        for (PriceSample s : list) {
-            if (s.getDealPriceFen() != null && s.getDealPriceFen() > 0) {
-                prices.add(s.getDealPriceFen());
-            }
-        }
-        if (prices.isEmpty()) {
-            return null;
-        }
-        List<Long> cleaned = PriceEstimator.cleanSamples(prices);
-        if (cleaned.isEmpty()) {
-            return null;
-        }
-        return PriceEstimator.percentile(cleaned, 0.5);
-    }
-
-    /** 同成色成交价列表（去 null/非正）。 */
-    private List<Long> sameConditionSamples(Long categoryId, int level) {
-        List<Long> out = new ArrayList<>();
-        if (categoryId == null) {
-            return out;
-        }
-        List<PriceSample> list = sampleMapper.selectList(new LambdaQueryWrapper<PriceSample>()
-                .eq(PriceSample::getCategoryId, categoryId)
-                .eq(PriceSample::getConditionLevel, level)
-                .select(PriceSample::getDealPriceFen));
-        for (PriceSample s : list) {
-            if (s.getDealPriceFen() != null && s.getDealPriceFen() > 0) {
-                out.add(s.getDealPriceFen());
-            }
-        }
-        return out;
-    }
-
-    private void writeAudit(Long categoryId, String bizType, Long bizId, String beforeJson,
-                            String afterJson, Long operatorId, String reason) {
-        PriceEstimateAudit a = new PriceEstimateAudit();
-        a.setCategoryId(categoryId);
-        a.setBizType(bizType);
-        a.setBizId(bizId);
-        a.setBeforeJson(beforeJson);
-        a.setAfterJson(afterJson);
-        a.setOperatorId(operatorId);
-        a.setReason(reason);
-        auditMapper.insert(a);
-    }
-
-    private Long abnormalAlertAdmin() {
-        if (idlefishProperties != null && idlefishProperties.getPricing() != null
-                && idlefishProperties.getPricing().getAlertAdminUserId() != null) {
-            return idlefishProperties.getPricing().getAlertAdminUserId();
-        }
-        if (idlefishProperties != null && idlefishProperties.getNotify() != null
-                && idlefishProperties.getNotify().getAlertAdminUserId() != null) {
-            return idlefishProperties.getNotify().getAlertAdminUserId();
-        }
-        return 1L;
-    }
-
-    private String json(Object o) {
-        try {
-            return objectMapper.writeValueAsString(o);
-        } catch (Exception e) {
-            return "{}";
-        }
     }
 
     private void notifySafely(Long userId, NotificationType type, String bizId, String title, String content) {
