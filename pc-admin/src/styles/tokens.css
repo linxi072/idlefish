@@ -1,0 +1,222 @@
+/* pc-admin/src/styles/tokens.css
+ * ============================================================================
+ * 设计令牌单一来源（ITER-U04）
+ *
+ * 分层约定（禁止跨层反向依赖）：
+ *   1) 基础色   --color-*      原始色值，唯一允许出现十六进制色值的层
+ *   2) 语义令牌 --bg/--text-*  把基础色映射为「用途」，暗色主题只覆盖这一层
+ *   3) 组件令牌 --sidebar-xxx 与 --chart-xxx 组件/图表专用，同样由语义层派生
+ *
+ * 约束：
+ *   - 视图/组件内不得硬编码颜色，一律引用令牌（scripts/check-design-tokens.js 校验）。
+ *   - 暗色主题只覆盖语义层，不修改基础色，避免 --text-inverse 等派生令牌被误伤。
+ *   - 旧令牌名（--brand-1 / --brand-2 / --brand-ink）保留为别名，供渐进迁移期兼容。
+ * ========================================================================== */
+
+:root {
+  /* ===== 1. 基础色 ===== */
+  /* 品牌（闲鱼黄 → 沉稳琥珀） */
+  --color-brand-400: #FFCE3D;
+  --color-brand-500: #FFB300;
+  --color-brand-700: #C45918;
+  --color-brand-ink: #5A4000;
+  --color-brand-soft: #FFF6DA;
+
+  /* 中性 */
+  --color-neutral-0: #FFFFFF;
+  --color-neutral-50: #F7F8FA;
+  --color-neutral-100: #F4F5F7;
+  --color-neutral-150: #F2F3F5;
+  --color-neutral-200: #ECEDEF;
+  --color-neutral-250: #E5E7EB;
+  --color-neutral-300: #C9CDD4;
+  --color-neutral-400: #9A9FA8;
+  --color-neutral-450: #909399;
+  --color-neutral-600: #5A5F66;
+  --color-neutral-700: #666666;
+  --color-neutral-900: #1A1A1A;
+
+  /* 状态 */
+  --color-success: #18A058;
+  --color-success-bg: #E8F8EE;
+  --color-warning: #FF8F1F;
+  --color-warning-bg: #FFF4E6;
+  --color-danger: #F53F3F;
+  --color-danger-strong: #FF3939;
+  --color-danger-bg: #FDECEC;
+  --color-info: #86909C;
+  --color-info-bg: #E6F4FF;
+  --color-info-fg: #1677FF;
+
+  /* 成色 / 等级（S/A/B/C/D 与会员层级共用一套语义色） */
+  --color-grade-s: #18A058;
+  --color-grade-a: #FFB300;
+  --color-grade-b: #FF7A00;
+  --color-grade-c: #F53F3F;
+  --color-grade-d: #86909C;
+
+  /* 固定前景：始终与品牌/深色底搭配的白色，不随主题反转 */
+  --color-on-brand: #FFFFFF;
+
+  /* ===== 2. 语义令牌（暗色主题覆盖点） ===== */
+  --bg: var(--color-neutral-100);
+  --surface: var(--color-neutral-0);
+  --surface-subtle: var(--color-neutral-50);
+  --border: var(--color-neutral-200);
+  --border-subtle: var(--color-neutral-150);
+  --border-strong: var(--color-neutral-300);
+
+  --text-1: var(--color-neutral-900);
+  --text-2: var(--color-neutral-600);
+  --text-3: var(--color-neutral-400);
+  --text-inverse: var(--color-neutral-0);
+
+  --primary: var(--color-brand-500);
+  --primary-strong: var(--color-brand-700);
+  --primary-soft: var(--color-brand-soft);
+  --primary-ink: var(--color-brand-ink);
+
+  --success: var(--color-success);
+  --success-bg: var(--color-success-bg);
+  --warning: var(--color-warning);
+  --warning-bg: var(--color-warning-bg);
+  --danger: var(--color-danger);
+  --danger-strong: var(--color-danger-strong);
+  --danger-bg: var(--color-danger-bg);
+  --info: var(--color-info);
+  --info-bg: var(--color-info-bg);
+  --info-fg: var(--color-info-fg);
+
+  --price: var(--color-danger-strong);
+  --focus-ring: rgba(245, 115, 31, .35);
+
+  /* Element Plus 主色覆盖（暖橙，含 hover/active 派生色） */
+  --el-color-primary: #F5731F;
+  --el-color-primary-light-3: #F98A45;
+  --el-color-primary-light-5: #FBA66E;
+  --el-color-primary-light-7: #FDCA9E;
+  --el-color-primary-light-8: #FEDBBB;
+  --el-color-primary-light-9: #FCEEDE;
+  --el-color-primary-dark-2: #C45918;
+  --el-color-success: var(--color-success);
+  --el-color-warning: var(--color-warning);
+  --el-color-danger: var(--color-danger);
+  --el-color-error: var(--color-danger);
+  --el-color-info: var(--color-info);
+
+  /* ===== 3. 组件令牌 ===== */
+  --sidebar-bg: var(--color-neutral-900);
+  --sidebar-text: var(--color-neutral-300);
+  --sidebar-text-hover: var(--color-on-brand);
+  --sidebar-active-bg: linear-gradient(90deg, var(--color-brand-400), var(--color-brand-500));
+  --sidebar-active-text: var(--color-neutral-900);
+
+  --chart-axis: var(--color-neutral-300);
+  --chart-split: var(--color-neutral-150);
+  --chart-series-1: var(--color-brand-500);
+  --chart-series-2: var(--color-info-fg);
+  --chart-series-3: var(--color-success);
+  --chart-series-4: var(--color-warning);
+  --chart-series-5: var(--color-danger);
+  --chart-bar-bg: linear-gradient(180deg, var(--color-brand-400), var(--color-brand-500));
+
+  /* 字体比例（type scale） */
+  --fs-display: 30px;
+  --fs-h1: 22px;
+  --fs-h2: 18px;
+  --fs-body: 14px;
+  --fs-sm: 13px;
+  --fs-xs: 12px;
+  --lh-tight: 1.3;
+  --lh-base: 1.6;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+
+  /* 间距标尺（4 的倍数） */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* 圆角 */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* 阴影 */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px rgba(0, 0, 0, .04);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, .08);
+
+  /* 层级与动效 */
+  --z-backdrop: 1000;
+  --z-sidebar: 1001;
+  --transition-fast: .2s ease;
+
+  /* 遮罩与滚动条（半透明色也属令牌层，避免散落在布局样式中） */
+  --overlay: rgba(0, 0, 0, .45);
+  --scrollbar-thumb: rgba(255, 255, 255, .18);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, .32);
+
+  /* ===== 旧令牌别名（渐进迁移期兼容，勿在新代码使用） ===== */
+  --brand-1: var(--color-brand-500);
+  --brand-2: var(--color-brand-400);
+  --brand-ink: var(--color-brand-ink);
+}
+
+/* ============================================================================
+ * 暗色主题：仅覆盖语义层 + 组件层，基础色保持不变
+ * Element Plus 的组件级变量由 element-plus/theme-chalk/dark/css-vars.css 提供，
+ * 这里只重新声明品牌主色，避免其被默认蓝色覆盖。
+ * ========================================================================== */
+html.dark {
+  --bg: #141619;
+  --surface: #1D2025;
+  --surface-subtle: #22262C;
+  --border: #2C3038;
+  --border-subtle: #252A31;
+  --border-strong: #3A404A;
+
+  --text-1: #E8EAED;
+  --text-2: #A8AEB8;
+  --text-3: #6E747E;
+
+  --primary-soft: #3A2E10;
+  --success-bg: #12301F;
+  --warning-bg: #3A2A12;
+  --danger-bg: #3A1A1C;
+  --info-bg: #132B3D;
+  --info-fg: #5CA6FF;
+
+  --focus-ring: rgba(249, 138, 69, .45);
+
+  --el-color-primary: #F5731F;
+  --el-color-primary-light-3: #C45918;
+  --el-color-primary-light-5: #8F4213;
+  --el-color-primary-light-7: #5A2C10;
+  --el-color-primary-light-8: #45230E;
+  --el-color-primary-light-9: #2E1A0C;
+  --el-color-primary-dark-2: #F98A45;
+
+  --sidebar-bg: #101215;
+  --sidebar-text: #A8AEB8;
+  --sidebar-text-hover: #E8EAED;
+  --sidebar-active-text: #141619;
+
+  --chart-axis: #4A5058;
+  --chart-split: #2A2F36;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 8px rgba(0, 0, 0, .28);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, .45);
+}
+
+/* 主题切换时避免整页闪烁（可选，尊重减少动效偏好） */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-anim,
+  html.theme-anim body {
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+  }
+}

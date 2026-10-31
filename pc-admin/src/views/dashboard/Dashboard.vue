@@ -42,6 +42,7 @@
 <script>
 import { adminApi } from '@/api';
 import { formatMixin, notifyError } from '@/utils/format';
+import { chartPalette } from '@/utils/theme';
 // pc-admin/src/views/dashboard.js
 
 const fmt = (n) => (n || 0).toLocaleString('zh-CN');
@@ -53,7 +54,6 @@ export default {
   data() {
     return { loading: true, s: {}, hasEcharts: false, chart: null };
   },
-  mounted() { this.load(); },
   methods: {
     async load() {
       this.loading = true;
@@ -70,21 +70,32 @@ export default {
       if (!this.$refs.trendChart || !window.echarts) return;
       if (this.chart) this.chart.dispose();
       this.chart = window.echarts.init(this.$refs.trendChart);
+      const p = chartPalette();
       const t = this.s.trend || [];
       this.chart.setOption({
         tooltip: { trigger: 'axis' },
         grid: { left: 36, right: 16, top: 24, bottom: 28 },
-        xAxis: { type: 'category', data: t.map((_, i) => 'D' + (i + 1)), axisLine: { lineStyle: { color: '#ccc' } } },
-        yAxis: { type: 'value', splitLine: { lineStyle: { color: '#f0f0f0' } } },
+        xAxis: { type: 'category', data: t.map((_, i) => 'D' + (i + 1)), axisLine: { lineStyle: { color: p.axis } } },
+        yAxis: { type: 'value', splitLine: { lineStyle: { color: p.split } } },
         series: [{
           type: 'line', smooth: true, data: t,
-          symbolSize: 7, lineStyle: { width: 3, color: '#FFB300' },
-          itemStyle: { color: '#FFB300' },
-          areaStyle: { color: 'rgba(255,179,0,0.15)' }
+          symbolSize: 7, lineStyle: { width: 3, color: p.series[0] },
+          itemStyle: { color: p.series[0] },
+          areaStyle: { color: p.series[0], opacity: 0.15 }
         }]
       });
     }
   },
-  created() { this.fmt = fmt; }
+  created() { this.fmt = fmt; },
+  mounted() {
+    this.load();
+    // 主题切换后按新令牌重绘图表（ECharts 不会自动跟随 CSS 变量）
+    this._onTheme = () => this.renderChart();
+    window.addEventListener('theme-change', this._onTheme);
+  },
+  beforeUnmount() {
+    window.removeEventListener('theme-change', this._onTheme);
+    if (this.chart) { this.chart.dispose(); this.chart = null; }
+  }
 }
 </script>

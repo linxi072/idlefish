@@ -106,7 +106,7 @@
             <el-table-column prop="id" label="ID" width="70"></el-table-column>
             <el-table-column label="来源" width="120"><template #default="{row}"><el-tag size="small" :type="row.delta < 0 ? 'danger' : 'success'">{{ bizText(row.bizType) }}</el-tag></template></el-table-column>
             <el-table-column prop="bizId" label="关联单号" width="150"></el-table-column>
-            <el-table-column label="增量" width="90" align="right"><template #default="{row}"><span :style="{color: row.delta < 0 ? '#f56c6c' : '#67c23a'}">{{ row.delta > 0 ? '+' : '' }}{{ row.delta }}</span></template></el-table-column>
+            <el-table-column label="增量" width="90" align="right"><template #default="{row}"><span :style="{color: row.delta < 0 ? 'var(--danger)' : 'var(--success)'}">{{ row.delta > 0 ? '+' : '' }}{{ row.delta }}</span></template></el-table-column>
             <el-table-column label="变更前" width="90" align="right"><template #default="{row}">{{ fmtInt(row.beforeValue) }}</template></el-table-column>
             <el-table-column label="变更后" width="90" align="right"><template #default="{row}">{{ fmtInt(row.afterValue) }}</template></el-table-column>
             <el-table-column prop="levelCode" label="等级" width="80"></el-table-column>
@@ -202,7 +202,7 @@
                 </el-form-item>
                 <el-form-item>
                   <el-button size="small" type="primary" :loading="initRunning" @click="runInitStock">执行初始化</el-button>
-                  <span style="margin-left:12px;color:#909399">为尚未建账的存量用户批量补建默认 L1 / 0 账户，可分页多次调用。</span>
+                  <span style="margin-left:12px;color:var(--text-3)">为尚未建账的存量用户批量补建默认 L1 / 0 账户，可分页多次调用。</span>
                 </el-form-item>
                 <el-form-item v-if="initResult != null" label="本次初始化">
                   <el-tag type="success" size="small">{{ initResult }} 个</el-tag>
@@ -251,7 +251,7 @@
         <el-form-item label="券模板ID"><el-input-number v-model="benefitForm.couponId" :min="0" :step="1"></el-input-number></el-form-item>
         <el-form-item label="面额(分)"><el-input-number v-model="benefitForm.voucherAmountFen" :min="0" :step="100"></el-input-number></el-form-item>
         <el-form-item label="剩余/总库存"><el-input-number v-model="benefitForm.stock" :min="0" :step="10"></el-input-number> / <el-input-number v-model="benefitForm.totalStock" :min="0" :step="10"></el-input-number></el-form-item>
-        <el-form-item label="每日上限"><el-input-number v-model="benefitForm.dailyLimit" :min="0" :step="1"></el-input-number><span style="margin-left:8px;color:#909399">0=不限</span></el-form-item>
+        <el-form-item label="每日上限"><el-input-number v-model="benefitForm.dailyLimit" :min="0" :step="1"></el-input-number><span style="margin-left:8px;color:var(--text-3)">0=不限</span></el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="benefitForm.status">
             <el-radio value="ON_SHELF">上架</el-radio>

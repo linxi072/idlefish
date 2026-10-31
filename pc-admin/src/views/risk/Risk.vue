@@ -3,13 +3,9 @@
   <div>
     <page-header title="风控与审计" />
       <el-card shadow="never">
-      <el-form inline class="filter-bar">
+      <FilterBar :loading="loading" @search="load" @reset="reset">
         <el-form-item label="关键词"><el-input v-model="keyword" placeholder="规则名 / 动作 / 对象" clearable style="width:240px"></el-input></el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="load">查询</el-button>
-          <el-button @click="reset">重置</el-button>
-        </el-form-item>
-      </el-form>
+      </FilterBar>
       <el-tabs @tab-change="onTab">
         <el-tab-pane label="风控事件" name="risk"></el-tab-pane>
         <el-tab-pane label="审计日志" name="audit"></el-tab-pane>
@@ -19,7 +15,7 @@
         <el-table-column label="事件ID" prop="id" width="90"></el-table-column>
         <el-table-column label="用户ID" prop="userId" width="100"></el-table-column>
         <el-table-column label="命中规则" prop="rule" width="180"></el-table-column>
-        <el-table-column label="风险分" prop="score" width="100"><template #default="{row}"><el-tag :type="row.score>=80?'danger':row.score>=60?'warning':'success'">{{ row.score }}</el-tag></template></el-table-column>
+        <el-table-column label="风险分" prop="score" width="100"><template #default="{row}"><StatusTag :text="String(row.score)" :type="row.score>=80?'danger':row.score>=60?'warning':'success'" /></template></el-table-column>
         <el-table-column label="处置" width="120"><template #default="{row}"><el-tag :type="actionTag(row.action)">{{ row.action }}</el-tag></template></el-table-column>
         <el-table-column label="时间" prop="createdAt" width="180"></el-table-column>
       </el-table>
@@ -35,7 +31,7 @@
         <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <el-button type="primary" @click="addRule">新增规则</el-button>
           <el-button type="success" :loading="saving" @click="saveAllRules">保存全部（热加载）</el-button>
-          <span style="color:#909399;font-size:12px">配置改动经「保存全部」批量落库并由引擎热加载，无需重启</span>
+          <span style="color:var(--text-3);font-size:12px">配置改动经「保存全部」批量落库并由引擎热加载，无需重启</span>
         </div>
         <el-table :data="rules" border stripe :max-height="560">
           <el-table-column label="规则码" prop="code" width="170"></el-table-column>

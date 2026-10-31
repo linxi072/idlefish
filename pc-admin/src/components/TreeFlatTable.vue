@@ -82,9 +82,9 @@ export default {
 
 <style scoped>
 .tree-name-cell { display: inline-flex; align-items: center; line-height: 1; }
-.tree-guide { display: inline-block; width: 14px; height: 12px; border-left: 1px dashed #dcdfe6; margin-left: 2px; }
+.tree-guide { display: inline-block; width: 14px; height: 12px; border-left: 1px dashed var(--border-strong); margin-left: 2px; }
 .tree-dot { width: 7px; height: 7px; border-radius: 50%; margin: 0 6px 0 2px; flex: 0 0 auto; }
-.tree-dot.branch { background: var(--el-color-primary, #FF8C1A); }
-.tree-dot.leaf { background: #c0c4cc; }
+.tree-dot.branch { background: var(--primary); }
+.tree-dot.leaf { background: var(--border-strong); }
 .cell-text { white-space: nowrap; }
 </style>

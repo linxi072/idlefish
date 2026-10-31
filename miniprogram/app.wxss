@@ -1,21 +1,66 @@
-/* app.wxss —— 全局样式与设计 token（对齐《页面原型图 V1.0》） */
+/* app.wxss —— 全局样式与设计令牌（对齐 ITER-U04《设计规范》）
+ * 令牌与 pc-admin/src/styles/tokens.css 同名同值（见 docs/设计规范.md 双端对照表）。
+ * 单位换算：PC 1px = 小程序 2rpx。
+ */
 page {
-  --xy: #FFCE3D;
-  --xy-deep: #FFB300;
-  --xy-light: #FFF6DA;
-  --red: #FF3939;
-  --red-dark: #E52E2E;
+  /* ===== 语义令牌（与 PC 同名） ===== */
+  --primary: #FFB300;
+  --primary-400: #FFCE3D;
+  --primary-soft: #FFF6DA;
+  --primary-ink: #5A4000;
+  --success: #18A058;
+  --success-bg: #E8F8EE;
+  --warning: #FF8F1F;
+  --warning-bg: #FFF4E6;
+  --danger: #F53F3F;
+  --danger-strong: #FF3939;
+  --danger-bg: #FDECEC;
+  --info: #86909C;
+  --info-bg: #E6F4FF;
+  --info-fg: #1677FF;
+
   --bg: #F4F5F7;
-  --t1: #1A1A1A;
-  --t2: #666666;
-  --t3: #9A9A9A;
+  --surface: #FFFFFF;
+  --surface-subtle: #F7F8FA;
+  --border: #ECEDEF;
+  --border-subtle: #F2F3F5;
+  --text-1: #1A1A1A;
+  --text-2: #5A5F66;
+  --text-3: #9A9FA8;
+  --price: #FF3939;
+
+  /* 间距（PC --sp-* × 2rpx） */
+  --sp-1: 8rpx;
+  --sp-2: 16rpx;
+  --sp-3: 24rpx;
+  --sp-4: 32rpx;
+  --sp-5: 40rpx;
+  --sp-6: 48rpx;
+  --sp-8: 64rpx;
+
+  /* 圆角 / 阴影 */
+  --radius-sm: 12rpx;
+  --radius-md: 20rpx;
+  --radius-lg: 32rpx;
+  --shadow-1: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 16rpx 48rpx rgba(0, 0, 0, 0.08);
+
+  /* ===== 旧别名（渐进迁移期保留，勿在新代码使用） ===== */
+  --xy: var(--primary-400);
+  --xy-deep: var(--primary);
+  --xy-light: var(--primary-soft);
+  --red: var(--danger-strong);
+  --red-dark: #E52E2E;
+  --t1: var(--text-1);
+  --t2: var(--text-2);
+  --t3: var(--text-3);
   --t4: #C4C4C4;
-  --green: #2E9E52;
-  --blue: #3C6FF5;
+  --green: var(--success);
+  --blue: var(--info-fg);
   --orange: #FF7A00;
 
   background: var(--bg);
-  color: var(--t1);
+  color: var(--text-1);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Helvetica, sans-serif;
   font-size: 28rpx;
 }
@@ -23,10 +68,10 @@ page {
 view, text, scroll-view { box-sizing: border-box; }
 
 /* 通用容器 */
-.page { min-height: 100vh; background: var(--bg); padding-bottom: 40rpx; }
+.page { min-height: 100vh; background: var(--bg); padding-bottom: var(--sp-5); }
 .card {
-  background: #fff; border-radius: 20rpx; padding: 28rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.04);
+  background: var(--surface); border-radius: var(--radius-md); padding: var(--sp-4);
+  box-shadow: var(--shadow-1);
 }
 .row { display: flex; align-items: center; }
 .between { justify-content: space-between; }
@@ -34,9 +79,9 @@ view, text, scroll-view { box-sizing: border-box; }
 .col { display: flex; flex-direction: column; }
 
 /* 文本 */
-.t1 { color: var(--t1); }
-.t2 { color: var(--t2); }
-.t3 { color: var(--t3); }
+.t1 { color: var(--text-1); }
+.t2 { color: var(--text-2); }
+.t3 { color: var(--text-3); }
 .bold { font-weight: 600; }
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ellipsis-2 {
@@ -45,39 +90,39 @@ view, text, scroll-view { box-sizing: border-box; }
 }
 
 /* 价格 */
-.price { color: var(--red); font-weight: 700; }
+.price { color: var(--price); font-weight: 700; }
 .price .symbol { font-size: 22rpx; }
 .price-lg { font-size: 40rpx; }
 
 /* 标签 */
 .tag {
-  display: inline-block; font-size: 20rpx; color: var(--t2);
-  background: #F0F1F4; border-radius: 8rpx; padding: 4rpx 12rpx; margin-right: 10rpx;
+  display: inline-block; font-size: 20rpx; color: var(--text-2);
+  background: var(--border-subtle); border-radius: 8rpx; padding: 4rpx 12rpx; margin-right: 10rpx;
 }
-.tag-yellow { color: #7A5A00; background: var(--xy-light); }
-.tag-green { color: var(--green); background: #EAF6EE; }
-.tag-red { color: var(--red); background: #FFECEC; }
+.tag-yellow { color: var(--primary-ink); background: var(--primary-soft); }
+.tag-green { color: var(--success); background: var(--success-bg); }
+.tag-red { color: var(--danger-strong); background: var(--danger-bg); }
 
 /* 按钮 */
 .btn {
   display: flex; align-items: center; justify-content: center;
   height: 88rpx; border-radius: 44rpx; font-size: 30rpx; font-weight: 600;
-  background: linear-gradient(135deg, var(--xy), var(--xy-deep));
-  color: #5A4000; border: none;
+  background: linear-gradient(135deg, var(--primary-400), var(--primary));
+  color: var(--primary-ink); border: none;
 }
 .btn::after { border: none; }
 .btn-block { width: 100%; }
-.btn-ghost { background: #fff; color: var(--t1); border: 2rpx solid #E5E7EB; }
-.btn-red { background: linear-gradient(135deg, var(--red), var(--red-dark)); color: #fff; }
+.btn-ghost { background: var(--surface); color: var(--text-1); border: 2rpx solid var(--border); }
+.btn-red { background: linear-gradient(135deg, var(--danger-strong), var(--red-dark)); color: var(--surface); }
 .btn-sm { height: 60rpx; font-size: 24rpx; border-radius: 30rpx; padding: 0 28rpx; display: inline-flex; }
 
 /* 空态 */
-.empty { padding: 120rpx 0; text-align: center; color: var(--t3); }
+.empty { padding: 120rpx 0; text-align: center; color: var(--text-3); }
 .empty .icon { font-size: 96rpx; }
-.empty .tip { margin-top: 20rpx; font-size: 26rpx; }
+.empty .tip { margin-top: var(--sp-3); font-size: 26rpx; }
 
 /* 骨架占位 */
-.skeleton { background: linear-gradient(90deg,#eee,#f5f5f5,#eee); border-radius: 8rpx; }
+.skeleton { background: linear-gradient(90deg, var(--border-subtle), var(--surface-subtle), var(--border-subtle)); border-radius: 8rpx; }
 
 /* 状态条 */
-.status-bar { padding: 16rpx 28rpx; font-size: 24rpx; }
+.status-bar { padding: var(--sp-2) var(--sp-4); font-size: 24rpx; }

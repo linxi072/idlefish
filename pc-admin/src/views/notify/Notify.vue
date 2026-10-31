@@ -23,7 +23,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div style="margin-top:12px;color:#909399">共 {{ total }} 条</div>
+      <div style="margin-top:12px;color:var(--text-3)">共 {{ total }} 条</div>
     </el-card>
   </div>
 </template>

@@ -1,28 +1,26 @@
 <template>
-
   <div>
     <page-header title="订单管理" />
     <el-card shadow="never">
-      <el-form inline class="filter-bar">
-        <el-form-item label="关键词"><el-input v-model="keyword" placeholder="订单号/商品标题" clearable style="width:220px"></el-input></el-form-item>
+      <FilterBar :loading="loading" @search="load" @reset="reset">
+        <el-form-item label="关键词">
+          <el-input v-model="keyword" placeholder="订单号/商品标题" clearable style="width:220px" />
+        </el-form-item>
         <el-form-item label="订单状态">
           <el-select v-model="statusFilter" placeholder="全部" clearable style="width:150px">
-            <el-option v-for="(t,k) in {'pending_pay':'待支付','paid':'已支付','pending_ship':'待发货','shipping':'待收货','completed':'已完成','closed':'已关闭','refunding':'退款中'}" :key="k" :label="t" :value="k"></el-option>
+            <el-option v-for="(v,k) in ORDER_STATUS" :key="k" :label="v.text" :value="k"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="load">查询</el-button>
-          <el-button @click="reset">重置</el-button>
-        </el-form-item>
-      </el-form>
+      </FilterBar>
 
       <el-table :data="list" v-loading="loading" border stripe :max-height="560">
+        <template #empty><EmptyState text="暂无订单" desc="调整筛选条件后重试" /></template>
         <el-table-column label="订单号" prop="orderNo" width="180"></el-table-column>
         <el-table-column label="商品" prop="title" min-width="160"></el-table-column>
         <el-table-column label="买家" width="100"><template #default="{row}">{{ row.buyerId || '-' }}</template></el-table-column>
         <el-table-column label="卖家" width="100"><template #default="{row}">{{ row.sellerId || '-' }}</template></el-table-column>
         <el-table-column label="金额" width="100" align="right"><template #default="{row}">{{ yuan(row.amount) }}</template></el-table-column>
-        <el-table-column label="状态" width="110"><template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusText(row.status) }}</el-tag></template></el-table-column>
+        <el-table-column label="状态" width="110"><template #default="{row}"><StatusTag :value="row.status" :map="ORDER_STATUS" /></template></el-table-column>
         <el-table-column label="下单时间" prop="createdAt" width="160"></el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{row}">
@@ -32,10 +30,8 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-pagination class="page-bar" layout="total, sizes, prev, pager, next, jumper"
-        :total="total" :page-size="size" :current-page="page" :page-sizes="[10,20,50,100]"
-        @current-change="p=>{page=p;load()}" @size-change="s=>{size=s;page=1;load()}">
-      </el-pagination>
+
+      <PageBar :total="total" :page="page" :size="size" @change="onPageChange" />
     </el-card>
 
     <el-dialog v-model="detailVisible" title="订单详情" width="520px">
@@ -44,7 +40,7 @@
         <el-descriptions-item label="商品">{{ detailRow.title }}</el-descriptions-item>
         <el-descriptions-item label="买卖双方">{{ detailRow.buyerId }} → {{ detailRow.sellerId }}</el-descriptions-item>
         <el-descriptions-item label="金额">{{ yuan(detailRow.amount) }}</el-descriptions-item>
-        <el-descriptions-item label="状态"><el-tag :type="statusTag(detailRow.status)">{{ statusText(detailRow.status) }}</el-tag></el-descriptions-item>
+        <el-descriptions-item label="状态"><StatusTag :value="detailRow.status" :map="ORDER_STATUS" /></el-descriptions-item>
         <el-descriptions-item label="物流单号" v-if="detailRow.logisticsNo && !logistics">{{ detailRow.logisticsNo }}</el-descriptions-item>
       </el-descriptions>
       <div v-if="logistics" class="lg-block">
@@ -85,23 +81,18 @@
 <script>
 import { adminApi } from '@/api';
 import { formatMixin, notifyError } from '@/utils/format';
-// pc-admin/src/views/orders.js —— 订单管理（含发货 / 退款处理）
-
-const STATUS = {
-  pending_pay: '待支付', paid: '已支付', pending_ship: '待发货',
-  shipping: '待收货', completed: '已完成', closed: '已关闭', refunding: '退款中'
-};
-const TAG = {
-  pending_pay: 'info', paid: 'warning', pending_ship: 'warning',
-  shipping: 'primary', completed: 'success', closed: 'info', refunding: 'danger'
-};
-
+import { ORDER_STATUS } from '@/utils/status';
+// pc-admin/src/views/trade/Orders.vue —— 订单管理（含发货 / 退款处理）
 
 export default {
   name: 'Orders',
   mixins: [formatMixin],
   data() {
-    return { list: [], total: 0, loading: false, keyword: '', statusFilter: '', page: 1, size: 20, detailRow: null, logistics: null, shipVisible: false, shipForm: { company: '', logisticNo: '' } };
+    return {
+      list: [], total: 0, loading: false, keyword: '', statusFilter: '', page: 1, size: 20,
+      detailRow: null, logistics: null, shipVisible: false, shipForm: { company: '', logisticNo: '' },
+      ORDER_STATUS
+    };
   },
   computed: {
     // 详情弹窗可见：详情行存在 且 发货弹窗未打开（发货弹窗为详情的子模式）
@@ -113,16 +104,17 @@ export default {
   mounted() { this.load(); },
   methods: {
     reset() { this.keyword = ''; this.statusFilter = ''; this.page = 1; this.load(); },
+    // PageBar 统一事件：切页/改每页条数后重新拉取
+    onPageChange({ page, size }) { this.page = page; this.size = size; this.load(); },
     async load() {
       this.loading = true;
       try {
         const r = await adminApi.orders({ keyword: this.keyword, status: this.statusFilter, page: this.page, size: this.size });
         this.list = r.list || [];
         this.total = r.total;
-      } finally { this.loading = false; }
+      } catch (e) { notifyError(this, e, '加载订单失败'); }
+      finally { this.loading = false; }
     },
-    statusText(c) { return STATUS[c] || c; },
-    statusTag(c) { return TAG[c] || 'info'; },
     view(row) { this.detailRow = row; this.loadLogistics(row); },
     async loadLogistics(row) {
       this.logistics = null;

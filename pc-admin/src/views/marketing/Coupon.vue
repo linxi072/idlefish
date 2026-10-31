@@ -20,7 +20,7 @@
           <template #default="{row}">
             <el-progress :percentage="row.total ? Math.min(100, Math.round(row.claimed / row.total * 100)) : 0"
               :stroke-width="10"></el-progress>
-            <div style="font-size:12px;color:#909399">{{ row.claimed }} / {{ row.total }}</div>
+            <div style="font-size:12px;color:var(--text-3)">{{ row.claimed }} / {{ row.total }}</div>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100">
@@ -34,11 +34,11 @@
             <el-button size="small" v-if="row.status !== 'ACTIVE'" type="success" plain @click="setStatus(row,'ACTIVE')">启用</el-button>
             <el-button size="small" v-if="row.status === 'ACTIVE'" type="warning" plain @click="setStatus(row,'PAUSED')">暂停</el-button>
             <el-button size="small" v-if="row.status !== 'ENDED'" type="danger" plain @click="setStatus(row,'ENDED')">结束</el-button>
-            <span v-if="row.status === 'ENDED'" style="font-size:12px;color:#909399">已结束</span>
+            <span v-if="row.status === 'ENDED'" style="font-size:12px;color:var(--text-3)">已结束</span>
           </template>
         </el-table-column>
       </el-table>
-      <div style="margin-top:12px;color:#909399">共 {{ total }} 张优惠券</div>
+      <div style="margin-top:12px;color:var(--text-3)">共 {{ total }} 张优惠券</div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" title="新建优惠券" width="560px">

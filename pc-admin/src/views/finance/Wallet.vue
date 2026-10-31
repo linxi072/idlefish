@@ -36,7 +36,7 @@
               </template>
             </el-table-column>
           </el-table>
-          <div style="margin-top:12px;color:#909399">共 {{ filteredWd.length }} 条；已处理的申请不可重复审批。</div>
+          <div style="margin-top:12px;color:var(--text-3)">共 {{ filteredWd.length }} 条；已处理的申请不可重复审批。</div>
         </el-card>
       </el-tab-pane>
 

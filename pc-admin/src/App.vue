@@ -29,6 +29,15 @@
           </el-breadcrumb>
         </div>
         <div class="tb-right">
+          <el-button
+            text
+            class="theme-toggle"
+            :aria-label="dark ? '切换到亮色主题' : '切换到暗色主题'"
+            :title="dark ? '切换到亮色主题' : '切换到暗色主题'"
+            @click="toggleTheme"
+          >
+            <el-icon><Sunny v-if="dark" /><Moon v-else /></el-icon>
+          </el-button>
           <el-badge :value="bellUnread" :hidden="!bellUnread" :max="99" class="bell">
             <el-button text @click="go('notify')"><el-icon><Bell /></el-icon></el-button>
           </el-badge>
@@ -48,6 +57,7 @@
 <script>
 import Login from '@/views/auth/Login.vue';
 import { notifyApi, adminApi, getToken, clearToken } from '@/api';
+import { applyTheme, isDarkTheme } from '@/utils/theme';
 
 export default {
   name: 'App',
@@ -55,6 +65,8 @@ export default {
   data() {
     return {
       loggedIn: !!getToken(),
+      // 主题由 main.js 在挂载前初始化，这里只读取当前态用于图标切换
+      dark: isDarkTheme(),
       user: null,
       bellUnread: 0,
       collapsed: false,
@@ -119,6 +131,11 @@ export default {
     }
   },
   methods: {
+    // 亮/暗主题切换：令牌层已就绪，切换只改 html 上的 class，无需重建页面
+    toggleTheme() {
+      this.dark = !this.dark;
+      applyTheme(this.dark, true);
+    },
     onLoggedIn(u) { this.user = u; this.loggedIn = true; this.refreshBell(); },
     logout() {
       clearToken();

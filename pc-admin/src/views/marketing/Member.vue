@@ -108,6 +108,7 @@
 <script>
 import { memberApi, toCsv, downloadCsv } from '@/api';
 import { formatMixin, notifyError } from '@/utils/format';
+import { DEFAULT_LEVEL_COLOR } from '@/utils/theme';
 // pc-admin/src/views/member.js —— 会员等级与权益（F-13.2）
 // 运营后台：等级配置（成长值阈值 + 权益）增删改 + 会员成长概览 + 权益说明
 // 真实接口见 AdminMemberLevelController /api/admin/member/level/*
@@ -129,7 +130,7 @@ export default {
       growthSize: 20,
       dialogVisible: false,
       editing: null,
-      form: { levelCode: '', levelName: '', minGrowth: 0, freeShipping: 0, priorityReview: 0, commissionDiscount: 0, icon: '', color: '#9e9e9e' },
+      form: { levelCode: '', levelName: '', minGrowth: 0, freeShipping: 0, priorityReview: 0, commissionDiscount: 0, icon: '', color: DEFAULT_LEVEL_COLOR },
       saving: false
     };
   },
@@ -168,11 +169,11 @@ export default {
           id: tier.id, levelCode: tier.levelCode, levelName: tier.levelName,
           minGrowth: tier.minGrowth, freeShipping: tier.freeShipping ? 1 : 0,
           priorityReview: tier.priorityReview ? 1 : 0, commissionDiscount: tier.commissionDiscount || 0,
-          icon: tier.icon || '', color: tier.color || '#9e9e9e'
+          icon: tier.icon || '', color: tier.color || DEFAULT_LEVEL_COLOR
         };
       } else {
         this.editing = null;
-        this.form = { levelCode: '', levelName: '', minGrowth: 0, freeShipping: 0, priorityReview: 0, commissionDiscount: 0, icon: '🏅', color: '#9e9e9e' };
+        this.form = { levelCode: '', levelName: '', minGrowth: 0, freeShipping: 0, priorityReview: 0, commissionDiscount: 0, icon: '🏅', color: DEFAULT_LEVEL_COLOR };
       }
       this.dialogVisible = true;
     },

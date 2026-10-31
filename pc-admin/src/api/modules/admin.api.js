@@ -1,6 +1,15 @@
 import { USE_MOCK, req, pageTo } from '@/api/core';
 import mock from '@/mock';
 
+// ITER-U03 批量操作 mock：返回与 BatchResultVO 同形状的结果，便于无后端演示
+function mockBatchResult(ids) {
+  const list = (ids || []).map((id) => ({ targetId: String(id), outcome: 'SUCCESS', reason: 'mock 批量成功' }));
+  return {
+    total: list.length, success: list.length, skipped: 0, failed: 0,
+    items: list, failedIds: [], auditLogId: null
+  };
+}
+
 export const adminApi = {
   login: (username, password) => USE_MOCK
     ? Promise.resolve({ token: 'admin-mock-token', user: { username, role: 'admin' } })
@@ -114,5 +123,19 @@ export const adminApi = {
   riskRules: () => USE_MOCK ? Promise.resolve(mock.riskRules.slice())
     : req('GET', '/api/admin/risk/rules'),
   saveRiskRules: (rules) => USE_MOCK ? Promise.resolve({ ok: true })
-    : req('PUT', '/api/admin/risk/rules', rules)
+    : req('PUT', '/api/admin/risk/rules', rules),
+
+  // ===== ITER-U03 后台批量操作 =====
+  // 批量商品审核影响面预览（二次确认数据来源：勾选/存在/待处理/已通过/已驳回）
+  batchPreviewItems: (ids, pass) => USE_MOCK
+    ? Promise.resolve({ selected: ids.length, existing: ids.length, actionable: ids.length, alreadyPass: 0, alreadyReject: 0 })
+    : req('POST', '/api/admin/batch/items/preview', { ids, pass }),
+  // 批量商品审核：pass=true 通过 / false 驳回（驳回原因由服务端强校验）
+  batchAudit: (ids, pass, reason) => USE_MOCK
+    ? Promise.resolve(mockBatchResult(ids))
+    : req('POST', '/api/admin/batch/items/audit', { ids, pass, reason }),
+  // 批量封禁/解封：status 0 正常 / 1 封禁；高风险须 confirmed=true
+  batchBan: (ids, status, confirmed) => USE_MOCK
+    ? Promise.resolve(mockBatchResult(ids))
+    : req('POST', '/api/admin/batch/users/ban', { ids, status, confirmed })
 };
