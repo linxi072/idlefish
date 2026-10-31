@@ -6,40 +6,33 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.idlefish.trade.common.IdlefishProperties;
 import com.idlefish.trade.common.observability.MetricsRegistry;
-import com.idlefish.trade.common.util.DateTimeUtil;
 import com.idlefish.trade.member.GrowthAntiFraud;
 import com.idlefish.trade.member.GrowthValueCalculator;
-import com.idlefish.trade.member.MemberLevelCalculator;
 import com.idlefish.trade.member.entity.GrowthValueLog;
 import com.idlefish.trade.member.entity.MemberLevel;
 import com.idlefish.trade.member.entity.UserGrowth;
 import com.idlefish.trade.member.mapper.GrowthValueLogMapper;
 import com.idlefish.trade.member.mapper.MemberLevelMapper;
 import com.idlefish.trade.member.mapper.UserGrowthMapper;
+import com.idlefish.trade.risk.mapper.DeviceFingerprintMapper;
 import com.idlefish.trade.user.mapper.UserMapper;
 import com.idlefish.trade.member.vo.GrowthAccountAdminVO;
 import com.idlefish.trade.member.vo.GrowthAccountVO;
 import com.idlefish.trade.member.vo.GrowthValueLogVO;
 import com.idlefish.trade.notify.enums.NotificationType;
 import com.idlefish.trade.notify.service.NotificationService;
-import com.idlefish.trade.risk.entity.DeviceFingerprint;
-import com.idlefish.trade.risk.mapper.DeviceFingerprintMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 成长值服务（ITER-F07 / PRD-P2-F07）：多维累计、刷分冻结、判责扣减、退款冲正与全量流水。
  * <p>
- * <b>与 F-13.2 {@link MemberLevelService} 的关系</b>：后者负责等级配置 CRUD 与用户端等级视图；
+ * <b>与 F-13.2 {@link com.idlefish.trade.member.service.MemberLevelService} 的关系</b>：后者负责等级配置 CRUD 与用户端等级视图；
  * 本服务负责成长值的「写入侧」（累计 / 扣减 / 冲正 / 冻结 / 流水），等级解析复用
- * {@link MemberLevelCalculator} 与 {@code t_member_level} 配置，避免两套等级口径。
+ * {@code MemberLevelCalculator} 与 {@code t_member_level} 配置，避免两套等级口径。
  * </p>
  * <p><b>可靠性设计</b>：</p>
  * <ul>
@@ -49,6 +42,8 @@ import java.util.stream.Collectors;
  *   <li>best-effort：所有入口均不抛业务异常阻断交易 / 评价 / 验货 / 维权主流程，异常仅记日志与指标。</li>
  * </ul>
  * <p>纯计算见 {@link GrowthValueCalculator} 与 {@link GrowthAntiFraud}（无副作用，离线单测覆盖）。</p>
+ * <p><b>代码结构（超长类拆分）</b>：视图映射外提至 {@link GrowthValueViews}（纯函数）；数据访问外提至
+ * {@link GrowthValueStore}（内部协作对象），本类聚焦「编排 + 指标 + 通知」，保持公开 API 与构造签名不变。</p>
  */
 @Service
 public class GrowthValueService {
@@ -74,16 +69,14 @@ public class GrowthValueService {
     public static final String BIZ_RESTORE_DISPUTE = "RESTORE_DISPUTE";
 
     private static final int MAX_RETRY = 3;
-    private static final String DEFAULT_LEVEL = "L1";
 
     private final UserGrowthMapper userGrowthMapper;
     private final UserMapper userMapper;
     private final GrowthValueLogMapper growthValueLogMapper;
-    private final MemberLevelMapper memberLevelMapper;
-    private final DeviceFingerprintMapper deviceFingerprintMapper;
     private final NotificationService notificationService;
     private final MetricsRegistry metrics;
     private final IdlefishProperties.Growth growth;
+    private final GrowthValueStore store;
 
     public GrowthValueService(UserGrowthMapper userGrowthMapper,
                               UserMapper userMapper,
@@ -96,11 +89,11 @@ public class GrowthValueService {
         this.userGrowthMapper = userGrowthMapper;
         this.userMapper = userMapper;
         this.growthValueLogMapper = growthValueLogMapper;
-        this.memberLevelMapper = memberLevelMapper;
-        this.deviceFingerprintMapper = deviceFingerprintMapper;
         this.notificationService = notificationService;
         this.metrics = metrics;
         this.growth = idlefishProperties.getGrowth();
+        this.store = new GrowthValueStore(userGrowthMapper, growthValueLogMapper, memberLevelMapper,
+                deviceFingerprintMapper, this.growth);
     }
 
     // ===== 对外：多维累计（REQ-02）=====
@@ -171,21 +164,21 @@ public class GrowthValueService {
         if (!growth.isEnabled() || userId == null || disputeNo == null || disputeNo.isBlank() || amount <= 0) {
             return 0;
         }
-        if (alreadyLogged(userId, BIZ_DEDUCT_DISPUTE, disputeNo)) {
+        if (store.alreadyLogged(userId, BIZ_DEDUCT_DISPUTE, disputeNo)) {
             return 0;
         }
-        UserGrowth g = ensure(userId);
-        int before = valueOf(g);
+        UserGrowth g = store.ensure(userId);
+        int before = GrowthValueViews.valueOf(g);
         int after = GrowthValueCalculator.penalty(before, amount, growth.getDisputePenaltyCap());
         int actual = before - after;
         if (actual <= 0) {
             return 0;
         }
-        if (!casUpdate(g.getId(), before, after, 0)) {
+        if (!store.casUpdate(g.getId(), before, after, 0)) {
             return 0;
         }
-        writeLog(userId, BIZ_DEDUCT_DISPUTE, disputeNo, -actual, before, after, g.getLevelCode(),
-                "维权判责扣减成长值：" + safe(remark));
+        store.writeLog(userId, BIZ_DEDUCT_DISPUTE, disputeNo, -actual, before, after, g.getLevelCode(),
+                "维权判责扣减成长值：" + GrowthValueViews.safe(remark));
         applyLevel(userId, after);
         metrics.increment("growth.deduct.dispute");
         notify(userId, NotificationType.SYSTEM_ALERT, "成长值扣减",
@@ -199,11 +192,11 @@ public class GrowthValueService {
         if (!growth.isEnabled() || userId == null || disputeNo == null || disputeNo.isBlank() || amount <= 0) {
             return 0;
         }
-        if (alreadyLogged(userId, BIZ_RESTORE_DISPUTE, disputeNo)) {
+        if (store.alreadyLogged(userId, BIZ_RESTORE_DISPUTE, disputeNo)) {
             return 0;
         }
         return earn(userId, BIZ_RESTORE_DISPUTE, disputeNo, amount, 0L,
-                "申诉成功回补成长值：" + safe(remark), false);
+                "申诉成功回补成长值：" + GrowthValueViews.safe(remark), false);
     }
 
     /**
@@ -215,7 +208,7 @@ public class GrowthValueService {
         if (!growth.isEnabled() || userId == null || disputeNo == null || disputeNo.isBlank()) {
             return 0;
         }
-        if (alreadyLogged(userId, BIZ_RESTORE_DISPUTE, disputeNo)) {
+        if (store.alreadyLogged(userId, BIZ_RESTORE_DISPUTE, disputeNo)) {
             return 0;
         }
         long deducted = growthValueLogMapper.sumAbsDeltaByBiz(userId, BIZ_DEDUCT_DISPUTE, disputeNo);
@@ -242,7 +235,7 @@ public class GrowthValueService {
             if (lg.getDelta() == null || lg.getDelta() <= 0) {
                 continue;
             }
-            if (alreadyLogged(lg.getUserId(), BIZ_DEDUCT_REVERSE, orderNo)) {
+            if (store.alreadyLogged(lg.getUserId(), BIZ_DEDUCT_REVERSE, orderNo)) {
                 continue;
             }
             deductInternal(lg.getUserId(), BIZ_DEDUCT_REVERSE, orderNo, lg.getDelta(), "退款冲正成长值");
@@ -256,7 +249,7 @@ public class GrowthValueService {
         if (userId == null) {
             return null;
         }
-        return ensure(userId);
+        return store.ensure(userId);
     }
 
     /** 成长值流水（分页，倒序）——REQ-09 可对账。 */
@@ -276,7 +269,7 @@ public class GrowthValueService {
             q.eq(GrowthValueLog::getBizType, bizType);
         }
         IPage<GrowthValueLog> r = growthValueLogMapper.selectPage(p, q);
-        return r.convert(this::toVO);
+        return r.convert(GrowthValueViews::toVO);
     }
 
     /**
@@ -288,8 +281,8 @@ public class GrowthValueService {
         if (userId == null) {
             return null;
         }
-        UserGrowth g = ensure(userId);
-        return toAccountVO(g, true);
+        UserGrowth g = store.ensure(userId);
+        return GrowthValueViews.toAccountVO(g, store.tiers(), growth, true);
     }
 
     /**
@@ -311,12 +304,12 @@ public class GrowthValueService {
             empty.setRuleVersion(growth.getRuleVersion());
             return empty;
         }
-        return toAccountVO(g, false);
+        return GrowthValueViews.toAccountVO(g, store.tiers(), growth, false);
     }
 
     /**
      * 存量用户初始化（PRD §12.4 遗留项②）：为尚未建立成长值账户的存量用户批量创建
-     * 默认 L1 / 0 成长值账户。幂等 best-effort——复用 {@link #ensure} 的惰性创建逻辑，
+     * 默认 L1 / 0 成长值账户。幂等 best-effort——复用 {@link #store} 的惰性创建逻辑，
      * 唯一索引兜底不会产生重复账户；单条失败不影响其余。
      *
      * @param limit 单次最多初始化用户数（防止超大事务，后台分页调用）
@@ -334,7 +327,7 @@ public class GrowthValueService {
         int count = 0;
         for (Long userId : ids) {
             try {
-                UserGrowth created = ensure(userId);
+                UserGrowth created = store.ensure(userId);
                 if (created != null) {
                     count++;
                 }
@@ -361,9 +354,9 @@ public class GrowthValueService {
         }
         q.orderByDesc(UserGrowth::getUpdatedAt);
         IPage<UserGrowth> r = userGrowthMapper.selectPage(p, q);
-        List<MemberLevel> tiers = tiers();
+        List<MemberLevel> tiers = store.tiers();
         List<GrowthAccountAdminVO> list = r.getRecords().stream()
-                .map(g -> toAdminVO(g, tiers))
+                .map(g -> GrowthValueViews.toAdminVO(g, tiers, growth))
                 .toList();
         IPage<GrowthAccountAdminVO> out = new Page<>(r.getCurrent(), r.getSize(), r.getTotal());
         out.setRecords(list);
@@ -382,20 +375,7 @@ public class GrowthValueService {
         if (g == null) {
             return;
         }
-        applyLevel(userId, valueOf(g));
-    }
-
-    /** 账户距最后活跃的天数（REQ-05 时间基准）：lastActiveAt 为空回退 createdAt。 */
-    public long inactiveDaysOf(UserGrowth g) {
-        if (g == null) {
-            return 0;
-        }
-        LocalDateTime last = g.getLastActiveAt() != null ? g.getLastActiveAt() : g.getCreatedAt();
-        if (last == null) {
-            return 0;
-        }
-        long days = java.time.temporal.ChronoUnit.DAYS.between(last, LocalDateTime.now());
-        return Math.max(0, days);
+        applyLevel(userId, GrowthValueViews.valueOf(g));
     }
 
     /** 冻结发放通道（REQ-03）：命中刷分或账号封禁时调用；解冻不回补已跳过的成长值。 */
@@ -404,7 +384,7 @@ public class GrowthValueService {
         if (userId == null) {
             return false;
         }
-        UserGrowth g = ensure(userId);
+        UserGrowth g = store.ensure(userId);
         if (g.isFrozen()) {
             return false;
         }
@@ -414,7 +394,7 @@ public class GrowthValueService {
         if (rows > 0) {
             metrics.increment("growth.freeze");
             notify(userId, NotificationType.SYSTEM_ALERT, "成长值通道已冻结",
-                    "因" + safe(reason) + "，成长值发放通道已冻结");
+                    "因" + GrowthValueViews.safe(reason) + "，成长值发放通道已冻结");
         }
         return rows > 0;
     }
@@ -425,7 +405,7 @@ public class GrowthValueService {
         if (userId == null) {
             return false;
         }
-        UserGrowth g = ensure(userId);
+        UserGrowth g = store.ensure(userId);
         if (!g.isFrozen()) {
             return false;
         }
@@ -440,7 +420,7 @@ public class GrowthValueService {
         if (userId == null) {
             return false;
         }
-        UserGrowth g = ensure(userId);
+        UserGrowth g = store.ensure(userId);
         return userGrowthMapper.update(null, new LambdaUpdateWrapper<UserGrowth>()
                 .eq(UserGrowth::getId, g.getId())
                 .set(UserGrowth::getLastActiveAt, LocalDateTime.now())) > 0;
@@ -464,18 +444,18 @@ public class GrowthValueService {
             return false;
         }
         try {
-            if (alreadyLogged(userId, BIZ_DECAY, dateBizId)) {
+            if (store.alreadyLogged(userId, BIZ_DECAY, dateBizId)) {
                 return false;
             }
             UserGrowth g = userGrowthMapper.selectOne(new LambdaQueryWrapper<UserGrowth>()
                     .eq(UserGrowth::getUserId, userId));
-            if (g == null || valueOf(g) != expected) {
+            if (g == null || GrowthValueViews.valueOf(g) != expected) {
                 return false;
             }
-            if (!decayCas(g.getId(), expected, target)) {
+            if (!store.decayCas(g.getId(), expected, target)) {
                 return false;
             }
-            writeLog(userId, BIZ_DECAY, dateBizId, target - expected, expected, target, null,
+            store.writeLog(userId, BIZ_DECAY, dateBizId, target - expected, expected, target, null,
                     remark == null ? "不活跃衰减" : remark);
             recomputeLevel(userId);
             metrics.increment("growth.decay");
@@ -501,14 +481,17 @@ public class GrowthValueService {
 
     /** 等级配置（按阈值升序），供控制器与降级计算复用。 */
     public List<MemberLevel> tiers() {
-        List<MemberLevel> all = memberLevelMapper.selectList(null);
-        all.sort(Comparator.comparingInt(t -> t.getMinGrowth() == null ? 0 : t.getMinGrowth()));
-        return all;
+        return store.tiers();
     }
 
     /** 暴露配置（前端展示规则说明）。 */
     public IdlefishProperties.Growth getConfig() {
         return growth;
+    }
+
+    /** 账户距最后活跃的天数（REQ-05 时间基准）：lastActiveAt 为空回退 createdAt。 */
+    public long inactiveDaysOf(UserGrowth g) {
+        return GrowthValueViews.inactiveDaysOf(g);
     }
 
     // ===== 内部：统一发放入口 =====
@@ -530,24 +513,23 @@ public class GrowthValueService {
             return 0;
         }
         try {
-            UserGrowth g = ensure(userId);
-            int before = valueOf(g);
+            UserGrowth g = store.ensure(userId);
+            int before = GrowthValueViews.valueOf(g);
 
             // 1) 发放通道冻结：fail-closed，留 0 增量流水（REQ-03 / REQ-09）
             if (g.isFrozen()) {
-                writeLog(userId, bizType, bizId, 0, before, before, g.getLevelCode(), "FROZEN_SKIP");
+                store.writeLog(userId, bizType, bizId, 0, before, before, g.getLevelCode(), "FROZEN_SKIP");
                 metrics.increment("growth.earn.frozen");
                 return 0;
             }
             // 2) 刷分识别（REQ-03）
             if (antiFraud) {
-                GrowthAntiFraud.Decision d = GrowthAntiFraud.evaluate(
-                        buildAntiFraudInput(userId, amountFen));
+                GrowthAntiFraud.Decision d = GrowthAntiFraud.evaluate(store.buildAntiFraudInput(userId, amountFen));
                 if (d.blocked()) {
                     if (d.freeze()) {
                         freeze(userId, "疑似刷分（" + d.ruleCodesText() + "）");
                     }
-                    writeLog(userId, bizType, bizId, 0, before, before, g.getLevelCode(),
+                    store.writeLog(userId, bizType, bizId, 0, before, before, g.getLevelCode(),
                             "ANTIFRAUD_BLOCKED:" + d.ruleCodesText());
                     metrics.increment("growth.antifraud.block");
                     notify(userId, NotificationType.SYSTEM_ALERT, "成长值发放受限",
@@ -556,7 +538,7 @@ public class GrowthValueService {
                 }
             }
             // 3) 幂等：同一来源 + 关联单号只发一次（唯一索引兜底前的预检）
-            if (alreadyLogged(userId, bizType, bizId)) {
+            if (store.alreadyLogged(userId, bizType, bizId)) {
                 return 0;
             }
             // 4) CAS 累计（有限重试防并发丢失更新）
@@ -568,9 +550,9 @@ public class GrowthValueService {
                 if (fresh == null) {
                     return 0;
                 }
-                int cur = valueOf(fresh);
+                int cur = GrowthValueViews.valueOf(fresh);
                 int target = GrowthValueCalculator.applyDelta(cur, delta, 0);
-                ok = casUpdate(fresh.getId(), cur, target, delta);
+                ok = store.casUpdate(fresh.getId(), cur, target, delta);
                 after = target;
             }
             if (!ok) {
@@ -578,7 +560,7 @@ public class GrowthValueService {
                 return 0;
             }
             // 5) 流水 + 等级重算
-            writeLog(userId, bizType, bizId, delta, before, after, null, remark);
+            store.writeLog(userId, bizType, bizId, delta, before, after, null, remark);
             applyLevel(userId, after);
             metrics.increment("growth.earn." + bizType.toLowerCase(java.util.Locale.ROOT));
             notify(userId, NotificationType.GROWTH_EARNED, "成长值到账",
@@ -594,8 +576,8 @@ public class GrowthValueService {
     /** 扣减内部实现（判责扣减 / 冲正共用）：带 CAS 与流水，不阻塞主流程。 */
     private int deductInternal(Long userId, String bizType, String bizId, int amount, String remark) {
         try {
-            UserGrowth g = ensure(userId);
-            int before = valueOf(g);
+            UserGrowth g = store.ensure(userId);
+            int before = GrowthValueViews.valueOf(g);
             int after = GrowthValueCalculator.penalty(before, amount, 0);
             int actual = before - after;
             if (actual <= 0) {
@@ -608,16 +590,16 @@ public class GrowthValueService {
                 if (fresh == null) {
                     return 0;
                 }
-                int cur = valueOf(fresh);
+                int cur = GrowthValueViews.valueOf(fresh);
                 int target = GrowthValueCalculator.penalty(cur, amount, 0);
-                ok = casUpdate(fresh.getId(), cur, target, 0);
+                ok = store.casUpdate(fresh.getId(), cur, target, 0);
                 after = target;
                 actual = cur - target;
             }
             if (!ok) {
                 return 0;
             }
-            writeLog(userId, bizType, bizId, -actual, before, after, null, remark);
+            store.writeLog(userId, bizType, bizId, -actual, before, after, null, remark);
             applyLevel(userId, after);
             metrics.increment("growth.deduct." + bizType.toLowerCase(java.util.Locale.ROOT));
             return actual;
@@ -634,7 +616,7 @@ public class GrowthValueService {
      * 并区分升级 / 降级埋点与通知。跨级（一次跳多级）由 resolveLevelCode 直接落到目标级，
      * 进度与通知以最终等级为准。
      */
-    private void applyLevel(Long userId, int growth) {
+    private void applyLevel(Long userId, int growthVal) {
         try {
             UserGrowth g = userGrowthMapper.selectOne(new LambdaQueryWrapper<UserGrowth>()
                     .eq(UserGrowth::getUserId, userId));
@@ -642,8 +624,8 @@ public class GrowthValueService {
                 return;
             }
             String before = g.getLevelCode();
-            String after = GrowthValueCalculator.resolveLevelCode(tiers(), growth,
-                    before == null ? DEFAULT_LEVEL : before);
+            String after = GrowthValueCalculator.resolveLevelCode(tiers(), growthVal,
+                    before == null ? GrowthValueStore.DEFAULT_LEVEL : before);
             if (!GrowthValueCalculator.levelChanged(before, after)) {
                 return;
             }
@@ -688,139 +670,7 @@ public class GrowthValueService {
                 .orElse(Integer.MIN_VALUE);
     }
 
-    // ===== 内部：防刷输入装配 =====
-
-    /**
-     * 装配防刷输入：关联账户数（同设备其他账号，排除自身）+ 窗口内发放次数 + 本次金额。
-     */
-    private GrowthAntiFraud.Input buildAntiFraudInput(Long userId, long amountFen) {
-        int linked = countLinkedAccounts(userId);
-        int earnCount = countEarnInWindow(userId);
-        return new GrowthAntiFraud.Input(linked, growth.getMaxLinkedAccounts(),
-                earnCount, growth.getMaxEarnInWindow(), amountFen, growth.getMinAmountFen(), false);
-    }
-
-    /** 同一设备绑定的其他账号数（排除自身）；无设备指纹时按 1（仅自己）处理。 */
-    private int countLinkedAccounts(Long userId) {
-        List<DeviceFingerprint> mine = deviceFingerprintMapper.selectList(new LambdaQueryWrapper<DeviceFingerprint>()
-                .eq(DeviceFingerprint::getUserId, userId));
-        if (mine.isEmpty()) {
-            return 0;
-        }
-        Set<String> deviceIds = mine.stream()
-                .map(DeviceFingerprint::getDeviceId)
-                .filter(Objects::nonNull)
-                .filter(s -> !s.isBlank())
-                .collect(Collectors.toSet());
-        if (deviceIds.isEmpty()) {
-            return 0;
-        }
-        List<DeviceFingerprint> same = deviceFingerprintMapper.selectList(new LambdaQueryWrapper<DeviceFingerprint>()
-                .in(DeviceFingerprint::getDeviceId, deviceIds));
-        return (int) same.stream()
-                .map(DeviceFingerprint::getUserId)
-                .filter(Objects::nonNull)
-                .filter(id -> !id.equals(userId))
-                .distinct()
-                .count();
-    }
-
-    /** 窗口内已获得成长值的发放次数（含被拦截的 0 增量流水，从严计数）。 */
-    private int countEarnInWindow(Long userId) {
-        int days = Math.max(1, growth.getEarnWindowDays());
-        LocalDateTime from = LocalDateTime.now().minusDays(days);
-        Long cnt = growthValueLogMapper.selectCount(new LambdaQueryWrapper<GrowthValueLog>()
-                .eq(GrowthValueLog::getUserId, userId)
-                .ge(GrowthValueLog::getCreatedAt, from)
-                .ne(GrowthValueLog::getDelta, 0));
-        return cnt == null ? 0 : cnt.intValue();
-    }
-
-    // ===== 内部：持久化辅助 =====
-
-    /** 查询或创建账户（惰性创建，初始 L1 / 0 成长值）。 */
-    private UserGrowth ensure(Long userId) {
-        UserGrowth g = userGrowthMapper.selectOne(new LambdaQueryWrapper<UserGrowth>()
-                .eq(UserGrowth::getUserId, userId));
-        if (g != null) {
-            return g;
-        }
-        UserGrowth created = new UserGrowth();
-        created.setUserId(userId);
-        created.setGrowthValue(0);
-        created.setTotalEarned(0);
-        created.setLevelCode(DEFAULT_LEVEL);
-        created.setGrowthFrozen(0);
-        userGrowthMapper.insert(created);
-        return created;
-    }
-
-    /**
-     * CAS 更新成长值：仅当当前值等于 {@code expected} 时才写入，杜绝并发丢失更新。
-     *
-     * @param earnDelta 累计获得量（&le;0 时不动 total_earned）
-     */
-    private boolean casUpdate(Long id, int expected, int target, int earnDelta) {
-        LambdaUpdateWrapper<UserGrowth> uw = new LambdaUpdateWrapper<UserGrowth>()
-                .eq(UserGrowth::getId, id)
-                .eq(UserGrowth::getGrowthValue, expected)
-                .set(UserGrowth::getGrowthValue, target)
-                .set(UserGrowth::getLastActiveAt, LocalDateTime.now());
-        if (earnDelta > 0) {
-            uw.setSql("total_earned = total_earned + " + earnDelta);
-        }
-        return userGrowthMapper.update(null, uw) > 0;
-    }
-
-    /**
-     * 衰减专用 CAS：只改成长值，<b>不刷新 lastActiveAt</b>（衰减不是活跃行为）。
-     */
-    private boolean decayCas(Long id, int expected, int target) {
-        return userGrowthMapper.update(null, new LambdaUpdateWrapper<UserGrowth>()
-                .eq(UserGrowth::getId, id)
-                .eq(UserGrowth::getGrowthValue, expected)
-                .set(UserGrowth::getGrowthValue, target)) > 0;
-    }
-
-    /** 同一 (用户, 来源, 关联单号) 是否已有流水（幂等预检）。 */
-    private boolean alreadyLogged(Long userId, String bizType, String bizId) {
-        if (userId == null || bizId == null || bizId.isBlank()) {
-            return false;
-        }
-        Long cnt = growthValueLogMapper.selectCount(new LambdaQueryWrapper<GrowthValueLog>()
-                .eq(GrowthValueLog::getUserId, userId)
-                .eq(GrowthValueLog::getBizType, bizType)
-                .eq(GrowthValueLog::getBizId, bizId));
-        return cnt != null && cnt > 0;
-    }
-
-    /** 写成长值流水（REQ-09 全量留痕；唯一索引承担并发幂等兜底）。 */
-    private void writeLog(Long userId, String bizType, String bizId, int delta, int before, int after,
-                          String levelCode, String remark) {
-        GrowthValueLog log = new GrowthValueLog();
-        log.setUserId(userId);
-        log.setBizType(bizType);
-        log.setBizId(bizId);
-        log.setDelta(delta);
-        log.setBeforeValue(before);
-        log.setAfterValue(after);
-        log.setLevelCode(levelCode);
-        log.setRuleVersion(growth.getRuleVersion());
-        log.setFrozen(0);
-        log.setRemark(safe(remark));
-        growthValueLogMapper.insert(log);
-    }
-
-    private int valueOf(UserGrowth g) {
-        return g.getGrowthValue() == null ? 0 : g.getGrowthValue();
-    }
-
-    private String safe(String s) {
-        if (s == null || s.isBlank()) {
-            return "";
-        }
-        return s.length() > 480 ? s.substring(0, 480) : s;
-    }
+    // ===== 内部：通知（best-effort）=====
 
     private void notify(Long userId, NotificationType type, String title, String content) {
         try {
@@ -828,71 +678,5 @@ public class GrowthValueService {
         } catch (Exception ignored) {
             // 通知 best-effort，不影响成长值主流程
         }
-    }
-
-    private GrowthValueLogVO toVO(GrowthValueLog l) {
-        GrowthValueLogVO v = new GrowthValueLogVO();
-        v.setId(l.getId());
-        v.setUserId(l.getUserId());
-        v.setBizType(l.getBizType());
-        v.setBizId(l.getBizId());
-        v.setDelta(l.getDelta());
-        v.setBeforeValue(l.getBeforeValue());
-        v.setAfterValue(l.getAfterValue());
-        v.setLevelCode(l.getLevelCode());
-        v.setRuleVersion(l.getRuleVersion());
-        v.setRemark(l.getRemark());
-        v.setCreatedAt(l.getCreatedAt() == null ? null : l.getCreatedAt().format(DateTimeUtil.FMT));
-        return v;
-    }
-
-    /** 账户 → 用户端 / 后台共用视图：等级解析走 MemberLevelCalculator（与 F-13.2 同口径）。 */
-    private GrowthAccountVO toAccountVO(UserGrowth g, boolean preferStoredLevel) {
-        List<MemberLevel> tiers = tiers();
-        int gv = valueOf(g);
-        MemberLevelCalculator.Resolved r = MemberLevelCalculator.resolve(tiers, gv);
-        GrowthAccountVO v = new GrowthAccountVO();
-        // preferStoredLevel=true（用户端）：展示已生效的 level_code，与等级通知口径一致；
-        // false（后台只读）：直接以解析结果为准，避免展示尚未重算的滞后编码。
-        String code = preferStoredLevel && g.getLevelCode() != null ? g.getLevelCode()
-                : (r.current == null ? g.getLevelCode() : r.current.getLevelCode());
-        v.setLevelCode(code);
-        v.setGrowthValue(gv);
-        v.setTotalEarned(g.getTotalEarned() == null ? 0 : g.getTotalEarned());
-        if (r.current != null) {
-            v.setLevelName(r.current.getLevelName());
-            v.setIcon(r.current.getIcon());
-            v.setColor(r.current.getColor());
-            v.setFreeShipping(r.current.getFreeShipping());
-            v.setPriorityReview(r.current.getPriorityReview());
-            v.setCommissionDiscount(r.current.getCommissionDiscount());
-        }
-        v.setNextLevelName(r.next == null ? null : r.next.getLevelName());
-        v.setGrowthToNext(r.growthToNext);
-        v.setPercent(r.percent);
-        v.setFrozen(g.isFrozen());
-        v.setDaysUntilDecay(GrowthValueCalculator.daysUntilDecay(inactiveDaysOf(g), growth.getDecayThresholdDays()));
-        v.setDecayNotifyDays(growth.getDecayNotifyDays());
-        v.setRuleVersion(growth.getRuleVersion());
-        return v;
-    }
-
-    /** 账户 → 后台列表视图（派生等级名称与距衰减天数）。 */
-    private GrowthAccountAdminVO toAdminVO(UserGrowth g, List<MemberLevel> tiers) {
-        GrowthAccountAdminVO v = new GrowthAccountAdminVO();
-        v.setUserId(g.getUserId());
-        v.setLevelCode(g.getLevelCode());
-        v.setGrowthValue(valueOf(g));
-        v.setTotalEarned(g.getTotalEarned() == null ? 0 : g.getTotalEarned());
-        v.setFrozen(g.isFrozen());
-        v.setLastActiveAt(g.getLastActiveAt() == null ? null : g.getLastActiveAt().format(DateTimeUtil.FMT));
-        v.setDaysUntilDecay(GrowthValueCalculator.daysUntilDecay(inactiveDaysOf(g), growth.getDecayThresholdDays()));
-        String name = tiers.stream()
-                .filter(t -> t.getLevelCode() != null && t.getLevelCode().equals(g.getLevelCode()))
-                .map(MemberLevel::getLevelName)
-                .findFirst()
-                .orElse(null);
-        v.setLevelName(name);
-        return v;
     }
 }
